@@ -1,0 +1,12 @@
+name = "Droplet"
+uuid = "fe234666-22ea-4721-bbea-50e5c871a87b"
+authors = ["tohme <tarektohme1@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[compat]
+Distributions = "0.25.120"
+StatsBase = "0.34.5"
