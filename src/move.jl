@@ -1,37 +1,73 @@
-# executes a move on p at position movePos, in a direction
-# specified by moveDir, which specifies the axes along which the move happens
+# executes a move on species s inside lattice l at position movePos
+# in a direction moveVec, the vector along which the move happens
 export makeMove!
-function makeMove!(p::Poly, movePos::Int, moveDir::Vector{T}) where T <: AbstractFloat
-    @assert length(moveDir) == 3 "moveDir must be a vector of length 3"
-    @assert movePos >= 1 || movePos <= p.length "movePos must be between 1 and polymer length"
+function makeMove!(l::Lattice, 
+                   s::Species, 
+                   movePos::Int, 
+                   moveVec::Vector{T}) where T <: AbstractFloat
+
+    @assert length(moveVec) == 3 
+        "moveVec must be a vector of length 3"
+    @assert movePos >= 1 || movePos <= s.length 
+        "movePos must be between 1 and Species length (# of monomers)"
+
+    # lattice sites of species s
+    latS = view(l.lat, s.id, :, :, :)
 
     # bond to move is between beads i and j
-    bi = view(p.pos, movePos, :)
-    bj = view(p.pos, (movePos + 1) % p.boxlength, :)
-    bond_vec = [(bj[1] - bi[1]) % p.boxlength, 
-                (bj[2] - bi[2]) % p.boxlength, 
-                (bj[3] - bi[3]) % p.boxlength]
+    bi = view(s.pos, movePos, :)
+    bj = view(s.pos, (movePos + 1) % s.boxlength, :)
+    s.bondVec = [(bj[1] - bi[1]) % s.boxlength, 
+                 (bj[2] - bi[2]) % s.boxlength, 
+                 (bj[3] - bi[3]) % s.boxlength]
 
-    # previous and next bead relative to selected bond
-    ni = [-1, -1, -1]
-    nj = [-1, -1, -1]
+    # check move is orthogonal to bond direction
+    @assert dot(bondVec, moveVec) == 0 
+        "Move is not orthogonal to bond direction"
 
-    if movePos != 1
-        ni = view(p.pos, movePos - 1, :)
+    # compute translated position of selected bond
+    for k in 1:3
+        s.auxPos1[k] = bi[k] + moveVec[k]
+        s.auxPos2[k] = bj[k] + moveVec[k]
+    end
+    
+    # check for overlap with another bead from the same species
+    # WARNING: different species can still overlap
+    if latS[CartesianIndex((s.auxPos1[1], s.auxPos1[2], s.auxPos1[3]))] != 1
+        if latS[CartesianIndex((s.auxPos2[1], s.auxPos2[2], s.auxPos2[3]))] != 1
+
+            # update bead position 
+            for k in 1:3
+                bi[k] = s.auxPos1[k]
+                bj[k] = s.auxPos2[k]
+            end
+
+            # flip lattice sites
+            latS[CartesianIndex((s.auxPos1[1], s.auxPos1[2], s.auxPos1[3]))] = 1
+            latS[CartesianIndex((s.auxPos2[1], s.auxPos2[2], s.auxPos2[3]))] = 1
+        end
     end
 
-    if movePos != p.length - 1
-        nj = view(p.pos, movePos + 2, :)
-    end
+    return l, s
+end
 
-    # 
+function proposeMove!(s::Species)
 
 end
 
-function proposeMove!(p::Poly)
+function acceptMove!(s::Species)
 
 end
 
-function acceptMove!(p::Poly)
+# # previous and next bead relatSve to selected bond
+# if movePos != 1
+#     ni = view(s.pos, movePos - 1, :)
+# else
+#     ni = [-1, -1, -1]
+# end
 
-end
+# if movePos != s.length - 1
+#     nj = view(s.pos, movePos + 2, :)
+# else
+#     nj = [-1, -1, -1]
+# end

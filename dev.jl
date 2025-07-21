@@ -33,7 +33,7 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Adding species to a lattice
+# Adding multiple species to a lattice
 let 
     date = "20250721"
     outdir = "data/$(date)/"
@@ -46,14 +46,16 @@ let
         nspecies = 2
     )
 
-    p1 = Poly(;
+    # polymer
+    p1 = Species(;
         length = 16,
         maxlength = 64,
         boxlength = l.boxlength,
         init_pos = [0, 5, 14]
     )
 
-    p2 = Poly(;
+    # dilute monomers
+    p2 = Species(;
         length = 256,
         maxlength = 256,
         boxlength = l.boxlength
