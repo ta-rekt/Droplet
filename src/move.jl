@@ -4,7 +4,7 @@ export makeMove!
 function makeMove!(l::Lattice, 
                    s::Species, 
                    movePos::Int, 
-                   moveVec::Vector{T}) where T <: AbstractFloat
+                   moveVec::Vector{T}) where T <: Int
 
     @assert length(moveVec) == 3 
         "moveVec must be a vector of length 3"
@@ -12,7 +12,7 @@ function makeMove!(l::Lattice,
         "movePos must be between 1 and Species length (# of monomers)"
 
     # lattice sites of species s
-    latS = view(l.lat, s.id, :, :, :)
+    latS = view(l.lat, l.speciesIndex[s.id], :, :, :)
 
     # bond to move is between beads i and j
     bi = view(s.pos, movePos, :)
@@ -22,7 +22,7 @@ function makeMove!(l::Lattice,
                  (bj[3] - bi[3]) % s.boxlength]
 
     # check move is orthogonal to bond direction
-    @assert dot(bondVec, moveVec) == 0 
+    @assert dot(s.bondVec, moveVec) == 0 
         "Move is not orthogonal to bond direction"
 
     # compute translated position of selected bond
@@ -36,15 +36,19 @@ function makeMove!(l::Lattice,
     if latS[CartesianIndex((s.auxPos1[1], s.auxPos1[2], s.auxPos1[3]))] != 1
         if latS[CartesianIndex((s.auxPos2[1], s.auxPos2[2], s.auxPos2[3]))] != 1
 
+            # reset old lattice sites to 0
+            # latS[CartesianIndex((bi[1], bi[2], bi[3]))] = 0
+            # latS[CartesianIndex((bj[1], bj[2], bj[3]))] = 0
+            
+            # flip new lattice sites to 1
+            latS[CartesianIndex((s.auxPos1[1], s.auxPos1[2], s.auxPos1[3]))] = 1
+            latS[CartesianIndex((s.auxPos2[1], s.auxPos2[2], s.auxPos2[3]))] = 1
+            
             # update bead position 
             for k in 1:3
                 bi[k] = s.auxPos1[k]
                 bj[k] = s.auxPos2[k]
             end
-
-            # flip lattice sites
-            latS[CartesianIndex((s.auxPos1[1], s.auxPos1[2], s.auxPos1[3]))] = 1
-            latS[CartesianIndex((s.auxPos2[1], s.auxPos2[2], s.auxPos2[3]))] = 1
         end
     end
 

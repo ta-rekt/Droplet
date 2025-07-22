@@ -35,7 +35,7 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Adding multiple species to a lattice
 let 
-    date = "20250721"
+    date = "20250722"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "testpoly"
@@ -50,8 +50,7 @@ let
     p1 = Species(;
         length = 16,
         maxlength = 64,
-        boxlength = l.boxlength,
-        init_pos = [0, 5, 14]
+        boxlength = l.boxlength
     )
 
     # dilute monomers
@@ -64,6 +63,9 @@ let
     initPoly!(p1)
     initDilute!(p2)
     initLattice!(l, [p1, p2])
+
+    makeMove!(l, p1, 5, [0,1,0])
+    # makeMove!(l, p1, 7, [0,1,0])
 
     export!(l, outpath)
 

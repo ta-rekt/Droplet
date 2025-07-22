@@ -8,8 +8,8 @@ function initPoly!(s::Species)
     for i in 1:s.length
         v = view(s.pos, i, :)
         v[1] = i
-        v[2] = s.init_pos === nothing ? div(s.length, 2) : s.init_pos[2]
-        v[3] = s.init_pos === nothing ? div(s.length, 2) : s.init_pos[3]
+        v[2] = s.initPos === nothing ? div(s.length, 2) : s.initPos[2]
+        v[3] = s.initPos === nothing ? div(s.length, 2) : s.initPos[3]
     end
 
     return s
@@ -30,8 +30,9 @@ function initLattice!(l::Lattice, species::Vector{Species})
     l.lat = zeros((l.nspecies, l.boxlength, l.boxlength, l.boxlength))
 
     # fill out lattice sites for each species
-    for s in species
-        latS = view(l.lat, s.id, :, :, :)   # assumes species IDs are unique, increment by 1 and start at 1 -> TEST
+    for (i, s) in enumerate(species)
+        l.speciesIndex[s.id] = i
+        latS = view(l.lat, i, :, :, :) 
 
         for j in 1:s.length
             v = view(s.pos, j, :)
