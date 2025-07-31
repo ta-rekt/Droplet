@@ -35,7 +35,7 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Adding multiple species to a lattice
 let 
-    date = "20250722"
+    date = "20250724"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "testpoly"
@@ -47,9 +47,9 @@ let
     )
 
     # polymer
-    p1 = Species(;
+    global p1 = Species(;
         length = 16,
-        maxlength = 64,
+        maxlength = 20,
         boxlength = l.boxlength
     )
 
@@ -62,10 +62,23 @@ let
 
     initPoly!(p1)
     initDilute!(p2)
+    
+    p1.moveIdx = 4
+    p1.moveType = 2  # bond addition
+    p1.moveVec = [0,0,1]
+    
     initLattice!(l, [p1, p2])
+    makeMove!(l, p1)
 
-    makeMove!(l, p1, 5, [0,1,0])
-    # makeMove!(l, p1, 7, [0,1,0])
+    p1.moveIdx = 17
+    p1.moveType = 1  # removal
+    p1.moveVec = [0,0,-1]
+    makeMove!(l, p1)
+    
+    ## turn off a site
+    # v = view(p1.pos[1], 1:3)
+    # latS = view(l.lat, l.speciesDir[p1.id], :, :, :)
+    # latS[v...] = 0
 
     export!(l, outpath)
 

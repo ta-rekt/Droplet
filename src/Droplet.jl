@@ -5,6 +5,7 @@ module Droplet
     using Serialization
     using LinearAlgebra
     using JSON
+    using DataStructures
 
     include("types.jl")
     include("move.jl")
