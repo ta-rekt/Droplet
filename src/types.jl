@@ -2,20 +2,21 @@ const SPECIES_ID_COUNTER = Ref(1)
 
 mutable struct Species
     id::Int32
-    name::String       # unique name of this species
-    length::Int32      # number of beads
-    maxlength::Int32    # max number of beads
+    name::String         # unique name of this species
+    length::Int32        # number of beads
+    maxlength::Int32     # max number of beads
     boxlength::Int32     # box linear dimension
 
-    pos::OrderedDict{Int32,Vector{Int32}}      # xyz coordinates of all the beads
-    initPos::Union{Nothing, Vector{Int32}}    # anchor position on one side
+    pos::OrderedDict{Int32,Vector{Int32}}       # xyz coordinates of all the beads
+    initPos::Union{Nothing, Vector{Int32}}      # anchor position on one side
     finalPos::Union{Nothing, Vector{Int32}}     # anchor position on the other side
-    moveVec::Union{Nothing, Vector{Int32}}     # move vector
-    bondVec::Union{Nothing, Vector{Int32}}    # direction vector for a given bond
-    moveIdx::Int32            # bead index to move next
-    moveType::Int32           # type of move: bond addition (1), bond removal (2) or kink (3)
-    newPosi::Vector{Int32}    # placeholder position (e.g. to store next bond position)
-    newPosj::Vector{Int32}    # placeholder position (e.g. to store next bond position)
+    bondVec::Union{Nothing, Vector{Int32}}      # direction vector for a given bond
+    moveVec::Union{Nothing, Vector{Int32}}      # move vector
+    moveIdx::Int32                 # bead index to move next
+    moveType::Int32                # type of move: bond addition (1), bond removal (2) or kink (3)
+    newPosi::Vector{Int32}         # placeholder position (e.g. to store next bond position)
+    newPosj::Vector{Int32}         # placeholder position (e.g. to store next bond position)
+    moveProbs::Vector{Float64}     # move proposal probabilities
     
     # interaction energies
     # chemical potentials
@@ -38,7 +39,8 @@ function Species(; length, maxlength, boxlength)
                    0,
                    0,
                    zeros(Int32, 3),
-                   zeros(Int32, 3))
+                   zeros(Int32, 3),
+                   zeros(Float64, 3))
 end
 
 export Lattice

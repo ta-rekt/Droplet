@@ -8,6 +8,7 @@ module Droplet
     using DataStructures
 
     include("types.jl")
+    include("metropolis.jl")
     include("move.jl")
     include("init.jl")
     include("utils.jl")
