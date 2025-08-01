@@ -16,6 +16,7 @@ mutable struct Species
     moveType::Int32                # type of move: bond addition (1), bond removal (2) or kink (3)
     newPosi::Vector{Int32}         # placeholder position (e.g. to store next bond position)
     newPosj::Vector{Int32}         # placeholder position (e.g. to store next bond position)
+    moveTypes::Vector{Int32}       # array of possible move types around a given bead
     moveProbs::Vector{Float64}     # move proposal probabilities
     
     # interaction energies
@@ -40,6 +41,7 @@ function Species(; length, maxlength, boxlength)
                    0,
                    zeros(Int32, 3),
                    zeros(Int32, 3),
+                   zeros(Int32, 4),
                    zeros(Float64, 3))
 end
 

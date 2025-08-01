@@ -1,6 +1,8 @@
 export removeBond!
-function removeBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
-                     bi::T, bj::T, bprev::T, bnext::T) where {T <: AbstractArray{Int32}, S <: AbstractArray{Int32}}
+function removeBond!(latS::S, s::Species, ki::Int32, kj::Int32, 
+                     kprev::Int32, knext::Int32, bi::T, bj::T, 
+                     bprev::T, bnext::T) where {T <: AbstractArray{Int32}, 
+                                                S <: AbstractArray{Int32}}
 
     # TODO: handle corner cases
     @assert (s.newPosi == bprev) && (s.newPosj == bnext) begin
@@ -23,9 +25,10 @@ function removeBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, kn
 end
 
 export addBond!
-function addBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
-                  bi::T, bj::T, bprev::T, bnext::T) where {T <: AbstractArray{Int32}, S <: AbstractArray{Int32}}
-
+function addBond!(latS::S, s::Species, ki::Int32, kj::Int32, 
+                     kprev::Int32, knext::Int32, bi::T, bj::T, 
+                     bprev::T, bnext::T) where {T <: AbstractArray{Int32}, 
+                                                S <: AbstractArray{Int32}}
     # TODO: handle corner cases
     @assert (s.newPosi != bprev) && (s.newPosj != bnext) begin
         "Move is not a bond addition"
@@ -47,9 +50,10 @@ function addBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext
 end
 
 export kinkBond!
-function kinkBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
-                   bi::T, bj::T, bprev::T, bnext::T) where {T <: AbstractArray{Int32}, S <: AbstractArray{Int32}}
-
+function kinkBond!(latS::S, s::Species, ki::Int32, kj::Int32, 
+                     kprev::Int32, knext::Int32, bi::T, bj::T, 
+                     bprev::T, bnext::T) where {T <: AbstractArray{Int32}, 
+                                                S <: AbstractArray{Int32}}
     # TODO: handle corner cases
     @assert (s.newPosi == bprev) ⊻ (s.newPosj == bnext) begin
         "Move is not a kink"
@@ -71,11 +75,29 @@ function kinkBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knex
 end
 
 export moveTypes!
-function moveTypes!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
-                  bi::T, bj::T, bprev::T, bnext::T) where {T <: AbstractArray{Int32}, S <: AbstractArray{Int32}}
+function moveTypes!(s::Species, bi::T, bj::T, 
+                    bprev::T, bnext::T) where T <: AbstractArray{Int32}
+    # dimensions along which to move
+    dims = findall(iszero, s.bondVec)
+    @assert length(dims) == 2 begin
+        "bondVec must be aligned with x, y, or z axis"
+    end
+    moveVec = zeros(Int32, 3)
 
-    
+    # build all possible moves each bond can make
+    for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
+        
+        # flip direction along each dimension in the orthogonal plane
+        moveVec[dims[idx]] = sign
+        
+        newPosi = bi .+ moveVec
+        newPosj = bj .+ moveVec
+        
+        # 1 -> bond addition, 2 -> kink, 3 -> bond removal
+        s.moveTypes[i] = Int32(newPosi == bprev) + Int32(newPosj == bnext) + 1
+    end
 
+    return s
 end
 
 # executes a move on species s inside lattice l at position s.moveIdx,
@@ -113,9 +135,10 @@ function makeMove!(l::Lattice, s::Species)
                  (bj[2] - bi[2]) % s.boxlength, 
                  (bj[3] - bi[3]) % s.boxlength]
     
-    ###########
+    # compute the possible move types around a bond
+    moveTypes!(s, bi, bj, bprev, bnext)
 
-    # sample a move, its type and direction are in s's fields
+    # sample a move according to detailed balance
     proposeMove!(s)
 
     @assert !isnothing(s.moveVec)
@@ -124,9 +147,6 @@ function makeMove!(l::Lattice, s::Species)
     end
     @assert dot(s.bondVec, s.moveVec) == 0 begin
         "Move is not orthogonal to bond direction"
-    end
-    @assert s.moveType == 1 || s.moveType == 2 || s.moveType == 3 begin
-        "s.moveType must be either 1, 2, or 3"
     end
 
     # translated position of selected bond
@@ -138,20 +158,29 @@ function makeMove!(l::Lattice, s::Species)
         (latS[s.newPosi...] == 1 && bprev != s.newPosi) ||
         (latS[s.newPosj...] == 1 && bnext != s.newPosj))
 
-        # bond removal
-        if s.moveType == 1  
-            removeBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+        # accept move with metropolis criterion
+        if acceptMove!(s)
 
-        # bond addition
-        elseif s.moveType == 2  
-            addBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+            @assert s.moveType == 1 || s.moveType == 2 || s.moveType == 3 begin
+                "s.moveType must be either 1, 2, or 3"
+            end
 
-        # kink
-        elseif s.moveType == 3 
-            kinkBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+            # bond addition
+            if s.moveType == 1
+                addBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+
+            # kink
+            elseif s.moveType == 2
+                kinkBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+
+            # bond removal  
+            elseif s.moveType == 3 
+                removeBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+
+            end
+
+            moveExecuted = true
         end
-
-        moveExecuted = acceptMove!(s)
     end
 
     return l, s, moveExecuted

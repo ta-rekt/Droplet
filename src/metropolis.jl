@@ -1,5 +1,4 @@
-# samples moves according to proposition probabilities
-# set by detailed balance
+# samples moves according to probabilities set by detailed balance
 export proposeMove!
 function proposeMove!(s::Species)
 
