@@ -1,70 +1,13 @@
-# executes a move on species s inside lattice l at position s.moveIdx,
-# of type moveType (add, remove or kink) in a direction s.moveVec, 
-# the vector along which the move happens
-export makeMove!
-function makeMove!(l::Lattice, 
-                   s::Species)
-
-    @assert !isnothing(s.moveVec)
-    @assert length(s.moveVec) == 3 begin
-        "s.moveVec must be a vector of length 3"
-    end
-    @assert s.moveIdx >= 1 || s.moveIdx <= s.length - 1 begin
-        "s.moveIdx must be between 1 and Species length - 1 (# of monomers)"
-    end
-
-    # pointers to the two beads (i and j) to be moved, 
-    ki = s.pos.keys[s.moveIdx]
-    kj = s.pos[ki][5]
-
-    # previous and next beads along the chain
-    kprev = s.pos[ki][4]
-    knext = s.pos[kj][5]
-
-    # bond edge coordinates
-    bi = view(s.pos[ki], 1:3)
-    bj = view(s.pos[kj], 1:3)
-
-    s.bondVec = [(bj[1] - bi[1]) % s.boxlength, 
-                 (bj[2] - bi[2]) % s.boxlength, 
-                 (bj[3] - bi[3]) % s.boxlength]
-
-    @assert dot(s.bondVec, s.moveVec) == 0 begin
-        "Move is not orthogonal to bond direction"
-    end
-
-    # translated position of selected bond
-    s.newPosi = bi .+ s.moveVec
-    s.newPosj = bj .+ s.moveVec
-
-    # bond removal
-    if s.moveType == 1  
-        removeBond!(l, s, ki, kj, kprev, knext)
-
-    # bond addition
-    elseif s.moveType == 2  
-        addBond!(l, s, ki, kj, kprev, knext)
-
-    # kink
-    elseif s.moveType == 3 
-        kinkBond!(l, s, ki, kj, kprev, knext)
-    end
-
-    return l, s
-end
-
-
-function removeBond!(l::Lattice, s::Species, ki::Int, kj::Int, kprev::Int, knext::Int)
+export removeBond!
+function removeBond!(l::Lattice, s::Species, 
+                     ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
+                     bi::T, bj::T, bprev::T, bnext::T) where T <: AbstractArray{Int32}
 
     # lattice sites of species s
     latS = view(l.lat, l.speciesDir[s.id], :, :, :)
 
-    # coordinates of previous and next beads relative to bond
-    bprev = kprev == 0 ? [-1, -1, -1] : view(s.pos[kprev], 1:3)
-    bnext = knext == 0 ? [-1, -1, -1] : view(s.pos[knext], 1:3)
-
     # TODO: handle corner cases
-    @assert (knext != 0) && (kprev != 0) && (s.newPosi == bprev) && (s.newPosj == bnext) begin
+    @assert (s.newPosi == bprev) && (s.newPosj == bnext) begin
         "Move is not a bond removal"
     end
     
@@ -80,18 +23,16 @@ function removeBond!(l::Lattice, s::Species, ki::Int, kj::Int, kprev::Int, knext
     delete!(s.pos, ki)
     delete!(s.pos, kj)
 
-    s.length = knext == 0 || kprev == 0 ? s.length -1 : s.length - 2
+    s.length = s.length - 2
 end
 
-
-function addBond!(l::Lattice, s::Species, ki::Int, kj::Int, kprev::Int, knext::Int)
+export addBond!
+function addBond!(l::Lattice, s::Species, 
+                  ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
+                  bi::T, bj::T, bprev::T, bnext::T) where T <: AbstractArray{Int32}
 
     # lattice sites of species s
     latS = view(l.lat, l.speciesDir[s.id], :, :, :)
-
-    # coordinates of previous and next beads relative to bond
-    bprev = kprev == 0 ? [-1, -1, -1] : view(s.pos[kprev], 1:3)
-    bnext = knext == 0 ? [-1, -1, -1] : view(s.pos[knext], 1:3)
 
     # TODO: handle corner cases
     @assert (s.newPosi != bprev) && (s.newPosj != bnext) begin
@@ -110,18 +51,16 @@ function addBond!(l::Lattice, s::Species, ki::Int, kj::Int, kprev::Int, knext::I
     s.pos[ki][5] = s.length + 1
     s.pos[kj][4] = s.length + 2
 
-    s.length = knext == 0 || kprev == 0 ? s.length + 1 : s.length + 2
+    s.length = s.length + 2
 end
 
-
-function kinkBond!(l::Lattice, s::Species, ki::Int, kj::Int, kprev::Int, knext::Int)
+export kinkBond!
+function kinkBond!(l::Lattice, s::Species, 
+                   ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
+                   bi::T, bj::T, bprev::T, bnext::T) where T <: AbstractArray{Int32}
 
     # lattice sites of species s
     latS = view(l.lat, l.speciesDir[s.id], :, :, :)
-
-    # coordinates of previous and next beads relative to bond
-    bprev = kprev == 0 ? [-1, -1, -1] : view(s.pos[kprev], 1:3)
-    bnext = knext == 0 ? [-1, -1, -1] : view(s.pos[knext], 1:3)
 
     # TODO: handle corner cases
     @assert (s.newPosi == bprev) ⊻ (s.newPosj == bnext) begin
@@ -129,7 +68,7 @@ function kinkBond!(l::Lattice, s::Species, ki::Int, kj::Int, kprev::Int, knext::
     end
 
     # set angled site to 0, flat site to 1
-    if s.newPosi == bprev
+    if s.newPosi == bprev 
         latS[bi...] = 0
         latS[s.newPosj...] = 1
 
@@ -142,6 +81,66 @@ function kinkBond!(l::Lattice, s::Species, ki::Int, kj::Int, kprev::Int, knext::
         s.pos[kj] = [s.newPosi..., ki, knext]
     end
 end
+
+# executes a move on species s inside lattice l at position s.moveIdx,
+# of type moveType (add, remove or kink) in a direction s.moveVec, 
+# the vector along which the move happens
+export makeMove!
+function makeMove!(l::Lattice, 
+                   s::Species)
+
+    @assert !isnothing(s.moveVec)
+    @assert length(s.moveVec) == 3 begin
+        "s.moveVec must be a vector of length 3"
+    end
+    @assert s.moveIdx >= 1 && s.moveIdx <= s.length - 1 begin
+        "s.moveIdx must be between 1 and Species length - 1 (# of monomers)"
+    end
+
+    # pointers to the two beads (i and j) to be moved, 
+    ki = s.pos.keys[s.moveIdx]
+    kj = s.pos[ki][5]
+
+    # previous and next beads along the chain
+    kprev = s.pos[ki][4]
+    knext = s.pos[kj][5]
+
+    # bond edge coordinates
+    bi = view(s.pos[ki], 1:3)
+    bj = view(s.pos[kj], 1:3)
+
+    # coordinates of previous and next beads relative to bond
+    bprev = kprev == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[kprev], 1:3)
+    bnext = knext == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[knext], 1:3)
+
+    s.bondVec = [(bj[1] - bi[1]) % s.boxlength, 
+                 (bj[2] - bi[2]) % s.boxlength, 
+                 (bj[3] - bi[3]) % s.boxlength]
+
+    @assert dot(s.bondVec, s.moveVec) == 0 begin
+        "Move is not orthogonal to bond direction"
+    end
+
+    # translated position of selected bond
+    s.newPosi = bi .+ s.moveVec
+    s.newPosj = bj .+ s.moveVec
+
+    # bond removal
+    if s.moveType == 1  
+        removeBond!(l, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+
+    # bond addition
+    elseif s.moveType == 2  
+        addBond!(l, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+
+    # kink
+    elseif s.moveType == 3 
+        kinkBond!(l, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+    end
+
+    return l, s
+end
+
 
 # selects a bond randomly, proposes a move following detailed balance
 # checks for overlap and length constraints, and accepts with metropolis prob.

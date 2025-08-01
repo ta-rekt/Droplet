@@ -63,17 +63,17 @@ let
     initPoly!(p1)
     initDilute!(p2)
     
-    p1.moveIdx = 4
+    p1.moveIdx = 16
     p1.moveType = 2  # bond addition
     p1.moveVec = [0,0,1]
     
     initLattice!(l, [p1, p2])
     makeMove!(l, p1)
 
-    p1.moveIdx = 17
-    p1.moveType = 1  # removal
-    p1.moveVec = [0,0,-1]
-    makeMove!(l, p1)
+    # p1.moveIdx = 17
+    # p1.moveType = 1  # removal
+    # p1.moveVec = [0,0,-1]
+    # makeMove!(l, p1)
     
     ## turn off a site
     # v = view(p1.pos[1], 1:3)
