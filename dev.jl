@@ -41,7 +41,7 @@ let
     outfile = "testpoly"
     outpath = string(outdir, outfile)
 
-    l = Lattice(;
+    global l = Lattice(;
         boxlength = 16,
         nspecies = 2
     )
@@ -62,21 +62,26 @@ let
 
     initPoly!(p1)
     initDilute!(p2)
+    initLattice!(l, [p1, p2])
     
-    p1.moveIdx = 16
+    p1.moveIdx = 15
     p1.moveType = 2  # bond addition
     p1.moveVec = [0,0,1]
-    
-    initLattice!(l, [p1, p2])
     makeMove!(l, p1)
 
-    # p1.moveIdx = 17
-    # p1.moveType = 1  # removal
-    # p1.moveVec = [0,0,-1]
-    # makeMove!(l, p1)
+    p1.moveIdx = 17
+    p1.moveType = 2
+    p1.moveVec = [0,0,1]
+    makeMove!(l, p1)
+
+    p1.moveIdx = 15
+    p1.moveType = 3
+    p1.moveVec = [-1,0,0]
+    _, _, me = makeMove!(l, p1)
+    println("move executed? ", me)
     
     ## turn off a site
-    # v = view(p1.pos[1], 1:3)
+    # v = view(p1.pos[18], 1:3)
     # latS = view(l.lat, l.speciesDir[p1.id], :, :, :)
     # latS[v...] = 0
 

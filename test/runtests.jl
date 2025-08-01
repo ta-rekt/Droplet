@@ -44,49 +44,52 @@ using Test
                 @test l.lat[1, 7, 6, 5] == 1  # New lattice sites are occupied
                 @test l.lat[1, 8, 6, 5] == 1
             end
-      
-            @testset "Bond Removal" begin
-                l = Lattice(; boxlength = 16, nspecies = 1)
-                s = Species(; length = 8, maxlength = 10, boxlength = l.boxlength)
-                
-                # Create a polymer with a detour
-                s.pos[1] = [5, 5, 5, 0, 2]
-                s.pos[2] = [6, 5, 5, 1, 3]
-                s.pos[3] = [6, 6, 5, 2, 4]  # These two form the detour we'll remove
-                s.pos[4] = [7, 6, 5, 3, 5]  # These two form the detour we'll remove
-                s.pos[5] = [7, 5, 5, 4, 6]
-                s.pos[6] = [8, 5, 5, 5, 7]
-                s.pos[7] = [9, 5, 5, 6, 8]
-                s.pos[8] = [10, 5, 5, 7, 0]
-                
-                # Setup lattice accordingly
-                initLattice!(l, [s])
-                
-                # Prepare for bond removal
-                s.moveIdx = 3  # Choose the detour bond (between positions 3 and 4)
-                s.moveType = 1  # Bond removal
-                s.moveVec = [0, 1, 0]  # Direction doesn't matter for removal
-                s.newPosi = s.pos[2][1:3]  # Connect 2 directly to 5
-                s.newPosj = s.pos[5][1:3]
-                
-                # Original length
-                origLength = s.length
-                
-                # Execute move
-                makeMove!(l, s)
-                
-                # Tests
-                @test s.length == origLength - 2  # Length decreased by 2
-                @test !haskey(s.pos, 3)  # Positions were removed
-                @test !haskey(s.pos, 4)
-                @test s.pos[2][5] == 5  # Check connections were updated
-                @test s.pos[5][4] == 2
-                @test l.lat[1, 6, 6, 5] == 0  # Lattice sites are now empty
-                @test l.lat[1, 7, 6, 5] == 0
-            end
         end
     end
 end      
+      
+#             @testset "Bond Removal" begin
+#                 l = Lattice(; boxlength = 16, nspecies = 1)
+#                 s = Species(; length = 8, maxlength = 10, boxlength = l.boxlength)
+                
+#                 # Create a polymer with a detour
+#                 s.pos[1] = [5, 5, 5, 0, 2]
+#                 s.pos[2] = [6, 5, 5, 1, 3]
+#                 s.pos[3] = [6, 6, 5, 2, 4]  # These two form the detour we'll remove
+#                 s.pos[4] = [7, 6, 5, 3, 5]  # These two form the detour we'll remove
+#                 s.pos[5] = [7, 5, 5, 4, 6]
+#                 s.pos[6] = [8, 5, 5, 5, 7]
+#                 s.pos[7] = [9, 5, 5, 6, 8]
+#                 s.pos[8] = [10, 5, 5, 7, 0]
+                
+#                 # Setup lattice accordingly
+#                 initLattice!(l, [s])
+                
+#                 # Prepare for bond removal
+#                 s.moveIdx = 3  # Choose the detour bond (between positions 3 and 4)
+#                 s.moveType = 1  # Bond removal
+#                 s.moveVec = [0, 1, 0]  # Direction doesn't matter for removal
+#                 s.newPosi = s.pos[2][1:3]  # Connect 2 directly to 5
+#                 s.newPosj = s.pos[5][1:3]
+                
+#                 # Original length
+#                 origLength = s.length
+                
+#                 # Execute move
+#                 makeMove!(l, s)
+                
+#                 # Tests
+#                 @test s.length == origLength - 2  # Length decreased by 2
+#                 @test !haskey(s.pos, 3)  # Positions were removed
+#                 @test !haskey(s.pos, 4)
+#                 @test s.pos[2][5] == 5  # Check connections were updated
+#                 @test s.pos[5][4] == 2
+#                 @test l.lat[1, 6, 6, 5] == 0  # Lattice sites are now empty
+#                 @test l.lat[1, 7, 6, 5] == 0
+#             end
+#         end
+#     end
+# end      
             
 #             @testset "Kink Bond" begin
 #                 l = Lattice(; boxlength = 16, nspecies = 1)

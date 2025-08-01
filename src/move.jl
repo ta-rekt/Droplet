@@ -1,10 +1,6 @@
 export removeBond!
-function removeBond!(l::Lattice, s::Species, 
-                     ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
-                     bi::T, bj::T, bprev::T, bnext::T) where T <: AbstractArray{Int32}
-
-    # lattice sites of species s
-    latS = view(l.lat, l.speciesDir[s.id], :, :, :)
+function removeBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
+                     bi::T, bj::T, bprev::T, bnext::T) where {T <: AbstractArray{Int32}, S <: AbstractArray{Int32}}
 
     # TODO: handle corner cases
     @assert (s.newPosi == bprev) && (s.newPosj == bnext) begin
@@ -27,12 +23,8 @@ function removeBond!(l::Lattice, s::Species,
 end
 
 export addBond!
-function addBond!(l::Lattice, s::Species, 
-                  ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
-                  bi::T, bj::T, bprev::T, bnext::T) where T <: AbstractArray{Int32}
-
-    # lattice sites of species s
-    latS = view(l.lat, l.speciesDir[s.id], :, :, :)
+function addBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
+                  bi::T, bj::T, bprev::T, bnext::T) where {T <: AbstractArray{Int32}, S <: AbstractArray{Int32}}
 
     # TODO: handle corner cases
     @assert (s.newPosi != bprev) && (s.newPosj != bnext) begin
@@ -55,12 +47,8 @@ function addBond!(l::Lattice, s::Species,
 end
 
 export kinkBond!
-function kinkBond!(l::Lattice, s::Species, 
-                   ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
-                   bi::T, bj::T, bprev::T, bnext::T) where T <: AbstractArray{Int32}
-
-    # lattice sites of species s
-    latS = view(l.lat, l.speciesDir[s.id], :, :, :)
+function kinkBond!(latS::S, s::Species, ki::Int32, kj::Int32, kprev::Int32, knext::Int32,
+                   bi::T, bj::T, bprev::T, bnext::T) where {T <: AbstractArray{Int32}, S <: AbstractArray{Int32}}
 
     # TODO: handle corner cases
     @assert (s.newPosi == bprev) ⊻ (s.newPosj == bnext) begin
@@ -86,8 +74,7 @@ end
 # of type moveType (add, remove or kink) in a direction s.moveVec, 
 # the vector along which the move happens
 export makeMove!
-function makeMove!(l::Lattice, 
-                   s::Species)
+function makeMove!(l::Lattice, s::Species)
 
     @assert !isnothing(s.moveVec)
     @assert length(s.moveVec) == 3 begin
@@ -96,6 +83,14 @@ function makeMove!(l::Lattice,
     @assert s.moveIdx >= 1 && s.moveIdx <= s.length - 1 begin
         "s.moveIdx must be between 1 and Species length - 1 (# of monomers)"
     end
+    @assert s.moveType == 1 || s.moveType == 2 || s.moveType == 3 begin
+        "s.moveType must be either 1, 2, or 3"
+    end
+
+    moveExecuted = false
+
+    # lattice sites of species s
+    latS = view(l.lat, l.speciesDir[s.id], :, :, :)
 
     # pointers to the two beads (i and j) to be moved, 
     ki = s.pos.keys[s.moveIdx]
@@ -125,20 +120,28 @@ function makeMove!(l::Lattice,
     s.newPosi = bi .+ s.moveVec
     s.newPosj = bj .+ s.moveVec
 
-    # bond removal
-    if s.moveType == 1  
-        removeBond!(l, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+    # check for length constraint and overlap
+    if !((s.moveType == 2 && s.length == s.maxlength) ||
+        (latS[s.newPosi...] == 1 && bprev != s.newPosi) ||
+        (latS[s.newPosj...] == 1 && bnext != s.newPosj))
 
-    # bond addition
-    elseif s.moveType == 2  
-        addBond!(l, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+        # bond removal
+        if s.moveType == 1  
+            removeBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
 
-    # kink
-    elseif s.moveType == 3 
-        kinkBond!(l, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+        # bond addition
+        elseif s.moveType == 2  
+            addBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+
+        # kink
+        elseif s.moveType == 3 
+            kinkBond!(latS, s, ki, kj, kprev, knext, bi, bj, bprev, bnext)
+        end
+
+        moveExecuted = true
     end
 
-    return l, s
+    return l, s, moveExecuted
 end
 
 
