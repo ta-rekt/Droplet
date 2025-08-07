@@ -41,7 +41,7 @@ function Species(; length, maxlength, boxlength)
                    0,
                    zeros(Int32, 3),
                    zeros(Int32, 3),
-                   zeros(Int32, 4),
+                   [-1,-1,-1,-1],
                    zeros(Float64, 3))
 end
 

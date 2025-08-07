@@ -1,29 +1,3 @@
-export removeBond!
-function removeBond!(latS::S, s::Species, ki::Int32, kj::Int32, 
-                     kprev::Int32, knext::Int32, bi::T, bj::T, 
-                     bprev::T, bnext::T) where {T <: AbstractArray{Int32}, 
-                                                S <: AbstractArray{Int32}}
-
-    # TODO: handle corner cases
-    @assert (s.newPosi == bprev) && (s.newPosj == bnext) begin
-        "Move is not a bond removal"
-    end
-    
-    # reset old lattice sites to 0
-    latS[bi...] = 0
-    latS[bj...] = 0
-
-    # join ends together
-    s.pos[kprev][5] = knext
-    s.pos[knext][4] = kprev
-
-    # remove keys associated with old bond
-    delete!(s.pos, ki)
-    delete!(s.pos, kj)
-
-    s.length = s.length - 2
-end
-
 export addBond!
 function addBond!(latS::S, s::Species, ki::Int32, kj::Int32, 
                      kprev::Int32, knext::Int32, bi::T, bj::T, 
@@ -74,6 +48,32 @@ function kinkBond!(latS::S, s::Species, ki::Int32, kj::Int32,
     end
 end
 
+export removeBond!
+function removeBond!(latS::S, s::Species, ki::Int32, kj::Int32, 
+                     kprev::Int32, knext::Int32, bi::T, bj::T, 
+                     bprev::T, bnext::T) where {T <: AbstractArray{Int32}, 
+                                                S <: AbstractArray{Int32}}
+
+    # TODO: handle corner cases
+    @assert (s.newPosi == bprev) && (s.newPosj == bnext) begin
+        "Move is not a bond removal"
+    end
+    
+    # reset old lattice sites to 0
+    latS[bi...] = 0
+    latS[bj...] = 0
+
+    # join ends together
+    s.pos[kprev][5] = knext
+    s.pos[knext][4] = kprev
+
+    # remove keys associated with old bond
+    delete!(s.pos, ki)
+    delete!(s.pos, kj)
+
+    s.length = s.length - 2
+end
+
 export moveTypes!
 function moveTypes!(s::Species, bi::T, bj::T, 
                     bprev::T, bnext::T) where T <: AbstractArray{Int32}
@@ -82,19 +82,18 @@ function moveTypes!(s::Species, bi::T, bj::T,
     @assert length(dims) == 2 begin
         "bondVec must be aligned with x, y, or z axis"
     end
-    moveVec = zeros(Int32, 3)
 
     # build all possible moves each bond can make
     for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
         
         # flip direction along each dimension in the orthogonal plane
-        moveVec[dims[idx]] = sign
+        s.moveVec[dims[idx]] = sign
         
-        newPosi = bi .+ moveVec
-        newPosj = bj .+ moveVec
+        s.newPosi = bi .+ s.moveVec
+        s.newPosj = bj .+ s.moveVec
         
         # 1 -> bond addition, 2 -> kink, 3 -> bond removal
-        s.moveTypes[i] = Int32(newPosi == bprev) + Int32(newPosj == bnext) + 1
+        s.moveTypes[i] = Int32(s.newPosi == bprev) + Int32(s.newPosj == bnext) + 1
     end
 
     return s
@@ -139,7 +138,7 @@ function makeMove!(l::Lattice, s::Species)
     moveTypes!(s, bi, bj, bprev, bnext)
 
     # sample a move according to detailed balance
-    proposeMove!(s)
+    proposeMove!(s, bi, bj)
 
     @assert !isnothing(s.moveVec)
     @assert length(s.moveVec) == 3 begin
