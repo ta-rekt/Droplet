@@ -7,17 +7,33 @@ mutable struct Species
     maxlength::Int32     # max number of beads
     boxlength::Int32     # box linear dimension
 
-    pos::OrderedDict{Int32,Vector{Int32}}       # xyz coordinates of all the beads
-    initPos::Union{Nothing, Vector{Int32}}      # anchor position on one side
-    finalPos::Union{Nothing, Vector{Int32}}     # anchor position on the other side
-    bondVec::Union{Nothing, Vector{Int32}}      # direction vector for a given bond
-    moveVec::Union{Nothing, Vector{Int32}}      # move vector
-    moveIdx::Int32                 # bead index to move next
-    moveType::Int32                # type of move: bond addition (1), bond removal (2) or kink (3)
-    newPosi::Vector{Int32}         # placeholder position (e.g. to store next bond position)
-    newPosj::Vector{Int32}         # placeholder position (e.g. to store next bond position)
-    moveTypes::Vector{Int32}       # array of possible move types around a given bead
-    moveProbs::Vector{Float64}     # move proposal probabilities
+    # position and initial, final bead positions
+    pos::OrderedDict{Int32,Vector{Int32}} = nothing       # xyz coordinates of all the beads
+    initPos::Union{Nothing, Vector{Int32}} = nothing      # anchor position on one side
+    finalPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on the other side
+
+    # addBond!, removeBond!, identifyBond! variables
+    latS::Union{Nothing, AbstractArray{Int32}} = nothing
+    ki::Union{Nothing, Int32} = nothing
+    kj::Union{Nothing, Int32} = nothing
+    kprev::Union{Nothing, Int32} = nothing
+    knext::Union{Nothing, Int32} = nothing
+    bi::Union{Nothing, AbstractArray{Int32}} = nothing
+    bj::Union{Nothing, AbstractArray{Int32}} = nothing
+    bprev::Union{Nothing, AbstractArray{Int32}} = nothing
+    bnext::Union{Nothing, AbstractArray{Int32}} = nothing
+
+    # moveTypes! variables
+    bondVec::Union{Nothing, Vector{Int32}} = nothing         # direction vector for a given bond
+    moveVec::Union{Nothing, Vector{Int32}} = nothing         # move vector
+    moveIdx::Union{Nothing, Int32}  = nothing                # bead index to move next
+    moveType::Union{Nothing, Int32} = nothing                # type of move: bond addition (1), bond removal (2) or kink (3)
+    newPosi::Union{Nothing, Vector{Int32}} = nothing         # placeholder position (e.g. to store next bond position)
+    newPosj::Union{Nothing, Vector{Int32}}  = nothing        # placeholder position (e.g. to store next bond position)
+    moveTypes::Union{Nothing, Vector{Int32}} = nothing       # array of possible move types around a given bead
+
+    # proposeMove! variables
+    moveProbs::Union{Nothing, Vector{Float64}} = nothing     # move proposal probabilities
     
     # interaction energies
     # chemical potentials
@@ -27,22 +43,11 @@ end
 export Species
 function Species(; length, maxlength, boxlength)
     SPECIES_ID_COUNTER[] += 1
-    return Species(SPECIES_ID_COUNTER[], 
+    return Species(; SPECIES_ID_COUNTER[], 
                    "", 
                    length, 
                    maxlength, 
-                   boxlength, 
-                   OrderedDict{Int32, Vector{Int32}}(), 
-                   nothing,
-                   nothing,
-                   nothing,
-                   nothing,
-                   0,
-                   0,
-                   zeros(Int32, 3),
-                   zeros(Int32, 3),
-                   [-1,-1,-1,-1],
-                   zeros(Float64, 3))
+                   boxlength)
 end
 
 export Lattice

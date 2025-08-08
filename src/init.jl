@@ -2,6 +2,7 @@
 export initPoly!
 function initPoly!(s::Species)
     s.name = string("poly", s.id)
+    s.pos = OrderedDict{Int32, Vector{Int32}}()
     v = zeros(Int32, 3)
 
     # line from center of one face to the other along x axis
@@ -14,6 +15,13 @@ function initPoly!(s::Species)
 
     s.pos[1][4] = 0
     s.pos[s.boxlength][5] = 0
+    
+    s.bondVec = zeros(Int32, 3)
+    s.moveVec = zeros(Int32, 3)
+    s.newPosi = zeros(Int32, 3)
+    s.newPosj = zeros(Int32, 3)
+    s.moveTypes = zeros(Int32, 4)
+    s.moveProbs = zeros(Float64, 3)
 
     return s
 end
@@ -36,13 +44,13 @@ end
 
 # initializes lattice sites of each species from their bead locations
 export initLattice!
-function initLattice!(l::Lattice, species::Vector{Species})
-    l.nspecies = max(l.nspecies, length(species))   # update number of species
+function initLattice!(l::Lattice, ss::Vector{Species})
+    l.nspecies = max(l.nspecies, length(ss))   # update number of species
     l.lat = zeros((l.nspecies, l.boxlength, l.boxlength, l.boxlength))
     l.speciesDir = Dict{Int, Int}()
 
     # fill out lattice sites for each species
-    for (i, s) in enumerate(species)
+    for (i, s) in enumerate(ss)
         l.speciesDir[s.id] = i
         latS = view(l.lat, i, :, :, :) 
 

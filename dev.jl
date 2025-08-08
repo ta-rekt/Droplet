@@ -33,7 +33,7 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Adding multiple species to a lattice
+# Adding species to a lattice, moving individual bonds
 let 
     date = "20250724"
     outdir = "data/$(date)/"
@@ -84,6 +84,58 @@ let
     # v = view(p1.pos[18], 1:3)
     # latS = view(l.lat, l.speciesDir[p1.id], :, :, :)
     # latS[v...] = 0
+
+    export!(l, outpath)
+
+end
+
+
+## 1010011111110000100000101010111100010100001100101110000
+# Testing moveTypes! and proposeMove!
+let 
+    date = "20250807"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "testpoly"
+    outpath = string(outdir, outfile)
+
+    global l = Lattice(;
+        boxlength = 16,
+        nspecies = 2
+    )
+
+    # polymer
+    global s = Species(;
+        length = 16,
+        maxlength = 20,
+        boxlength = l.boxlength
+    )
+
+    initPoly!(s)
+    initLattice!(l, [s])
+
+    s.moveIdx = 4
+    s.moveType = 1
+    s.moveVec = [0,0,-1]
+    makeMove!(l, s)
+
+    s.moveIdx = 17
+    s.moveVec = [0,0,0]
+
+
+
+    # turn off a site
+    # v = view(s.pos[17], 1:3)
+    # latS = view(l.lat, l.speciesDir[s.id], :, :, :)
+    # latS[v...] = 0
+
+    @show findall(iszero, s.bondVec)
+
+    moveTypes!(s, bi, bj, bprev, bnext)
+
+    @show s.moveIdx
+    @show bi, bj, bprev, bnext
+    @show s.moveTypes
 
     export!(l, outpath)
 

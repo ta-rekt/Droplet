@@ -2,6 +2,9 @@ using Droplet
 using Test
 
 @testset "Droplet.jl" begin
+    @testset "Identify a bond" begin
+
+    end
     @testset "Move Operations" begin
         @testset "Basic Functionality" begin
             @testset "Bond Addition" begin
@@ -20,7 +23,7 @@ using Test
                 
                 # Prepare for bond addition
                 s.moveIdx = 3  # Choose middle bond (between positions 3 and 4)
-                s.moveType = 2  # Bond addition
+                s.moveType = 1  # Bond addition
                 s.moveVec = [0, 1, 0]  # Move in y direction
                 s.newPosi = [7, 6, 5]
                 s.newPosj = [8, 6, 5]

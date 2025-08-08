@@ -1,12 +1,12 @@
 # samples moves according to probabilities set by detailed balance
 # writes the sampled direction vector in s.moveVec
 export proposeMove!
-function proposeMove!(s::Species, bi::T, bj::T)
+function proposeMove!(s::Species)
 
     # compute how many of each move type there are
     nTypes = zeros(Int32, 3)
 
-    @assert s.moveTypes[1] >= 0 begin
+    @assert !isnothing(s.moveTypes) begin
         "moveTypes! has not been called yet"
     end
 
@@ -39,6 +39,10 @@ function proposeMove!(s::Species, bi::T, bj::T)
         end
     end
 
+    @assert dot(s.bondVec, s.moveVec) == 0 begin
+        "Move is not orthogonal to bond direction"
+    end
+
     @assert p == 1 begin
         "move probs don't sum to one"
     end
@@ -49,5 +53,6 @@ end
 # accepts of rejects according to the metropolis criterion
 export acceptMove!
 function acceptMove!(s::Species)
-
+    
+    return true
 end
