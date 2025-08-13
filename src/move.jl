@@ -174,7 +174,7 @@ function move!(s::Species)
     moveExecuted = false
 
     # sample a bond at random along the chain
-    s.moveIdx = rand(1:(s.length))
+    s.moveIdx = rand(1:s.length)
 
     # find coordinates and keys of selected bond and adjacent beads
     identifyBond!(s)
@@ -186,7 +186,7 @@ function move!(s::Species)
     proposeMove!(s)
 
     # check for max length constraint and overlap
-    if !(s.moveType == 1 && s.length == s.maxlength) && !overlap(s)
+    if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
 
         # accept move with metropolis criterion
         if acceptMove!(s)

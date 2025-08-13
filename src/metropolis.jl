@@ -63,5 +63,12 @@ end
 export acceptMove!
 function acceptMove!(s::Species)
     
-    return true
+    p = min(1, exp(-s.deltaH))
+    r = rand(Uniform(0,1))
+
+    if r < p
+        return true
+    else
+        return false
+    end
 end

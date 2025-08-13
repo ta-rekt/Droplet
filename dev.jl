@@ -400,6 +400,50 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
+# Testing hamiltonian functions
+let
+    date = "20250724"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "testpoly"
+    outpath = string(outdir, outfile)
+
+    global l = Lattice(;
+        boxlength = 16,
+        nspecies = 2
+    )
+
+    # polymer
+    global s1 = Species(;
+        length = 16,
+        maxlength = 20,
+        boxlength = l.boxlength
+    )
+
+    # dilute monomers
+    global s2 = Species(;
+        length = 256,
+        maxlength = 256,
+        boxlength = l.boxlength
+    )
+
+    # initializing lattice and species
+    initPoly!(s1)
+    initDilute!(s2)
+    initLattice!(l, [s1, s2])
+
+    ### ### ### Adding a bond
+
+    s1.moveIdx = 5
+    identifyBond!(s1)
+    s1.moveType = 1  # bond addition
+    s1.moveVec = [0,0,1]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+
+end
+
+## 1010011111110000100000101010111100010100001100101110000
 # What is context?
 
 let 
