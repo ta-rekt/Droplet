@@ -1,19 +1,28 @@
 const SPECIES_ID_COUNTER = Ref(1)
 
-mutable struct Species
-    id::Int32
-    name::String         # unique name of this species
+export Species
+Base.@kwdef mutable struct Species
+    
+    id::Int32 = begin
+      SPECIES_ID_COUNTER[] += 1
+      SPECIES_ID_COUNTER[]
+    end
+
+    name::String = ""    # unique name of this species
+
+    # required fields
     length::Int32        # number of beads
     maxlength::Int32     # max number of beads
     boxlength::Int32     # box linear dimension
 
     # position and initial, final bead positions
-    pos::OrderedDict{Int32,Vector{Int32}} = nothing       # xyz coordinates of all the beads
-    initPos::Union{Nothing, Vector{Int32}} = nothing      # anchor position on one side
-    finalPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on the other side
+    pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
+    initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
+    finalPos::Union{Nothing, Vector{Int32}} = nothing   # anchor position on the other side
 
     # addBond!, removeBond!, identifyBond! variables
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
+    head::Union{Nothing, Int32} = nothing
     ki::Union{Nothing, Int32} = nothing
     kj::Union{Nothing, Int32} = nothing
     kprev::Union{Nothing, Int32} = nothing
@@ -22,38 +31,33 @@ mutable struct Species
     bj::Union{Nothing, AbstractArray{Int32}} = nothing
     bprev::Union{Nothing, AbstractArray{Int32}} = nothing
     bnext::Union{Nothing, AbstractArray{Int32}} = nothing
+    bondVec::Union{Nothing, Vector{Int32}} = nothing       # direction vector for a given bond
 
     # moveTypes! variables
-    bondVec::Union{Nothing, Vector{Int32}} = nothing         # direction vector for a given bond
-    moveVec::Union{Nothing, Vector{Int32}} = nothing         # move vector
-    moveIdx::Union{Nothing, Int32}  = nothing                # bead index to move next
-    moveType::Union{Nothing, Int32} = nothing                # type of move: bond addition (1), bond removal (2) or kink (3)
-    newPosi::Union{Nothing, Vector{Int32}} = nothing         # placeholder position (e.g. to store next bond position)
-    newPosj::Union{Nothing, Vector{Int32}}  = nothing        # placeholder position (e.g. to store next bond position)
-    moveTypes::Union{Nothing, Vector{Int32}} = nothing       # array of possible move types around a given bead
+    moveVec::Union{Nothing, Vector{Int32}} = nothing       # move vector
+    moveIdx::Union{Nothing, Int32}      = nothing          # bead index to move next
+    moveType::Union{Nothing, Int32} = nothing              # type of move: bond addition (1), bond removal (2) or kink (3)
+    newPosi::Union{Nothing, Vector{Int32}} = nothing       # placeholder position (e.g. to store next bond position)
+    newPosj::Union{Nothing, Vector{Int32}} = nothing       # placeholder position (e.g. to store next bond position)
+    moveTypes::Union{Nothing, Vector{Int32}} = nothing     # array of possible move types around a given bead
 
     # proposeMove! variables
-    moveProbs::Union{Nothing, Vector{Float64}} = nothing     # move proposal probabilities
+    moveTypeProbs::Union{Nothing, Vector{Float64}} = nothing   # move proposal probabilities
+    nTypes::Union{Nothing, Vector{Float64}} = nothing          # how many of each move type there are
     
-    # interaction energies
-    # chemical potentials
-    # number of monomer species, their density
-end
+    # energy
+    chemPot::Union{Nothing, Float64}   # monomer chemical potential
+    intPot::Union{Nothing, Float64}    # monomer interaction potential
+    ham::Union{Nothing, Float64}       # Hamiltonian
+    deltaH::Union{Nothing, Float64}    # Hamiltonian increment of a given move
 
-export Species
-function Species(; length, maxlength, boxlength)
-    SPECIES_ID_COUNTER[] += 1
-    return Species(; SPECIES_ID_COUNTER[], 
-                   "", 
-                   length, 
-                   maxlength, 
-                   boxlength)
+    # number of monomer species, their density
 end
 
 export Lattice
 Base.@kwdef mutable struct Lattice
     boxlength::Int32     # lattice linear dimension 
     nspecies::Int32      # number of species
-    lat::Union{Nothing, Array{Int32,4}} = nothing   # lattice array
-    speciesDir::Dict{Int32,Int32} = Dict{Int32,Int32}()   # id-indexed locations of each species in the lattice array
+    lat::Union{Nothing, Array{Int32,4}} = nothing  # lattice array
+    speciesDir::Union{Nothing, Dict{Int32,Int32}} = nothing    # id-indexed locations of each species in the lattice array
 end

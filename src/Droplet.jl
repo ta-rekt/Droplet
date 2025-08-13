@@ -6,8 +6,10 @@ module Droplet
     using LinearAlgebra
     using JSON
     using DataStructures
+    using OrderedCollections
 
     include("types.jl")
+    include("hamiltonian.jl")
     include("metropolis.jl")
     include("move.jl")
     include("init.jl")

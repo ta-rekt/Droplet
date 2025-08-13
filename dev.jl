@@ -33,7 +33,7 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Adding species to a lattice, moving individual bonds
+# Adding species to a lattice, initializing
 let 
     date = "20250724"
     outdir = "data/$(date)/"
@@ -47,53 +47,71 @@ let
     )
 
     # polymer
-    global p1 = Species(;
+    global s1 = Species(;
         length = 16,
         maxlength = 20,
         boxlength = l.boxlength
     )
 
     # dilute monomers
-    p2 = Species(;
+    global s2 = Species(;
         length = 256,
         maxlength = 256,
         boxlength = l.boxlength
     )
 
-    initPoly!(p1)
-    initDilute!(p2)
-    initLattice!(l, [p1, p2])
+    # initializing lattice and species
+    initPoly!(s1)
+    initDilute!(s2)
+    initLattice!(l, [s1, s2])
     
-    p1.moveIdx = 15
-    p1.moveType = 2  # bond addition
-    p1.moveVec = [0,0,1]
-    makeMove!(l, p1)
+    for i in 1:16
+        @assert s1.latS[i,8,8] == 1
+        @assert l.lat[1,i,8,8] == 1
+    end
 
-    p1.moveIdx = 17
-    p1.moveType = 2
-    p1.moveVec = [0,0,1]
-    makeMove!(l, p1)
+    @assert s1.pos[1][4] == 0
+    @assert s1.pos[5][4] == 4
+    @assert s1.pos[5][5] == 6
+    @assert s1.pos[16][5] == 0
 
-    p1.moveIdx = 15
-    p1.moveType = 3
-    p1.moveVec = [-1,0,0]
-    _, _, me = makeMove!(l, p1)
-    println("move executed? ", me)
-    
-    ## turn off a site
-    # v = view(p1.pos[18], 1:3)
-    # latS = view(l.lat, l.speciesDir[p1.id], :, :, :)
-    # latS[v...] = 0
+    # getting information about a bond in prep for a move
+    s1.moveIdx = 5
+
+    identifyBond!(s1)
+
+    @assert s1.ki == 5
+    @assert s1.kj == 6
+    @assert s1.kprev == 4
+    @assert s1.knext == 7
+    @assert s1.bi == [5,8,8]
+    @assert s1.bj == [6,8,8]
+    @assert s1.bprev == [4,8,8]
+    @assert s1.bnext == [7,8,8]
+
+    s1.moveIdx = 1
+
+    identifyBond!(s1)
+
+    @assert s1.ki == 1
+    @assert s1.kj == 2
+    @assert s1.kprev == 0
+
+    s1.moveIdx = 15
+
+    identifyBond!(s1)
+
+    @assert s1.ki == 15
+    @assert s1.kj == 16
+    @assert s1.knext == 0
 
     export!(l, outpath)
-
 end
 
-
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing moveTypes! and proposeMove!
-let 
-    date = "20250807"
+# Moving bonds
+let
+    date = "20250724"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "testpoly"
@@ -105,38 +123,291 @@ let
     )
 
     # polymer
-    global s = Species(;
+    global s1 = Species(;
         length = 16,
         maxlength = 20,
         boxlength = l.boxlength
     )
 
-    initPoly!(s)
-    initLattice!(l, [s])
+    # dilute monomers
+    global s2 = Species(;
+        length = 256,
+        maxlength = 256,
+        boxlength = l.boxlength
+    )
 
-    s.moveIdx = 4
-    s.moveType = 1
-    s.moveVec = [0,0,-1]
-    makeMove!(l, s)
+    # initializing lattice and species
+    initPoly!(s1)
+    initDilute!(s2)
+    initLattice!(l, [s1, s2])
 
-    s.moveIdx = 17
-    s.moveVec = [0,0,0]
+    ### ### ### Adding a bond
 
+    s1.moveIdx = 5
+    identifyBond!(s1)
+    s1.moveType = 1  # bond addition
+    s1.moveVec = [0,0,1]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+    
+    # Original length
+    origLength = s1.length
+    
+    makeMove!(s1)
+    
+    # Tests
+    @assert s1.length == origLength + 2  # Length increased by 2
+    @assert haskey(s1.pos, 17)  # New positions exist
+    @assert haskey(s1.pos, 18)
+    @assert s1.pos[5][5] == 17  # Check connections were updated
+    @assert s1.pos[17][5] == 18
+    @assert s1.pos[18][5] == 6
+    @assert s1.pos[18][4] == 17
+    @assert s1.pos[17][4] == 5
+    @assert s1.pos[5][4] == 4
+    @assert s1.latS[5,8,9] == 1  # New lattice sites are occupied
+    @assert s1.latS[6,8,9] == 1
 
+    ### ### ### Kinking a bond
 
-    # turn off a site
-    # v = view(s.pos[17], 1:3)
-    # latS = view(l.lat, l.speciesDir[s.id], :, :, :)
-    # latS[v...] = 0
+    s1.moveIdx = 4
+    identifyBond!(s1)
+    s1.moveType = 2  # kinks
+    s1.moveVec = [0,0,1]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+    
+    # Original length
+    origLength = s1.length
+    
+    makeMove!(s1)
+    
+    # Tests
+    @assert s1.length == origLength  # Length unchanged
+    @assert s1.pos[5][5] == 17  # Check connections remain the same
+    @assert s1.pos[17][5] == 18
+    @assert s1.pos[18][5] == 6
+    @assert s1.pos[18][4] == 17
+    @assert s1.pos[17][4] == 5
+    @assert s1.pos[5][4] == 4
+    @assert s1.latS[4,8,9] == 1  # New lattice site is occupied
+    @assert s1.latS[5,8,8] == 0  # Old lattice site is zero
 
-    @show findall(iszero, s.bondVec)
+    s1.moveIdx = 17
+    identifyBond!(s1)
+    s1.moveType = 2  # kinks
+    s1.moveVec = [0,0,-1]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+    
+    # Original length
+    origLength = s1.length
+    
+    makeMove!(s1)
+    
+    # Tests
+    @assert s1.length == origLength  # Length unchanged
+    @assert s1.pos[5][5] == 17  # Check connections remain the same
+    @assert s1.pos[17][5] == 18
+    @assert s1.pos[18][5] == 6
+    @assert s1.pos[18][4] == 17
+    @assert s1.pos[17][4] == 5
+    @assert s1.pos[5][4] == 4
+    @assert s1.latS[6,8,9] == 0  # New lattice site is occupied
+    @assert s1.latS[6,8,8] == 1  # Old lattice site is zero
 
-    moveTypes!(s, bi, bj, bprev, bnext)
+    ### ### ### Removing a bond
 
-    @show s.moveIdx
-    @show bi, bj, bprev, bnext
-    @show s.moveTypes
+    s1.moveIdx = 5
+    identifyBond!(s1)
+    s1.moveType = 3  # remove
+    s1.moveVec = [0,0,-1]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+    
+    # Original length
+    origLength = s1.length
+    
+    makeMove!(s1)
+    
+    # Tests
+    @assert s1.length == origLength - 2  # Length reduced by 2
+    @assert s1.pos[4][5] == 18  # Check connections updated
+    @assert s1.pos[18][5] == 6
+    @assert s1.pos[6][4] == 18
+    @assert s1.pos[18][4] == 4
+    @assert s1.latS[5,8,9] == 0  
+    @assert s1.latS[5,8,8] == 1
+
+    # v = view(s1.pos[18], 1:3)
+    # s1.latS[v...] = 0
 
     export!(l, outpath)
 
 end
+
+## 1010011111110000100000101010111100010100001100101110000
+# Testing moveTypes!
+let
+    date = "20250724"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "testpoly"
+    outpath = string(outdir, outfile)
+
+    global l = Lattice(;
+        boxlength = 16,
+        nspecies = 2
+    )
+
+    # polymer
+    global s1 = Species(;
+        length = 16,
+        maxlength = 20,
+        boxlength = l.boxlength
+    )
+
+    # dilute monomers
+    global s2 = Species(;
+        length = 256,
+        maxlength = 256,
+        boxlength = l.boxlength
+    )
+
+    # initializing lattice and species
+    initPoly!(s1)
+    initDilute!(s2)
+    initLattice!(l, [s1, s2])
+
+    ### ### ### Adding a bond
+
+    s1.moveIdx = 5
+    identifyBond!(s1)
+    s1.moveType = 1  # bond addition
+    s1.moveVec = [0,0,1]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+    
+    # Original length
+    origLength = s1.length
+    
+    makeMove!(s1)
+
+    s1.moveIdx = 3
+    identifyBond!(s1)
+    moveTypes!(s1)
+
+    @assert s1.moveTypes == [1,1,1,1]
+
+    s1.moveIdx = 4
+    identifyBond!(s1)
+    moveTypes!(s1)
+
+    @assert s1.moveTypes == [1,1,2,1]
+
+    s1.moveIdx = 5
+    identifyBond!(s1)
+    moveTypes!(s1)
+
+    @assert s1.moveTypes == [2,2,1,1]
+
+    s1.moveIdx = 17
+    identifyBond!(s1)
+    moveTypes!(s1)
+
+    @assert s1.moveTypes == [1,1,1,3]
+
+    s1.moveIdx = 18
+    identifyBond!(s1)
+    moveTypes!(s1)
+
+    @assert s1.moveTypes == [2,2,1,1]
+
+    
+    s1.moveIdx = 18
+    identifyBond!(s1)
+    s1.moveType = 1  # bond addition
+    s1.moveVec = [0,1,0]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+    makeMove!(s1)
+
+    s1.moveIdx = 18
+    identifyBond!(s1)
+    moveTypes!(s1)
+
+    @assert s1.moveTypes == [1,2,1,2]
+
+    export!(l, outpath)
+end
+
+## 1010011111110000100000101010111100010100001100101110000
+# Testing proposeMove!
+let
+    date = "20250724"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "testpoly"
+    outpath = string(outdir, outfile)
+
+    global l = Lattice(;
+        boxlength = 16,
+        nspecies = 2
+    )
+
+    # polymer
+    global s1 = Species(;
+        length = 16,
+        maxlength = 20,
+        boxlength = l.boxlength
+    )
+
+    # dilute monomers
+    global s2 = Species(;
+        length = 256,
+        maxlength = 256,
+        boxlength = l.boxlength
+    )
+
+    # initializing lattice and species
+    initPoly!(s1)
+    initDilute!(s2)
+    initLattice!(l, [s1, s2])
+
+    ### ### ### Adding a bond
+
+    s1.moveIdx = 5
+    identifyBond!(s1)
+    s1.moveType = 1  # bond addition
+    s1.moveVec = [0,0,1]
+    s1.newPosi = s1.bi .+ s1.moveVec
+    s1.newPosj = s1.bj .+ s1.moveVec
+    
+    makeMove!(s1);
+
+    s1.moveIdx = 17
+    identifyBond!(s1)
+    moveTypes!(s1)
+
+    @show s1.moveTypes
+
+    proposeMove!(s1)
+
+    @show s1.moveType
+
+    println("")
+
+end
+
+## 1010011111110000100000101010111100010100001100101110000
+# What is context?
+
+let 
+    filename = "ctx.json"
+    open(filename, "w") do f
+        JSON.print(f, CONTEXT, 4)
+    end
+end
+
+# v = view(s1.pos[18], 1:3)
+# s1.latS[v...] = 0

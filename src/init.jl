@@ -1,3 +1,5 @@
+const PKINK = 0.9
+
 # initializes bead locations of a long polymer in a doubly-linked list
 export initPoly!
 function initPoly!(s::Species)
@@ -13,15 +15,21 @@ function initPoly!(s::Species)
         s.pos[i] = [v..., i-1, i+1]  # last two indices are pointers to prev and next bead
     end
 
-    s.pos[1][4] = 0
+    # head and tail beads
+    s.head = 1
+    s.pos[s.head][4] = 0
     s.pos[s.boxlength][5] = 0
-    
+
     s.bondVec = zeros(Int32, 3)
     s.moveVec = zeros(Int32, 3)
     s.newPosi = zeros(Int32, 3)
     s.newPosj = zeros(Int32, 3)
     s.moveTypes = zeros(Int32, 4)
-    s.moveProbs = zeros(Float64, 3)
+    s.moveTypeProbs = [0,PKINK,0]
+    s.nTypes = zeros(Int32, 3)
+
+    # initialize hamiltonian
+    s.ham = hamPoly!(s)
 
     return s
 end
@@ -29,6 +37,9 @@ end
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
 export initDilute!
 function initDilute!(s::Species)
+
+    s.name = string("dilute", s.id)
+    s.pos = OrderedDict{Int32, Vector{Int32}}()
 
     for i in 1:s.length
         s.pos[i] = rand(1:s.boxlength, 5)
@@ -45,18 +56,21 @@ end
 # initializes lattice sites of each species from their bead locations
 export initLattice!
 function initLattice!(l::Lattice, ss::Vector{Species})
-    l.nspecies = max(l.nspecies, length(ss))   # update number of species
+
+    l.nspecies = length(ss)   # update number of species
     l.lat = zeros((l.nspecies, l.boxlength, l.boxlength, l.boxlength))
     l.speciesDir = Dict{Int, Int}()
 
     # fill out lattice sites for each species
     for (i, s) in enumerate(ss)
         l.speciesDir[s.id] = i
-        latS = view(l.lat, i, :, :, :) 
+
+        # give species s a view on its lattice sites
+        s.latS = view(l.lat, i, :, :, :)
 
         for j in 1:s.length
             v = view(s.pos[j], 1:3)
-            latS[v...] = 1
+            s.latS[v...] = 1
         end
     end
 
