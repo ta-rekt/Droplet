@@ -14,6 +14,8 @@ Base.@kwdef mutable struct Species
     length::Int32        # number of beads
     maxlength::Int32     # max number of beads
     boxlength::Int32     # box linear dimension
+    chemPot::Float64   # monomer chemical potential
+    intPot::Float64    # monomer interaction potential
 
     # position and initial, final bead positions
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
@@ -46,10 +48,8 @@ Base.@kwdef mutable struct Species
     nTypes::Union{Nothing, Vector{Float64}} = nothing          # how many of each move type there are
     
     # energy
-    chemPot::Union{Nothing, Float64}   # monomer chemical potential
-    intPot::Union{Nothing, Float64}    # monomer interaction potential
-    ham::Union{Nothing, Float64}       # Hamiltonian
-    deltaH::Union{Nothing, Float64}    # Hamiltonian increment of a given move
+    ham::Union{Nothing, Float64} = nothing       # Hamiltonian
+    deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
 
     # number of monomer species, their density
 end

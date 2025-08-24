@@ -189,7 +189,7 @@ function move!(s::Species)
     if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
 
         # accept move with metropolis criterion
-        if acceptMove!(s)
+        if acceptMove(s)
             
             makeMove!(s)
             moveExecuted = true

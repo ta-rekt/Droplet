@@ -60,8 +60,8 @@ function proposeMove!(s::Species)
 end
 
 # accepts of rejects according to the metropolis criterion
-export acceptMove!
-function acceptMove!(s::Species)
+export acceptMove
+function acceptMove(s::Species)
     
     p = min(1, exp(-s.deltaH))
     r = rand(Uniform(0,1))

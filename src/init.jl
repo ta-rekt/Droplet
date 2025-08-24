@@ -28,8 +28,13 @@ function initPoly!(s::Species)
     s.moveTypeProbs = [0,PKINK,0]
     s.nTypes = zeros(Int32, 3)
 
-    # initialize hamiltonian
-    s.ham = hamPoly!(s)
+    return s
+end
+
+# initialize hamiltonian
+export initHamPoly!
+function initHamPoly!(s::Species)
+    hamPoly!(s)
 
     return s
 end

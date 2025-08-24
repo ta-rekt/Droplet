@@ -417,20 +417,27 @@ let
     global s1 = Species(;
         length = 16,
         maxlength = 20,
-        boxlength = l.boxlength
+        boxlength = l.boxlength,
+        intPot = 1.0,
+        chemPot = 1.0
     )
 
     # dilute monomers
     global s2 = Species(;
         length = 256,
         maxlength = 256,
-        boxlength = l.boxlength
+        boxlength = l.boxlength,
+        intPot = 0.0,
+        chemPot = 0.0
     )
 
     # initializing lattice and species
     initPoly!(s1)
     initDilute!(s2)
     initLattice!(l, [s1, s2])
+    
+    # initialize hamiltonians
+    initHamPoly!(s1)
 
     ### ### ### Adding a bond
 
@@ -440,6 +447,10 @@ let
     s1.moveVec = [0,0,1]
     s1.newPosi = s1.bi .+ s1.moveVec
     s1.newPosj = s1.bj .+ s1.moveVec
+
+    makeMove!(s1)
+
+    @show s1.deltaH
 
 end
 

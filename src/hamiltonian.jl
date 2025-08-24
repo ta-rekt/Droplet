@@ -2,6 +2,7 @@
 export hamPoly!
 function hamPoly!(s::Species)
 
+    s.ham = 0
     nnn = 0
     key = s.head           # initial bead
     pos = s.pos[key][1:3]  # initial posiion
@@ -9,14 +10,19 @@ function hamPoly!(s::Species)
     for i in 1:s.length
         nnn += nn(s, pos)
         key = s.pos[key][5]    # next bead
-        pos = s.pos[key][1:3]  # next position
+
+        if key != 0
+            pos = s.pos[key][1:3]  # next position
+        end
     end
 
     @assert key == 0 begin
         "Tail is not N'th bead"
     end
 
-    return - (s.chemPot + s.intPot) * s.length + s.intPot * nnn
+    s.ham = - (s.chemPot + s.intPot) * s.length + s.intPot * nnn
+
+    return s
 end
 
 # Energy increment of a proposed move. Requires proposeMove! to be called
@@ -59,16 +65,26 @@ end
 export nn
 function nn(s::Species, pos::Vector{Int32})
     n = 0
+    adjPos = zeros(Int32, 3)
 
     for i in 1:3
         pos[i] += 1
-        n += s.latS[pos...]
+        adjPos = pos .% s.boxlength .+ 1
+        n += s.latS[adjPos...]
 
         pos[i] -= 2
-        n += s.latS[pos...]
+        
+        if pos[i] < 0
+            pos[i] += s.boxlength
+            adjPos = pos .% s.boxlength .+ 1
+            pos[i] -= s.boxlength
+        else
+            adjPos = pos .% s.boxlength .+ 1
+        end
+        n += s.latS[adjPos...]
 
         pos[i] += 1
     end
 
-    return n - 1
+    return n
 end
