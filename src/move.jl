@@ -1,3 +1,28 @@
+# ensures positions are periodic within the lattice's bounding box
+export boxmod!
+function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
+                 w::Union{SubArray{Int32}, Vector{Int32}}, 
+                 lb::Int32, ub::Int32)
+
+    for i in eachindex(v)
+        if v[i] > ub
+            w[i] = v[i] - (ub - lb + 1)
+        elseif v[i] < lb
+            w[i] = v[i] + (ub - lb + 1)
+        else
+            w[i] = v[i]
+        end
+    end
+    
+    return w
+end
+
+export overlap
+function overlap(s::Species)
+    return ((s.latS[s.newPosi...] == 1 && s.bprev != s.newPosi) ||
+            (s.latS[s.newPosj...] == 1 && s.bnext != s.newPosj))
+end
+
 export addBond!
 function addBond!(s::Species)
 
@@ -84,17 +109,21 @@ function identifyBond!(s::Species)
         "s.moveIdx must be between 1 and Species length (# of monomers)"
     end
 
+    keys_array = collect(keys(s.pos))
+
     # pointers to the two beads (i and j) to be moved
-    s.ki = s.pos.keys[s.moveIdx]
+    s.ki = keys_array[s.moveIdx]
     s.kj = s.pos[s.ki][5]
 
     # previous and next beads along the chain
     s.kprev = s.pos[s.ki][4]
-    s.knext = s.pos[s.kj][5]
+    s.knext = s.kj == 0 ? 0 : s.pos[s.kj][5]
 
     # bond edge coordinates
     s.bi = view(s.pos[s.ki], 1:3)
-    s.bj = view(s.pos[s.kj], 1:3)
+    s.bj = s.kj == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kj], 1:3)
+
+    @show s.bi, s.bj
 
     # coordinates of previous and next beads relative to bond
     s.bprev = s.kprev == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kprev], 1:3)
@@ -113,6 +142,8 @@ function moveTypes!(s::Species)
 
     # dimensions along which to move
     dims = findall(iszero, s.bondVec)
+    @show s.bondVec
+    @show dims
     @assert length(dims) == 2 begin
         "bondVec must be aligned with x, y, or z axis"
     end
@@ -125,8 +156,11 @@ function moveTypes!(s::Species)
         # flip direction along each dimension in the orthogonal plane
         s.moveVec[dims[idx]] = sign
         
-        s.newPosi = s.bi .+ s.moveVec
-        s.newPosj = s.bj .+ s.moveVec
+        # s.newPosi = s.bi .+ s.moveVec
+        # s.newPosj = s.bj .+ s.moveVec
+
+        boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
+        boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
         
         # 1 -> bond addition, 2 -> kink, 3 -> bond removal
         s.moveTypes[i] = Int32(s.newPosi == s.bprev) + Int32(s.newPosj == s.bnext) + 1
@@ -160,12 +194,6 @@ function makeMove!(s::Species)
     return s
 end
 
-export overlap
-function overlap(s::Species)
-    return ((s.latS[s.newPosi...] == 1 && s.bprev != s.newPosi) ||
-            (s.latS[s.newPosj...] == 1 && s.bnext != s.newPosj))
-end
-
 # executes a move on species s inside lattice l at position s.moveIdx, of type
 # moveType (add, remove or kink) sampled according to the metropolis algorithm
 export move!
@@ -174,25 +202,30 @@ function move!(s::Species)
     moveExecuted = false
 
     # sample a bond at random along the chain
+    s.length = length(keys(s.pos))
     s.moveIdx = rand(1:s.length)
 
     # find coordinates and keys of selected bond and adjacent beads
     identifyBond!(s)
-    
-    # compute the possible move types around a bond
-    moveTypes!(s)
 
-    # sample a move according to detailed balance
-    proposeMove!(s)
+    # don't move if last bead was selected
+    if s.kj != 0
 
-    # check for max length constraint and overlap
-    if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
+        # compute the possible move types around a bond
+        moveTypes!(s)
 
-        # accept move with metropolis criterion
-        if acceptMove(s)
-            
-            makeMove!(s)
-            moveExecuted = true
+        # sample a move according to detailed balance
+        proposeMove!(s)
+
+        # check for max length constraint and overlap
+        if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
+
+            # accept move with metropolis criterion
+            if acceptMove(s)
+
+                makeMove!(s)
+                moveExecuted = true
+            end
         end
     end
 

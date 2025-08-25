@@ -63,24 +63,17 @@ end
 
 # Number of nearest neighbors at a given position
 export nn
-function nn(s::Species, pos::Vector{Int32})
+function nn(s::Species, pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
     adjPos = zeros(Int32, 3)
 
     for i in 1:3
         pos[i] += 1
-        adjPos = pos .% s.boxlength .+ 1
+        boxmod!(pos, adjPos, Int32(1), s.boxlength)
         n += s.latS[adjPos...]
 
         pos[i] -= 2
-        
-        if pos[i] < 0
-            pos[i] += s.boxlength
-            adjPos = pos .% s.boxlength .+ 1
-            pos[i] -= s.boxlength
-        else
-            adjPos = pos .% s.boxlength .+ 1
-        end
+        boxmod!(pos, adjPos, Int32(1), s.boxlength)
         n += s.latS[adjPos...]
 
         pos[i] += 1

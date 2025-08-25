@@ -1,4 +1,4 @@
-const PKINK = 0.9
+const PKINK = 0.8
 
 # initializes bead locations of a long polymer in a doubly-linked list
 export initPoly!

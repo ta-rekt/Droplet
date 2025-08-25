@@ -9,6 +9,8 @@ function proposeMove!(s::Species)
     end
 
     # compute how many of each move type there are
+    s.nTypes = zeros(Int32, 3)
+
     for i in 1:4
         s.nTypes[s.moveTypes[i]] += 1
     end
@@ -23,6 +25,10 @@ function proposeMove!(s::Species)
     
     # Premove
     s.moveTypeProbs[3] = s.nTypes[3] == 0 ? 0 : (1 - Pkink) * N / (2*N + 2)
+
+    @assert s.moveTypeProbs[1] + s.moveTypeProbs[3] + Pkink == 1 begin
+        "Proposition probabilities don't sum to 1"
+    end
 
     dims = findall(iszero, s.bondVec)
 
@@ -39,8 +45,7 @@ function proposeMove!(s::Species)
         if r < p
             s.moveVec[dims[idx]] = sign
             s.moveType = typ
-            
-            return s
+            break
         end
     end
 
@@ -48,13 +53,12 @@ function proposeMove!(s::Species)
         "Move is not orthogonal to bond direction"
     end
 
-    @assert p == 1 begin
-        "Proposition probabilities don't sum to 1"
-    end
-
     # translated position of selected bond
-    s.newPosi = s.bi .+ s.moveVec
-    s.newPosj = s.bj .+ s.moveVec
+    # s.newPosi = s.bi .+ s.moveVec
+    # s.newPosj = s.bj .+ s.moveVec
+
+    boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
+    boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
 
     return s
 end
@@ -62,6 +66,8 @@ end
 # accepts of rejects according to the metropolis criterion
 export acceptMove
 function acceptMove(s::Species)
+
+    deltaHamPoly!(s)
     
     p = min(1, exp(-s.deltaH))
     r = rand(Uniform(0,1))

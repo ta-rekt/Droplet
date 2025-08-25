@@ -416,7 +416,7 @@ let
     # polymer
     global s1 = Species(;
         length = 16,
-        maxlength = 20,
+        maxlength = 40,
         boxlength = l.boxlength,
         intPot = 1.0,
         chemPot = 1.0
@@ -438,19 +438,77 @@ let
     
     # initialize hamiltonians
     initHamPoly!(s1)
+    hamInitial = s1.ham
 
-    ### ### ### Adding a bond
+    #### iterating multiple moves
+    
+    nmoves = 0
 
-    s1.moveIdx = 5
-    identifyBond!(s1)
-    s1.moveType = 1  # bond addition
-    s1.moveVec = [0,0,1]
-    s1.newPosi = s1.bi .+ s1.moveVec
-    s1.newPosj = s1.bj .+ s1.moveVec
+    for i in 1:100
+        nmoves += move!(s1)
+    end
 
-    makeMove!(s1)
+    @show nmoves
 
-    @show s1.deltaH
+    # ### ### ### Adding a bond
+
+    # s1.moveIdx = 5
+    # identifyBond!(s1)
+    # s1.moveType = 1  # bond addition
+    # s1.moveVec = [0,0,1]
+    # s1.newPosi = s1.bi .+ s1.moveVec
+    # s1.newPosj = s1.bj .+ s1.moveVec
+
+    # deltaHamPoly!(s1)
+    # @show s1.deltaH
+    
+    # makeMove!(s1)
+
+    # hamPoly!(s1)
+    # @show s1.ham
+    # @show hamInitial + s1.deltaH
+    # @assert s1.ham == hamInitial + s1.deltaH
+
+    # ### ### ### Removing a bond
+
+    # s1.moveIdx = 17
+    # identifyBond!(s1)
+    # s1.moveType = 3  # bond addition
+    # s1.moveVec = [0,0,-1]
+    # s1.newPosi = s1.bi .+ s1.moveVec
+    # s1.newPosj = s1.bj .+ s1.moveVec
+
+    # deltaHamPoly!(s1)
+    # @show s1.deltaH
+    
+    # makeMove!(s1)
+
+    # hamPoly!(s1)
+    # @show s1.ham
+    # @show hamInitial + s1.deltaH
+    # @assert s1.ham == hamInitial + s1.deltaH
+
+    export!(l, outpath)
+end
+
+## 1010011111110000100000101010111100010100001100101110000
+# ensures positions are periodic within the lattice's bounding box
+function boxmod!(v::Vector{Int32}, w::Vector{Int32}, lb::Int32, ub::Int32)
+
+    for i in eachindex(v)
+        if v[i] > ub
+            w[i] = v[i] - (ub - lb + 1)
+        elseif v[i] < lb
+            w[i] = v[i] + (ub - lb + 1)
+        else
+            w[i] = v[i]
+        end
+
+    return w
+end
+
+let 
+
 
 end
 
