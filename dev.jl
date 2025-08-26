@@ -444,11 +444,9 @@ let
     
     nmoves = 0
 
-    for i in 1:100
+    for i in 1:10000
         nmoves += move!(s1)
     end
-
-    @show nmoves
 
     # ### ### ### Adding a bond
 
@@ -503,13 +501,9 @@ function boxmod!(v::Vector{Int32}, w::Vector{Int32}, lb::Int32, ub::Int32)
         else
             w[i] = v[i]
         end
+    end
 
     return w
-end
-
-let 
-
-
 end
 
 ## 1010011111110000100000101010111100010100001100101110000

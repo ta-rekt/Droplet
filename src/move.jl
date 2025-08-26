@@ -1,3 +1,5 @@
+const KEYCOUNT = Ref(1)
+
 # ensures positions are periodic within the lattice's bounding box
 export boxmod!
 function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
@@ -35,15 +37,24 @@ function addBond!(s::Species)
     s.latS[s.newPosi...] = 1
     s.latS[s.newPosj...] = 1
 
+    # Find next available keys
+    next_key1 = KEYCOUNT[] + 1
+    next_key2 = KEYCOUNT[] + 2
+    while haskey(s.pos, next_key1) || haskey(s.pos, next_key2)
+        KEYCOUNT[] += 1
+        next_key1 = KEYCOUNT[] + 1
+        next_key2 = KEYCOUNT[] + 2
+    end
+
     # add two new entries for the bond
-    s.pos[s.length+1] = [s.newPosi..., s.ki, s.length+2]
-    s.pos[s.length+2] = [s.newPosj..., s.length+1, s.kj]
+    s.pos[next_key1] = [s.newPosi..., s.ki, next_key2]
+    s.pos[next_key2] = [s.newPosj..., next_key1, s.kj]
 
     # re-route the old pointers
-    s.pos[s.ki][5] = s.length + 1
-    s.pos[s.kj][4] = s.length + 2
+    s.pos[s.ki][5] = next_key1
+    s.pos[s.kj][4] = next_key2
 
-    s.length = s.length + 2
+    KEYCOUNT[] += 2
 
     return s
 end
@@ -97,8 +108,6 @@ function removeBond!(s::Species)
     delete!(s.pos, s.ki)
     delete!(s.pos, s.kj)
 
-    s.length = s.length - 2
-
     return s
 end
 
@@ -123,8 +132,6 @@ function identifyBond!(s::Species)
     s.bi = view(s.pos[s.ki], 1:3)
     s.bj = s.kj == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kj], 1:3)
 
-    @show s.bi, s.bj
-
     # coordinates of previous and next beads relative to bond
     s.bprev = s.kprev == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kprev], 1:3)
     s.bnext = s.knext == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.knext], 1:3)
@@ -142,8 +149,11 @@ function moveTypes!(s::Species)
 
     # dimensions along which to move
     dims = findall(iszero, s.bondVec)
-    @show s.bondVec
-    @show dims
+    # @show s.pos
+    # @show s.bondVec
+    # @show dims
+    # @show s.moveIdx, s.ki, s.kj
+    # @show s.bi, s.bj
     @assert length(dims) == 2 begin
         "bondVec must be aligned with x, y, or z axis"
     end
