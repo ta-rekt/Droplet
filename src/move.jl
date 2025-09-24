@@ -149,11 +149,7 @@ function moveTypes!(s::Species)
 
     # dimensions along which to move
     dims = findall(iszero, s.bondVec)
-    # @show s.pos
-    # @show s.bondVec
-    # @show dims
-    # @show s.moveIdx, s.ki, s.kj
-    # @show s.bi, s.bj
+
     @assert length(dims) == 2 begin
         "bondVec must be aligned with x, y, or z axis"
     end
@@ -165,9 +161,6 @@ function moveTypes!(s::Species)
         
         # flip direction along each dimension in the orthogonal plane
         s.moveVec[dims[idx]] = sign
-        
-        # s.newPosi = s.bi .+ s.moveVec
-        # s.newPosj = s.bj .+ s.moveVec
 
         boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
         boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
@@ -224,7 +217,7 @@ function move!(s::Species)
         # compute the possible move types around a bond
         moveTypes!(s)
 
-        # sample a move according to detailed balance
+        # sample a move according to proposition probabilities
         proposeMove!(s)
 
         # check for max length constraint and overlap
