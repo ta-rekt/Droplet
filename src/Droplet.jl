@@ -14,5 +14,6 @@ module Droplet
     include("move.jl")
     include("init.jl")
     include("utils.jl")
+    include("stats.jl")
 
 end # module Droplet

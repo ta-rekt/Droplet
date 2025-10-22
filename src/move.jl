@@ -111,6 +111,10 @@ function removeBond!(s::Species)
     return s
 end
 
+export reptateBond!
+function reptateBond!(s::Species)
+end
+
 export identifyBond!
 function identifyBond!(s::Species)
 
@@ -205,7 +209,7 @@ function move!(s::Species)
     moveExecuted = false
 
     # sample a bond at random along the chain
-    s.length = length(keys(s.pos))
+    s.length = length(keys(s.pos))   # refactor for speed
     s.moveIdx = rand(1:s.length)
 
     # find coordinates and keys of selected bond and adjacent beads

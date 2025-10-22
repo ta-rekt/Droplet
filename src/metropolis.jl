@@ -63,7 +63,7 @@ function proposeMove!(s::Species)
     return s
 end
 
-# accepts of rejects according to the metropolis criterion
+# accepts or rejects according to the metropolis criterion
 export acceptMove
 function acceptMove(s::Species)
 

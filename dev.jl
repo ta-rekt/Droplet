@@ -2,6 +2,7 @@ let
     using Droplet
     using StatsBase
     using Distributions
+    using Plots
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
@@ -409,17 +410,17 @@ end
     outpath = string(outdir, outfile)
 
     global l = Lattice(;
-        boxlength = 32,
+        boxlength = 128,
         nspecies = 2
     )
 
     # polymer
     global s1 = Species(;
-        length = 32,
-        maxlength = 500,
+        length = 128,
+        maxlength = 1000,
         boxlength = l.boxlength,
-        intPot = 1.0,
-        chemPot = 0.2
+        intPot = -2,
+        chemPot = 5
     )
 
     # dilute monomers
@@ -442,12 +443,23 @@ end
 
     #### iterating multiple moves
     nmoves = 0
+    niter = 1000000
+    step = 100
+    rgs = zeros(div(niter, step))
+    k = 1
 
-    for i in 1:500000
+    for i in 1:niter
         nmoves += move!(s1)
+        
+        if mod(i, step) == 0
+            rgs[k] = radius(s1)
+            k += 1
+        end
     end
 
     export!(l, outpath)
+
+    plot(1:div(niter, step), rgs, label = "radius of gyration")
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
@@ -528,7 +540,6 @@ let
     export!(l, outpath)
 end
 
-
 ## 1010011111110000100000101010111100010100001100101110000
 # What is context?
 
@@ -539,5 +550,45 @@ let
     end
 end
 
-# v = view(s1.pos[18], 1:3)
-# s1.latS[v...] = 0
+## 1010011111110000100000101010111100010100001100101110000
+# Testing center of mass
+
+let 
+    date = "20250916"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "testpoly"
+    outpath = string(outdir, outfile)
+
+    global l = Lattice(;
+        boxlength = 32,
+        nspecies = 2
+    )
+
+    # polymer
+    global s1 = Species(;
+        length = 32,
+        maxlength = 300,
+        boxlength = l.boxlength,
+        intPot = -2,
+        chemPot = 5
+    )
+
+    # dilute monomers
+    global s2 = Species(;
+        length = 256,
+        maxlength = 256,
+        boxlength = l.boxlength,
+        intPot = 0.0,
+        chemPot = 0.0
+    )
+
+    # initializing lattice and species
+    initPoly!(s1)
+    initDilute!(s2)
+    initLattice!(l, [s1, s2])
+
+    @show center(s1) 
+
+    export!(l, outpath)
+end
