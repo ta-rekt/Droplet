@@ -3,6 +3,7 @@ let
     using StatsBase
     using Distributions
     using Plots
+    using Profile
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
@@ -403,24 +404,24 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing move
 @time let
-    date = "20250916"
+    date = "20251024"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "testpoly"
     outpath = string(outdir, outfile)
 
     global l = Lattice(;
-        boxlength = 128,
+        boxlength = 32,
         nspecies = 2
     )
 
     # polymer
     global s1 = Species(;
-        length = 128,
-        maxlength = 1000,
+        length = 32,
+        maxlength = 128,
         boxlength = l.boxlength,
-        intPot = -2,
-        chemPot = 5
+        intPot = 1,
+        chemPot = 1
     )
 
     # dilute monomers
@@ -443,23 +444,38 @@ end
 
     #### iterating multiple moves
     nmoves = 0
-    niter = 1000000
-    step = 100
-    rgs = zeros(div(niter, step))
-    k = 1
+    niter = 0
+    frame = 1
+    nframes = 2000
+    step = 50
+    radii = zeros(nframes)
+    lengths = zeros(nframes)
 
-    for i in 1:niter
+    while frame <= nframes
+        niter += 1
         nmoves += move!(s1)
         
-        if mod(i, step) == 0
-            rgs[k] = radius(s1)
-            k += 1
+        if mod(nmoves, step) == 0
+            
+            radii[frame] = radius(s1)
+            lengths[frame] = s1.length
+
+            export!(l, string(outpath, "_frame$(frame)"))
+
+            frame += 1
         end
     end
 
-    export!(l, outpath)
+    # gyration radii of a straight line and a sphere of volume 'length'
+    rg_line = radiusLine(s1.boxlength)
+    rg_sphere = radiusSphere(length(keys(s1.pos)))
 
-    plot(1:div(niter, step), rgs, label = "radius of gyration")
+    println("Acceptance rate: ", nmoves / niter)
+
+    plot(1:nframes, radii, label = "radius of gyration")
+    # plot!(1:nframes, lengths, label = "polymer length")
+    # plot!(1:nframes, ones(nframes) .* rg_sphere, label = "sphere")
+    # plot!(1:nframes, ones(nframes) .* rg_line, label = "line")
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
@@ -588,7 +604,8 @@ let
     initDilute!(s2)
     initLattice!(l, [s1, s2])
 
-    @show center(s1) 
+    @show centerMass(s1) 
 
     export!(l, outpath)
+
 end

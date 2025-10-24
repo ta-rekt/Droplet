@@ -7,6 +7,7 @@ module Droplet
     using JSON
     using DataStructures
     using OrderedCollections
+    using TimerOutputs
 
     include("types.jl")
     include("hamiltonian.jl")

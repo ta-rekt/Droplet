@@ -40,7 +40,6 @@ let
 
     
     ### write data
-
     file = string(outpath, "sweep_output$(cpukey).json")
 
     open(file, "w") do f

@@ -26,3 +26,17 @@ function radius(s::Species)
 
     return sqrt(rg2 / s.length)
 end
+
+# gyration radius of a line
+export radiusLine
+function radiusLine(length)
+    n = div(length, 2)
+    return sqrt((n - 1) / 2)
+end
+
+# gyration radius of a sphere
+export radiusSphere
+function radiusSphere(length)
+    r = (3*length/(4*pi))^(1/3)
+    return sqrt((r - 1) / 2)
+end
