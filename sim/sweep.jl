@@ -21,20 +21,20 @@ let
     nparams_per_cpu = div(nparams, ncpus)
 
     ### output data
-    results = Dict{Int64, Dict{Int64, Vector{Float32}}}()
+    results = Dict{Int64, Dict{Int64, Dict{String, Vector{Float32}}}}()
 
     for k in 1:nparams_per_cpu
+
         keya = (cpukey - 1) * nparams_per_cpu + k
         alpha = alphas[keya]
-
-        results[keya] = Dict{Int64, Vector{Float32}}()
+        results[keya] = Dict{Int64, Dict{String, Vector{Float32}}}()
 
         for (keyb, beta) in enumerate(betas)
-            
-            # do stuff ...
 
-            # results[keya][keyb] = ...
+            res = Dict{String, Vector{Float32}}()
+            args = [slist, alpha, beta]
 
+            results[keya][keyb] = target!(res, args...)
         end
     end
 

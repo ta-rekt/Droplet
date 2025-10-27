@@ -1,63 +1,84 @@
 ### physical parameters
 
+boxlength = 32
+nspecies = 1
+maxlength = 256
+
 global l = Lattice(;
-    boxlength = 32,
-    nspecies = 2
+    boxlength = boxlength,
+    nspecies = nspecies
 )
 
 # polymer
 global s1 = Species(;
-    length = 32,
-    maxlength = 256,
-    boxlength = l.boxlength,
-    intPot = 1,
-    chemPot = 1
+    length = boxlength,
+    maxlength = maxlength,
+    boxlength = boxlength,
+    intPot = nothing,
+    chemPot = nothing
 )
 
-# dilute monomers
-global s2 = Species(;
-    length = 256,
-    maxlength = 256,
-    boxlength = l.boxlength,
-    intPot = 0.0,
-    chemPot = 0.0
-)
-
-# initializing lattice and species
-initPoly!(s1)
-initDilute!(s2)
-initLattice!(l, [s1, s2])
-
-# initialize hamiltonians
-initHamPoly!(s1)
-hamInitial = s1.ham
+# list containing all species
+slist = [s1]
 
 
-### simulations parameters
+### simulation parameters
 
-niter = 1000000
-step = 1000
-k = 1
+nframes = 2000
+step = 50
 
-# alphas = ...   # parallelized parameters
-# betas = ...
-# nparams = length(alphas)
+alphas = [1.0]   # parallelized parameters (interaction potential)
+betas = [1.0]    # chemical potential
+nparams = length(alphas)
+
 
 ### functions
 
-function target(args...)
-    niter, step = args
-    plotsteps = div(niter, step)
-    rgs = zeros(plotsteps)
+function target!(res, args...)
+    # species list and sweep parameters
+    slist, alpha, beta = args
+
+    s1 = slist[1]
+    s1.intPot = alpha
+    s1.chemPot = beta
+
+    # initialize lattice and species
+    initPoly!(s1)
+    initLattice!(l, [s1])
+
+    # initialize hamiltonians
+    initHamPoly!(s1)
 
     nmoves = 0
+    niter = 0
+    frame = 1
 
-    for i in 1:niter
-        nmoves += move!(s1)
+    radii = zeros(nframes)
+    lengths = zeros(nframes)
+    hams = zeros(nframes)
+
+    hamInitial = s1.ham   # initial energy
+
+    # run simluation
+    while frame <= nframes
         
-        if mod(i, step) == 0 && k < plotsteps
-            k += 1
-            rgs[k] = radius(s1)
+        if mod(nmoves, step) == 0
+
+            radii[frame] = radius(s1)
+            lengths[frame] = s1.length
+            hams[frame] = frame == 1 ? hamInitial : hams[frame-1] + s1.deltaH
+
+            frame += 1
         end
+
+        niter += 1
+        nmoves += move!(s1)
     end
+
+    # collect results
+    res["gyration_radius"] = radii
+    res["polymer_length"] = lengths
+    res["hamiltonian"] = hams
+
+    return res
 end

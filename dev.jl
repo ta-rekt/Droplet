@@ -433,7 +433,7 @@ end
         chemPot = 0.0
     )
 
-    # initializing lattice and species
+    # initialize lattice and species
     initPoly!(s1)
     initDilute!(s2)
     initLattice!(l, [s1, s2])
