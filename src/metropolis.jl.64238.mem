@@ -1,0 +1,80 @@
+        - # samples moves according to probabilities set by detailed balance
+        - # writes the sampled direction vector in s.moveVec
+        - # CONTEXT: needs s.moveTypes to be set
+        - export proposeMove!
+        - function proposeMove!(s::Species)
+        -     
+        0     @assert !isnothing(s.moveTypes) begin
+        0         "moveTypes! has not been called yet"
+        -     end
+        - 
+        -     # compute how many of each move type there are
+ 25200768     s.nTypes = zeros(Int32, 3)
+        - 
+        0     for i in 1:4
+        0         s.nTypes[s.moveTypes[i]] += 1
+        0     end
+        -     
+        0     N = s.length
+        -     
+        -     # set Pkink to zero if no kinks are possible
+        0     Pkink = s.nTypes[2] == 0 ? 0 : s.moveTypeProbs[2]
+        -     
+        -     # Padd
+        0     s.moveTypeProbs[1] = s.nTypes[3] == 0 ? (1 - Pkink) : (1 - Pkink) * (N + 2) / (2*N + 2)
+        -     
+        -     # Premove
+        0     s.moveTypeProbs[3] = s.nTypes[3] == 0 ? 0 : (1 - Pkink) * N / (2*N + 2)
+        - 
+        0     @assert s.moveTypeProbs[1] + s.moveTypeProbs[3] + Pkink == 1 begin
+        0         "Proposition probabilities don't sum to 1"
+        -     end
+        - 
+        0     dims = findall(iszero, s.bondVec)
+        - 
+        -     # sample move types according to proposed probabilities
+        0     r = rand(Uniform(0,1))
+        -     p = 0.0
+        - 
+ 25200768     for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
+        -         
+ 64691584         s.moveVec = [0,0,0]
+        0         typ = s.moveTypes[i]
+        0         p += s.moveTypeProbs[typ] / s.nTypes[typ]
+        - 
+        0         if r < p
+        0             s.moveVec[dims[idx]] = sign
+        0             s.moveType = typ
+        -             break
+        -         end
+        0     end
+        - 
+        0     @assert dot(s.bondVec, s.moveVec) == 0 begin
+        0         "Move is not orthogonal to bond direction"
+        -     end
+        - 
+        -     # translated position of selected bond
+        -     # s.newPosi = s.bi .+ s.moveVec
+        -     # s.newPosj = s.bj .+ s.moveVec
+        - 
+ 12600384     boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
+ 12600384     boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
+        - 
+        0     return s
+        - end
+        - 
+        - # accepts or rejects according to the metropolis criterion
+        - export acceptMove
+        - function acceptMove(s::Species)
+        - 
+        0     deltaHamPoly!(s)
+        -     
+        0     p = min(1, exp(-s.deltaH))
+        0     r = rand(Uniform(0,1))
+        - 
+        0     if r < p
+        0         return true
+        -     else
+        0         return false
+        -     end
+        - end

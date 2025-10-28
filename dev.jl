@@ -404,7 +404,7 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing move
 @time let
-    date = "20251024"
+    date = "20251028"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "testpoly"
@@ -418,25 +418,26 @@ end
     # polymer
     global s1 = Species(;
         length = 32,
-        maxlength = 128,
+        maxlength = 256,
         boxlength = l.boxlength,
-        intPot = 1,
+        intPot = -0.5,
         chemPot = 1
     )
 
     # dilute monomers
     global s2 = Species(;
-        length = 256,
-        maxlength = 256,
+        length = 16,
+        maxlength = 16,
         boxlength = l.boxlength,
         intPot = 0.0,
         chemPot = 0.0
     )
+    slist = [s1]
 
     # initialize lattice and species
     initPoly!(s1)
     initDilute!(s2)
-    initLattice!(l, [s1, s2])
+    initLattice!(l, slist)
     
     # initialize hamiltonians
     initHamPoly!(s1)
@@ -460,7 +461,8 @@ end
             radii[frame] = radius(s1)
             lengths[frame] = s1.length
 
-            export!(l, string(outpath, "_frame$(frame)"))
+            # export!(l, string(outpath, "_frame$(frame)"))
+            exportSpecies!(slist, string(outpath, "_frame$(frame)"))
 
             frame += 1
         end

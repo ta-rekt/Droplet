@@ -45,6 +45,7 @@ function initDilute!(s::Species)
 
     s.name = string("dilute", s.id)
     s.pos = OrderedDict{Int32, Vector{Int32}}()
+    s.head = 1
 
     for i in 1:s.length
         s.pos[i] = rand(1:s.boxlength, 5)

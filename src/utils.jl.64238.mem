@@ -1,0 +1,66 @@
+        - # saves a lattice's state into a binary file
+        - export save!
+        - function save!(l::Lattice, filename::String)
+        -     filename = string(filename, ".bin")
+        -     Serialization.serialize(filename, l.lat)
+        - end
+        - 
+        - # loads a lattice's state from a binary file
+        - export load!
+        - function load!(l::Lattice, filename::String)
+        -     filename = string(filename, ".bin")
+        -     l.lat = Serialization.deserialize(filename)
+        - 
+        -     return l
+        - end
+        - 
+        - # exports a list of species to JSON for python compatibility
+        - # slist is a list of species s, export the bead coordinates s.pos in a 
+        - # (s.length x 3)-shaped vector and associated metadata
+        - export exportSpecies!
+        - function exportSpecies!(slist::Vector, filename::String)
+   224000     filename = string(filename, ".json")
+   320000     data = Dict()
+        -     
+        0     for (i, si) in enumerate(slist)
+   320000         data[i] = Dict()
+        - 
+        -         # Extract coordinates (first 3 elements of each position vector)
+ 12596528         coords = Matrix{Int32}(undef, si.length, 3)
+        0         key = si.head           # initial bead
+        -         k = 1
+        -         
+        0         for k in 1:si.length
+        0             if key != 0
+ 81837760                 coords[k, :] = si.pos[key][1:3] # next position
+        0                 key = si.pos[key][5]    # next bead
+        -             end
+        0         end
+        - 
+        -         # @assert k == si.length begin
+        -         #     "Tail is not N'th bead"
+        -         # end
+        - 
+        0         data[i]["coords"] = coords
+        0         data[i]["name"] = si.name
+        0         data[i]["maxlength"] = si.maxlength
+        0         data[i]["boxlength"] = si.boxlength
+    64000         data[i]["chemPot"] = si.chemPot
+    64000         data[i]["intPot"] = si.intPot
+        0         data[i]["initPos"] = si.initPos
+        0         data[i]["finalPos"] = si.finalPos
+        0     end
+        -     
+    64000     open(filename, "w") do f
+        -         JSON.print(f, data, 4)
+        -     end
+        - end
+        - 
+        - # exports the full state of a lattice
+        - export export!
+        - function export!(l::Lattice, filename::String)
+        -     filename = string(filename, ".json")
+        -     open(filename, "w") do f
+        -         JSON.print(f, l.lat, 4)
+        -     end
+        - end

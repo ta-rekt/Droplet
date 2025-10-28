@@ -14,7 +14,49 @@ function load!(l::Lattice, filename::String)
     return l
 end
 
-# exports a lattice's state to JSON for python compatibility
+# exports a list of species to JSON for python compatibility
+# slist is a list of species s, export the bead coordinates s.pos in a 
+# (s.length x 3)-shaped vector and associated metadata
+export exportSpecies!
+function exportSpecies!(slist::Vector, filename::String)
+    filename = string(filename, ".json")
+    data = Dict()
+    
+    for (i, si) in enumerate(slist)
+        data[i] = Dict()
+
+        # Extract coordinates (first 3 elements of each position vector)
+        coords = Matrix{Int32}(undef, si.length, 3)
+        key = si.head           # initial bead
+        k = 1
+        
+        for k in 1:si.length
+            if key != 0
+                coords[k, :] = si.pos[key][1:3] # next position
+                key = si.pos[key][5]    # next bead
+            end
+        end
+
+        # @assert k == si.length begin
+        #     "Tail is not N'th bead"
+        # end
+
+        data[i]["coords"] = coords
+        data[i]["name"] = si.name
+        data[i]["maxlength"] = si.maxlength
+        data[i]["boxlength"] = si.boxlength
+        data[i]["chemPot"] = si.chemPot
+        data[i]["intPot"] = si.intPot
+        data[i]["initPos"] = si.initPos
+        data[i]["finalPos"] = si.finalPos
+    end
+    
+    open(filename, "w") do f
+        JSON.print(f, data, 4)
+    end
+end
+
+# exports the full state of a lattice
 export export!
 function export!(l::Lattice, filename::String)
     filename = string(filename, ".json")
