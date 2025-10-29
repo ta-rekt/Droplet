@@ -11,27 +11,26 @@ let
     outdir = ARGS[4]
 
     ### output directory
-    outpath = "data/$(outdir)/"
-    Base.Filesystem.mkpath(outpath)
+    Base.Filesystem.mkpath(outdir)
 
     ### specification file
-    specpath = string("../spec/", specfile)
+    specpath = string("../", specfile)
     include(specpath)
 
     nparams_per_cpu = div(nparams, ncpus)
 
     ### output data
-    results = Dict{Int64, Dict{Int64, Dict{String, Vector{Float32}}}}()
+    results = Dict{Int64, Dict{Int64, Dict{String, Any}}}()
 
     for k in 1:nparams_per_cpu
 
         keya = (cpukey - 1) * nparams_per_cpu + k
         alpha = alphas[keya]
-        results[keya] = Dict{Int64, Dict{String, Vector{Float32}}}()
+        results[keya] = Dict{Int64, Dict{String, Any}}()
 
         for (keyb, beta) in enumerate(betas)
 
-            res = Dict{String, Vector{Float32}}()
+            res = Dict{String, Any}()
             args = [slist, alpha, beta]
 
             results[keya][keyb] = target!(res, args...)
@@ -40,7 +39,7 @@ let
 
     
     ### write data
-    file = string(outpath, "sweep_output$(cpukey).json")
+    file = string(outdir, "_cpu$(cpukey).json")
 
     open(file, "w") do f
         JSON.print(f, results, 4)

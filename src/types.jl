@@ -14,8 +14,8 @@ Base.@kwdef mutable struct Species
     length::Int32        # number of beads
     maxlength::Int32     # max number of beads
     boxlength::Int32     # box linear dimension
-    chemPot::Float64   # monomer chemical potential
-    intPot::Float64    # monomer interaction potential
+    chemPot::Union{Nothing,Float64}   # monomer chemical potential
+    intPot::Union{Nothing,Float64}    # monomer interaction potential
 
     # position and initial, final bead positions
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads

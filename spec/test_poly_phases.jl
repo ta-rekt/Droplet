@@ -24,10 +24,10 @@ slist = [s1]
 
 ### simulation parameters
 
-nframes = 2000
-step = 50
+nframes = 1000
+step = 1000
 
-alphas = [1.0]   # parallelized parameters (interaction potential)
+alphas = [-1.0, -0.5, 0.0, 0.5, 1.0]   # parallelized parameters (interaction potential)
 betas = [1.0]    # chemical potential
 nparams = length(alphas)
 
@@ -35,6 +35,8 @@ nparams = length(alphas)
 ### functions
 
 function target!(res, args...)
+    t_start = time_ns()  # start timer (monotonic)
+
     # species list and sweep parameters
     slist, alpha, beta = args
 
@@ -56,29 +58,45 @@ function target!(res, args...)
     radii = zeros(nframes)
     lengths = zeros(nframes)
     hams = zeros(nframes)
-
+    accs = zeros(nframes)
+    
     hamInitial = s1.ham   # initial energy
-
+    
     # run simluation
     while frame <= nframes
         
         if mod(nmoves, step) == 0
-
+            
             radii[frame] = radius(s1)
             lengths[frame] = s1.length
             hams[frame] = frame == 1 ? hamInitial : hams[frame-1] + s1.deltaH
-
+            accs[frame] = niter == 0 ? 0 : round(nmoves / niter, digits=2)
+            
             frame += 1
         end
-
+        
         niter += 1
         nmoves += move!(s1)
     end
 
     # collect results
+    coords = Matrix{Int32}(undef, s1.length, 3)
+
+    res["species_name"] = s1.name
+    res["nframes"] = nframes
+    res["step"] = step
+    
+    res["int_pot"] = alpha
+    res["chem_pot"] = beta
+    res["maxlength"] = s1.maxlength
+    res["boxlength"] = s1.boxlength
+
     res["gyration_radius"] = radii
     res["polymer_length"] = lengths
     res["hamiltonian"] = hams
+    res["acceptance_rate"] = accs
+    res["final_coordinates"] = extractCoords!(s1, coords)
+    res["runtime_s"] = (time_ns() - t_start) / 1e9
 
     return res
 end

@@ -14,6 +14,22 @@ function load!(l::Lattice, filename::String)
     return l
 end
 
+# extracts the coordinates of a species' beads
+export extractCoords!
+function extractCoords!(s::Species, coords::Matrix)
+    key = s.head           # initial bead
+    k = 1
+    
+    for k in 1:s.length
+        if key != 0
+            coords[k, :] = s.pos[key][1:3] # next position
+            key = s.pos[key][5]    # next bead
+        end
+    end
+
+    return coords
+end
+
 # exports a list of species to JSON for python compatibility
 # slist is a list of species s, export the bead coordinates s.pos in a 
 # (s.length x 3)-shaped vector and associated metadata
@@ -27,15 +43,7 @@ function exportSpecies!(slist::Vector, filename::String)
 
         # Extract coordinates (first 3 elements of each position vector)
         coords = Matrix{Int32}(undef, si.length, 3)
-        key = si.head           # initial bead
-        k = 1
-        
-        for k in 1:si.length
-            if key != 0
-                coords[k, :] = si.pos[key][1:3] # next position
-                key = si.pos[key][5]    # next bead
-            end
-        end
+        extractCoords!(si, coords)
 
         # @assert k == si.length begin
         #     "Tail is not N'th bead"
