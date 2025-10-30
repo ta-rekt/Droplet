@@ -2,7 +2,7 @@
 
 boxlength = 32
 nspecies = 1
-maxlength = 256
+maxlength = 512
 
 global l = Lattice(;
     boxlength = boxlength,
@@ -24,10 +24,10 @@ slist = [s1]
 
 ### simulation parameters
 
-nframes = 1000
-step = 1000
+nframes = 500000
+step = 10000
 
-alphas = [-1.0, -0.5, 0.0, 0.5, 1.0]   # parallelized parameters (interaction potential)
+alphas = range(-1, stop=1, step=0.25)   # parallelized parameters (interaction potential)
 betas = [1.0]    # chemical potential
 nparams = length(alphas)
 
@@ -86,8 +86,8 @@ function target!(res, args...)
     res["nframes"] = nframes
     res["step"] = step
     
-    res["int_pot"] = alpha
-    res["chem_pot"] = beta
+    res["alpha"] = alpha
+    res["beta"] = beta
     res["maxlength"] = s1.maxlength
     res["boxlength"] = s1.boxlength
 
