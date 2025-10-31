@@ -5,22 +5,20 @@ function hamPoly!(s::Species)
     s.ham = 0
     nnn = 0                # number of nearest neighbors
     key = s.head           # initial bead
-    pos = s.pos[key][1:3]  # initial posiion
+    pos = s.pos[key][RANGE_1_3]  # initial posiion
 
     for i in 1:s.length
         nnn += nn(s, pos)
         key = s.pos[key][5]    # next bead
 
         if key != 0
-            pos = s.pos[key][1:3]  # next position
+            pos = s.pos[key][RANGE_1_3]  # next position
         end
     end
 
-    # @assert key == 0 begin
-    #     "Tail is not N'th bead"
-    # end
-
-    # @show nnn
+    @assert key == 0 begin
+        "Tail is not N'th bead"
+    end
 
     s.ham = - (s.chemPot + s.intPot) * s.length + s.intPot * nnn
 
@@ -71,19 +69,18 @@ end
 export nn
 function nn(s::Species, pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
-    adjPos = zeros(Int32, 3)
 
     for i in 1:3
         pos[i] += 1
-        boxmod!(pos, adjPos, Int32(1), s.boxlength)
-        n += s.latS[adjPos...]
-        # @show adjPos
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
+        # @show s.tempVec
         # @show i, pos, n
 
         pos[i] -= 2
-        boxmod!(pos, adjPos, Int32(1), s.boxlength)
-        n += s.latS[adjPos...]
-        # @show adjPos
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
+        # @show s.tempVec
         # @show i, pos, n
 
         pos[i] += 1

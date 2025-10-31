@@ -1,5 +1,3 @@
-        - const KEYCOUNT = Ref(1)
-        - 
         - # ensures positions are periodic within the lattice's bounding box
         - export boxmod!
         - function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
@@ -19,10 +17,16 @@
         0     return w
         - end
         - 
+        - @inline function coords_equal(a, b)
+        0     return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
+        - end
+        - 
         - export overlap
         - function overlap(s::Species)
- 43941248     return ((s.latS[s.newPosi...] == 1 && s.bprev != s.newPosi) ||
-        -             (s.latS[s.newPosj...] == 1 && s.bnext != s.newPosj))
+        0     return ((s.latS[s.newPosi[1], s.newPosi[2], s.newPosi[3]] == 1 && 
+        -              !coords_equal(s.bprev, s.newPosi)) ||
+        -             (s.latS[s.newPosj[1], s.newPosj[2], s.newPosj[3]] == 1 && 
+        -              !coords_equal(s.bnext, s.newPosj)))
         - end
         - 
         - export addBond!
@@ -34,8 +38,8 @@
         -     end
         - 
         -     # set new lattice sites to 1
-    53952     s.latS[s.newPosi...] = 1
-    53856     s.latS[s.newPosj...] = 1
+   196368     s.latS[s.newPosi...] = 1
+   196272     s.latS[s.newPosj...] = 1
         - 
         -     # Find next available keys
         0     next_key1 = KEYCOUNT[] + 1
@@ -47,12 +51,27 @@
         -     end
         - 
         -     # add two new entries for the bond
-    32992     s.pos[next_key1] = [s.newPosi..., s.ki, next_key2]
-    38800     s.pos[next_key2] = [s.newPosj..., next_key1, s.kj]
+   109040     s.pos[next_key1] = Vector{Int32}(undef, 5)
+        0     s.pos[next_key1][1] = s.newPosi[1]
+        0     s.pos[next_key1][2] = s.newPosi[2]
+        0     s.pos[next_key1][3] = s.newPosi[3]
+        0     s.pos[next_key1][4] = s.ki
+        0     s.pos[next_key1][5] = next_key2
+        - 
+   109040     s.pos[next_key2] = Vector{Int32}(undef, 5)
+        0     s.pos[next_key2][1] = s.newPosj[1]
+        0     s.pos[next_key2][2] = s.newPosj[2]
+        0     s.pos[next_key2][3] = s.newPosj[3]
+        0     s.pos[next_key2][4] = next_key1
+        0     s.pos[next_key2][5] = s.kj
         - 
         -     # re-route the old pointers
         0     s.pos[s.ki][5] = next_key1
         0     s.pos[s.kj][4] = next_key2
+        - 
+        -     # Update keys vector
+  1489776     push!(s.keys_vec, next_key1)
+        0     push!(s.keys_vec, next_key2)
         - 
         0     KEYCOUNT[] += 2
         - 
@@ -67,18 +86,28 @@
         0         "Move is not a kink"
         -     end
         - 
-        -     # set angled site to 0, flat site to 1
+        -     # set angled site to 0, flat site to 1 (allocation-free: no splatting or array construction)
         0     if s.newPosi == s.bprev 
-  6806560         s.latS[s.bi...] = 0
-  2917152         s.latS[s.newPosj...] = 1
+        0         s.latS[s.bi[1], s.bi[2], s.bi[3]] = 0
+        0         s.latS[s.newPosj[1], s.newPosj[2], s.newPosj[3]] = 1
         - 
-   844736         s.pos[s.ki] = [s.newPosj..., s.kprev, s.kj]
+  2306400         s.pos[s.ki] = Vector{Int32}(undef, 5)
+        0         s.pos[s.ki][1] = s.newPosj[1]
+        0         s.pos[s.ki][2] = s.newPosj[2]
+        0         s.pos[s.ki][3] = s.newPosj[3]
+        0         s.pos[s.ki][4] = s.kprev
+        0         s.pos[s.ki][5] = s.kj
         - 
         0     elseif s.newPosj == s.bnext
-  2896992         s.latS[s.newPosi...] = 1
-  6759648         s.latS[s.bj...] = 0
+        0         s.latS[s.newPosi[1], s.newPosi[2], s.newPosi[3]] = 1
+        0         s.latS[s.bj[1], s.bj[2], s.bj[3]] = 0
         - 
-   830528         s.pos[s.kj] = [s.newPosi..., s.ki, s.knext]
+  2285040         s.pos[s.kj] = Vector{Int32}(undef, 5)
+        0         s.pos[s.kj][1] = s.newPosi[1]
+        0         s.pos[s.kj][2] = s.newPosi[2]
+        0         s.pos[s.kj][3] = s.newPosi[3]
+        0         s.pos[s.kj][4] = s.ki
+        0         s.pos[s.kj][5] = s.knext
         -     end
         - 
         0     return s
@@ -93,8 +122,8 @@
         -     end
         -     
         -     # reset old lattice sites to 0
-    50400     s.latS[s.bi...] = 0
-    50400     s.latS[s.bj...] = 0
+   367328     s.latS[s.bi...] = 0
+   367584     s.latS[s.bj...] = 0
         - 
         -     # join ends together
         0     s.pos[s.kprev][5] = s.knext
@@ -103,6 +132,9 @@
         0     if s.pos[s.kprev][4] == 0
         0         s.head = s.kprev   # TEST
         -     end
+        - 
+        -     # Update keys vector - remove both keys
+        0     filter!(k -> k != s.ki && k != s.kj, s.keys_vec)
         - 
         -     # remove keys associated with old bond
         0     delete!(s.pos, s.ki)
@@ -122,10 +154,10 @@
         0         "s.moveIdx must be between 1 and Species length (# of monomers)"
         -     end
         - 
-220849888     keys_array = collect(keys(s.pos))
+        -     # keys_array = collect(keys(s.pos))  # TODO: this wastes allocs, fix it
         - 
         -     # pointers to the two beads (i and j) to be moved
-        0     s.ki = keys_array[s.moveIdx]
+        0     s.ki = s.keys_vec[s.moveIdx]
         0     s.kj = s.pos[s.ki][5]
         - 
         -     # previous and next beads along the chain
@@ -133,16 +165,20 @@
         0     s.knext = s.kj == 0 ? 0 : s.pos[s.kj][5]
         - 
         -     # bond edge coordinates
-  9485088     s.bi = view(s.pos[s.ki], 1:3)
-  9543088     s.bj = s.kj == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kj], 1:3)
+  5191872     s.bi = view(s.pos[s.ki], RANGE_1_3)
+  5191872     s.bj = s.kj == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.kj], RANGE_1_3)
         - 
         -     # coordinates of previous and next beads relative to bond
-  9546288     s.bprev = s.kprev == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kprev], 1:3)
-  9603008     s.bnext = s.knext == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.knext], 1:3)
+  5191872     s.bprev = s.kprev == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.kprev], RANGE_1_3)
+  5191872     s.bnext = s.knext == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.knext], RANGE_1_3)
         - 
-      112     s.bondVec = [(s.bj[1] - s.bi[1]) % s.boxlength, 
-        -                  (s.bj[2] - s.bi[2]) % s.boxlength, 
-        -                  (s.bj[3] - s.bi[3]) % s.boxlength]
+        -     # s.bondVec = [(s.bj[1] - s.bi[1]) % s.boxlength, 
+        -     #              (s.bj[2] - s.bi[2]) % s.boxlength, 
+        -     #              (s.bj[3] - s.bi[3]) % s.boxlength]
+        - 
+        0     for i in RANGE_1_3
+        0         s.bondVec[i] = (s.bj[i] - s.bi[i]) % s.boxlength
+        0     end
         - 
         0     return s
         - end
@@ -159,21 +195,35 @@
         -     end
         - 
         -     # build all possible moves each bond can make
- 25200768     for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
+        0     for (i, idx, sign) in zip(RANGE_1_4, COORD_MOVES, MOVE_ORIENTATIONS)
         -         
-100803072         s.moveVec = [0,0,0]
-        -         
+        0         for i in RANGE_1_3
+        0             s.moveVec[i] = 0
+        0         end
+        - 
         -         # flip direction along each dimension in the orthogonal plane
         0         s.moveVec[dims[idx]] = sign
         - 
- 50401536         boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
- 50401536         boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
+        -         # Compute bi + moveVec manually (no allocation)
+        0         for j in RANGE_1_3
+        0             s.tempVec[j] = s.bi[j] + s.moveVec[j]
+        0         end
+        0         boxmod!(s.tempVec, s.newPosi, Int32(1), s.boxlength)
+        -         
+        -         # Compute bj + moveVec manually (no allocation)
+        0         for j in RANGE_1_3
+        0             s.tempVec[j] = s.bj[j] + s.moveVec[j]
+        0         end
+        0         boxmod!(s.tempVec, s.newPosj, Int32(1), s.boxlength)
+        -         
         -         
         -         # 1 -> bond addition, 2 -> kink, 3 -> bond removal
         0         s.moveTypes[i] = Int32(s.newPosi == s.bprev) + Int32(s.newPosj == s.bnext) + 1
         0     end
         - 
- 25200768     s.moveVec = [0,0,0]
+        0     for i in RANGE_1_3
+        0         s.moveVec[i] = 0
+        0     end
         - 
         0     return s
         - end
@@ -209,28 +259,28 @@
         -     moveExecuted = false
         - 
         -     # sample a bond at random along the chain
-        0     s.length = length(keys(s.pos))   # refactor for speed
         0     s.moveIdx = rand(1:s.length)
-        - 
+        -     
         -     # find coordinates and keys of selected bond and adjacent beads
         0     identifyBond!(s)
-        - 
+        -     
         -     # don't move if last bead was selected
         0     if s.kj != 0
-        - 
+        -         
         -         # compute the possible move types around a bond
         0         moveTypes!(s)
-        - 
+        -         
         -         # sample a move according to proposition probabilities
         0         proposeMove!(s)
-        - 
+        -         
         -         # check for max length constraint and overlap
         0         if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
-        - 
+        -             
         -             # accept move with metropolis criterion
         0             if acceptMove(s)
-        - 
+        -                 
         0                 makeMove!(s)
+        0                 s.length = length(keys(s.pos))   # TODO: refactor for speed
         -                 moveExecuted = true
         -             end
         -         end

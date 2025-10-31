@@ -1,14 +1,14 @@
         - # returns the center of mass of a species
         - export centerMass
         - function centerMass(s::Species)
-   576000     cm = zeros(3)
+    96000     cm = zeros(3)
         - 
         -     # compute average of all positions in pos
         0     for i in eachindex(s.pos)
-144000160         cm = cm .+ view(s.pos[i], 1:3)
+ 20879840         cm = cm .+ view(s.pos[i], 1:3)
         0     end
         - 
-   576000     return cm ./ s.length
+    96000     return cm ./ s.length
         - end
         - 
         - # radius of gyration, mean squared distance btw each bead and

@@ -418,7 +418,7 @@ end
     # polymer
     global s1 = Species(;
         length = 32,
-        maxlength = 24,
+        maxlength = 256,
         boxlength = l.boxlength,
         intPot = 1,
         chemPot = 1,
@@ -448,8 +448,8 @@ end
     nmoves = 0
     niter = 0
     frame = 1
-    nframes = 1000
-    step = 10
+    nframes = 100
+    step = 50
     deltaH = 0
     moveMade = false
     radii = zeros(nframes)

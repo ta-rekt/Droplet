@@ -9,9 +9,11 @@
         -     end
         - 
         -     # compute how many of each move type there are
- 13937792     s.nTypes = zeros(Int32, 3)
+        0     for j in RANGE_1_3
+        0         s.nTypes[j] = 0
+        0     end
         - 
-        0     for i in 1:4
+        0     for i in RANGE_1_4
         0         s.nTypes[s.moveTypes[i]] += 1
         0     end
         -     
@@ -36,9 +38,12 @@
         0     r = rand(Uniform(0,1))
         -     p = 0.0
         - 
- 13937792     for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
+        0     for (i, idx, sign) in zip(RANGE_1_4, COORD_MOVES, MOVE_ORIENTATIONS)
         -         
- 34748672         s.moveVec = [0,0,0]
+        0         for i in RANGE_1_3
+        0             s.moveVec[i] = 0
+        0         end
+        -         
         0         typ = s.moveTypes[i]
         0         p += s.moveTypeProbs[typ] / s.nTypes[typ]
         - 
@@ -53,12 +58,17 @@
         0         "Move is not orthogonal to bond direction"
         -     end
         - 
-        -     # translated position of selected bond
-        -     # s.newPosi = s.bi .+ s.moveVec
-        -     # s.newPosj = s.bj .+ s.moveVec
-        - 
-  6968896     boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
-  6968896     boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
+        -     # translated position of selected bond (no allocation)
+        0     for j in RANGE_1_3
+        0         s.tempVec[j] = s.bi[j] + s.moveVec[j]
+        0     end
+        0     boxmod!(s.tempVec, s.newPosi, Int32(1), s.boxlength)
+        -     
+        -     # translated position of selected bond (no allocation)
+        0     for j in RANGE_1_3
+        0         s.tempVec[j] = s.bj[j] + s.moveVec[j]
+        0     end
+        0     boxmod!(s.tempVec, s.newPosj, Int32(1), s.boxlength)
         - 
         0     return s
         - end

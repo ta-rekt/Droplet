@@ -20,6 +20,10 @@ function initPoly!(s::Species)
     s.pos[s.head][4] = 0
     s.pos[s.length][5] = 0
 
+    # key vector
+    s.keys_vec = collect(keys(s.pos))
+
+    s.tempVec = zeros(Int32, 3)
     s.bondVec = zeros(Int32, 3)
     s.moveVec = zeros(Int32, 3)
     s.newPosi = zeros(Int32, 3)

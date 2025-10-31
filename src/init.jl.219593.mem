@@ -3,16 +3,16 @@
         - # initializes bead locations of a long polymer in a doubly-linked list
         - export initPoly!
         - function initPoly!(s::Species)
-     1056     s.name = string("poly", s.id)
+      528     s.name = string("poly", s.id)
         0     s.pos = OrderedDict{Int32, Vector{Int32}}()
-      480     v = zeros(Int32, 3)
+      240     v = zeros(Int32, 3)
         - 
         -     # line from center of one face to the other along x axis
         0     for i in 1:s.length
         0         v[1] = s.initPos === nothing ? i : i + s.initPos[1]
         0         v[2] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[2]
         0         v[3] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[3]
-    12288         s.pos[i] = [v..., i-1, i+1]  # last two indices are pointers to prev and next bead
+     7808         s.pos[i] = [v..., i-1, i+1]  # last two indices are pointers to prev and next bead
         0     end
         - 
         -     # head and tail beads
@@ -20,13 +20,17 @@
         0     s.pos[s.head][4] = 0
         0     s.pos[s.length][5] = 0
         - 
-      480     s.bondVec = zeros(Int32, 3)
-      480     s.moveVec = zeros(Int32, 3)
-      480     s.newPosi = zeros(Int32, 3)
-      480     s.newPosj = zeros(Int32, 3)
-      480     s.moveTypes = zeros(Int32, 4)
-      480     s.moveTypeProbs = [0,PKINK,0]
-      768     s.nTypes = zeros(Int32, 3)
+        -     # key vector
+      576     s.keys_vec = collect(keys(s.pos))
+        - 
+      240     s.tempVec = zeros(Int32, 3)
+      240     s.bondVec = zeros(Int32, 3)
+      240     s.moveVec = zeros(Int32, 3)
+      240     s.newPosi = zeros(Int32, 3)
+      240     s.newPosj = zeros(Int32, 3)
+      240     s.moveTypes = zeros(Int32, 4)
+      240     s.moveTypeProbs = [0,PKINK,0]
+      384     s.nTypes = zeros(Int32, 3)
         - 
         0     return s
         - end
@@ -43,7 +47,7 @@
         - export initDilute!
         - function initDilute!(s::Species)
         - 
-     1072     s.name = string("dilute", s.id)
+      528     s.name = string("dilute", s.id)
         0     s.pos = OrderedDict{Int32, Vector{Int32}}()
         0     s.head = 1
         - 
@@ -65,14 +69,14 @@
         - 
         0     l.nspecies = length(ss)   # update number of species
         0     l.lat = zeros((l.nspecies, l.boxlength, l.boxlength, l.boxlength))
-      480     l.speciesDir = Dict{Int, Int}()
+      240     l.speciesDir = Dict{Int, Int}()
         - 
         -     # fill out lattice sites for each species
         0     for (i, s) in enumerate(ss)
         0         l.speciesDir[s.id] = i
         - 
         -         # give species s a view on its lattice sites
-      384         s.latS = view(l.lat, i, :, :, :)
+      192         s.latS = view(l.lat, i, :, :, :)
         - 
         0         for j in 1:s.length
         0             v = view(s.pos[j], 1:3)

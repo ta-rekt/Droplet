@@ -9,9 +9,11 @@ function proposeMove!(s::Species)
     end
 
     # compute how many of each move type there are
-    s.nTypes = zeros(Int32, 3)
+    for j in RANGE_1_3
+        s.nTypes[j] = 0
+    end
 
-    for i in 1:4
+    for i in RANGE_1_4
         s.nTypes[s.moveTypes[i]] += 1
     end
     
@@ -36,9 +38,9 @@ function proposeMove!(s::Species)
     r = rand(Uniform(0,1))
     p = 0.0
 
-    for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
+    for (i, idx, sign) in zip(RANGE_1_4, COORD_MOVES, MOVE_ORIENTATIONS)
         
-        for i in 1:3
+        for i in RANGE_1_3
             s.moveVec[i] = 0
         end
         
@@ -56,12 +58,17 @@ function proposeMove!(s::Species)
         "Move is not orthogonal to bond direction"
     end
 
-    # translated position of selected bond
-    # s.newPosi = s.bi .+ s.moveVec
-    # s.newPosj = s.bj .+ s.moveVec
-
-    boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
-    boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
+    # translated position of selected bond (no allocation)
+    for j in RANGE_1_3
+        s.tempVec[j] = s.bi[j] + s.moveVec[j]
+    end
+    boxmod!(s.tempVec, s.newPosi, Int32(1), s.boxlength)
+    
+    # translated position of selected bond (no allocation)
+    for j in RANGE_1_3
+        s.tempVec[j] = s.bj[j] + s.moveVec[j]
+    end
+    boxmod!(s.tempVec, s.newPosj, Int32(1), s.boxlength)
 
     return s
 end

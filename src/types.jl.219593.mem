@@ -1,3 +1,9 @@
+        - const KEYCOUNT = Ref(1)
+        - const SENTINEL = Int32[-1, -1, -1]
+        - const RANGE_1_3 = 1:3
+        - const RANGE_1_4 = 1:4
+        - const COORD_MOVES = [1,1,2,2]
+        - const MOVE_ORIENTATIONS = [+1,-1,+1,-1]
         - const SPECIES_ID_COUNTER = Ref(1)
         - 
         - export Species
@@ -5,7 +11,7 @@
         -     
         -     id::Int32 = begin
         0       SPECIES_ID_COUNTER[] += 1
-     1088       SPECIES_ID_COUNTER[]
+     2064       SPECIES_ID_COUNTER[]
         -     end
         - 
         -     name::String = ""    # unique name of this species
@@ -14,10 +20,11 @@
         -     length::Int32        # number of beads
         -     maxlength::Int32     # max number of beads
         -     boxlength::Int32     # box linear dimension
-        -     chemPot::Float64   # monomer chemical potential
-        -     intPot::Float64    # monomer interaction potential
+        -     chemPot::Union{Nothing,Float64}   # monomer chemical potential
+        -     intPot::Union{Nothing,Float64}    # monomer interaction potential
         - 
-        -     # position and initial, final bead positions
+        -     # key vector, position and initial, final bead positions
+        -     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
         -     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
         -     initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
         -     finalPos::Union{Nothing, Vector{Int32}} = nothing   # anchor position on the other side
@@ -34,6 +41,7 @@
         -     bprev::Union{Nothing, AbstractArray{Int32}} = nothing
         -     bnext::Union{Nothing, AbstractArray{Int32}} = nothing
         -     bondVec::Union{Nothing, Vector{Int32}} = nothing       # direction vector for a given bond
+        -     tempVec::Union{Nothing, Vector{Int32}} = nothing
         - 
         -     # moveTypes! variables
         -     moveVec::Union{Nothing, Vector{Int32}} = nothing       # move vector
