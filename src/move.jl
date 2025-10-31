@@ -217,28 +217,28 @@ function move!(s::Species)
     moveExecuted = false
 
     # sample a bond at random along the chain
-    s.length = length(keys(s.pos))   # refactor for speed
     s.moveIdx = rand(1:s.length)
-
+    
     # find coordinates and keys of selected bond and adjacent beads
     identifyBond!(s)
-
+    
     # don't move if last bead was selected
     if s.kj != 0
-
+        
         # compute the possible move types around a bond
         moveTypes!(s)
-
+        
         # sample a move according to proposition probabilities
         proposeMove!(s)
-
+        
         # check for max length constraint and overlap
         if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
-
+            
             # accept move with metropolis criterion
             if acceptMove(s)
-
+                
                 makeMove!(s)
+                s.length = length(keys(s.pos))   # TODO: refactor for speed
                 moveExecuted = true
             end
         end

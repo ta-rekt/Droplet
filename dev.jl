@@ -418,11 +418,11 @@ end
     # polymer
     global s1 = Species(;
         length = 32,
-        maxlength = 256,
+        maxlength = 24,
         boxlength = l.boxlength,
-        intPot = -1,
+        intPot = 1,
         chemPot = 1,
-        initPos = [5, 21, 21]
+        initPos = [5,21,21]
     )
 
     # dilute monomers
@@ -448,25 +448,73 @@ end
     nmoves = 0
     niter = 0
     frame = 1
-    nframes = 2000
-    step = 50
+    nframes = 1000
+    step = 10
+    deltaH = 0
+    moveMade = false
     radii = zeros(nframes)
     lengths = zeros(nframes)
+    hams = zeros(nframes)
+    accDeltaH = zeros(nframes)
+    moves = ["add", "kink", "remove"]
 
-    while frame <= nframes
-        niter += 1
-        nmoves += move!(s1)
+    # println("Frame ", frame)
+    # @show s1.moveIdx, s1.moveType, s1.moveVec, s1.length
+    # @show s1.pos
+    
+    # first frame
+    radii[frame] = radius(s1)
+    lengths[frame] = s1.length
+    accDeltaH[frame] = hamInitial
+    
+    hamPoly!(s1)
+    hams[frame] = hamInitial
+    
+    # @show s1.ham, s1.deltaH
+    # println("")
+
+    exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+
+    while frame <= nframes - 1
         
-        if mod(nmoves, step) == 0
+        if moveMade
+
+            deltaH += s1.deltaH
+
+            if mod(nmoves, step) == 0
             
-            radii[frame] = radius(s1)
-            lengths[frame] = s1.length
+                frame += 1
 
-            # export!(l, string(outpath, "_frame$(frame)"))
-            exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+                # println("Frame ", frame)
+                # @show s1.moveIdx, moves[s1.moveType], s1.moveVec, s1.length
+                # @show s1.pos
+                radii[frame] = radius(s1)
+                lengths[frame] = s1.length
+                accDeltaH[frame] = accDeltaH[frame-1] + deltaH
+                deltaH = 0
+                
+                hamPoly!(s1)
+                hams[frame] = s1.ham
 
-            frame += 1
+                # @show s1.ham, s1.deltaH
+                # println("")
+                
+                # export!(l, string(outpath, "_frame$(frame)"))
+                exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+
+                if hams[frame] != accDeltaH[frame]
+                    println("Frame ", frame)
+                    @show s1.moveIdx, moves[s1.moveType], s1.moveVec, s1.length
+                    @show s1.pos
+                    @show s1.ham, s1.deltaH
+                    @assert hams[frame] == accDeltaH[frame]
+                end
+            end
         end
+        
+        moveMade = move!(s1)
+        nmoves += moveMade
+        niter += 1
     end
 
     # gyration radii of a straight line and a sphere of volume 'length'
@@ -475,10 +523,28 @@ end
 
     println("Acceptance rate: ", nmoves / niter)
 
-    plot(1:nframes, radii, label = "radius of gyration")
+    hamPoly!(s1)
+    println("Hamiltonian: ", s1.ham)
+
+    # plot(1:nframes, radii, label = "radius of gyration")
     # plot!(1:nframes, lengths, label = "polymer length")
-    # plot!(1:nframes, ones(nframes) .* rg_sphere, label = "sphere")
-    # plot!(1:nframes, ones(nframes) .* rg_line, label = "line")
+
+    p1 = plot(1:nframes, radii;
+        label = "radius of gyration",
+        xlabel = "frame",
+        ylabel = "Rg",
+        legend = :topright)
+
+    p2 = plot(1:nframes, hams;
+        label = "ham",
+        xlabel = "frame",
+        ylabel = "Energy",
+        legend = :topright)
+    plot!(p2, 1:nframes, accDeltaH;
+        label = "accDeltaH",
+        linestyle = :dash)
+
+    plot(p1, p2; layout = (2, 1), size = (900, 600))
 end
 
 ## 1010011111110000100000101010111100010100001100101110000

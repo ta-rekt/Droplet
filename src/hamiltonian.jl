@@ -16,9 +16,9 @@ function hamPoly!(s::Species)
         end
     end
 
-    @assert key == 0 begin
-        "Tail is not N'th bead"
-    end
+    # @assert key == 0 begin
+    #     "Tail is not N'th bead"
+    # end
 
     # @show nnn
 
@@ -42,17 +42,16 @@ function deltaHamPoly!(s::Species)
 
     # bond addition
     if s.moveType == 1
-        # add 4 = 2 (canceled by 1st term) + 2 (move hasn't been made yet)
         s.deltaH = (- 2 * (s.chemPot + s.intPot) 
-                    + s.intPot * (4 + nn(s, s.newPosi) + nn(s, s.newPosj)))
+                    + s.intPot * (2*(nn(s, s.newPosi) + nn(s, s.newPosj)) + 2))
 
     # kink
     elseif s.moveType == 2
 
         if s.newPosi == s.bprev 
-            s.deltaH = s.intPot * (nn(s, s.newPosj) - nn(s, s.bi))
+            s.deltaH = 2 * s.intPot * (nn(s, s.newPosj) - nn(s, s.bi))
         elseif s.newPosj == s.bnext
-            s.deltaH = s.intPot * (nn(s, s.newPosi) - nn(s, s.bj))
+            s.deltaH = 2 * s.intPot * (nn(s, s.newPosi) - nn(s, s.bj))
         else
             error("Move is not a kink")
         end
@@ -60,7 +59,7 @@ function deltaHamPoly!(s::Species)
     # bond removal  
     elseif s.moveType == 3 
         s.deltaH = (2 * (s.chemPot + s.intPot)  
-                    - s.intPot * (2 + nn(s, s.bi) + nn(s, s.bj)))
+                    - s.intPot * (2*(nn(s, s.bi) + nn(s, s.bj)) - 2))
     end
 
     s.ham += s.deltaH
