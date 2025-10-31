@@ -411,7 +411,7 @@ end
     outpath = string(outdir, outfile)
 
     global l = Lattice(;
-        boxlength = 32,
+        boxlength = 42,
         nspecies = 2
     )
 
@@ -420,8 +420,9 @@ end
         length = 32,
         maxlength = 256,
         boxlength = l.boxlength,
-        intPot = -0.5,
-        chemPot = 1
+        intPot = -1,
+        chemPot = 1,
+        initPos = [5, 21, 21]
     )
 
     # dilute monomers

@@ -1,0 +1,248 @@
+        - const KEYCOUNT = Ref(1)
+        - 
+        - # ensures positions are periodic within the lattice's bounding box
+        - export boxmod!
+        - function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
+        -                  w::Union{SubArray{Int32}, Vector{Int32}}, 
+        -                  lb::Int32, ub::Int32)
+        - 
+        0     for i in eachindex(v)
+        0         if v[i] > ub
+        0             w[i] = v[i] - (ub - lb + 1)
+        0         elseif v[i] < lb
+        0             w[i] = v[i] + (ub - lb + 1)
+        -         else
+        0             w[i] = v[i]
+        -         end
+        0     end
+        -     
+        0     return w
+        - end
+        - 
+        - export overlap
+        - function overlap(s::Species)
+167457280     return ((s.latS[s.newPosi...] == 1 && s.bprev != s.newPosi) ||
+        -             (s.latS[s.newPosj...] == 1 && s.bnext != s.newPosj))
+        - end
+        - 
+        - export addBond!
+        - function addBond!(s::Species)
+        - 
+        -     # TODO: handle corner cases
+        0     @assert (s.newPosi != s.bprev) && (s.newPosj != s.bnext) begin
+        0         "Move is not a bond addition"
+        -     end
+        - 
+        -     # set new lattice sites to 1
+   136752     s.latS[s.newPosi...] = 1
+   136656     s.latS[s.newPosj...] = 1
+        - 
+        -     # Find next available keys
+        0     next_key1 = KEYCOUNT[] + 1
+        0     next_key2 = KEYCOUNT[] + 2
+        0     while haskey(s.pos, next_key1) || haskey(s.pos, next_key2)
+        0         KEYCOUNT[] += 1
+        0         next_key1 = KEYCOUNT[] + 1
+        0         next_key2 = KEYCOUNT[] + 2
+        -     end
+        - 
+        -     # add two new entries for the bond
+   110512     s.pos[next_key1] = [s.newPosi..., s.ki, next_key2]
+   125744     s.pos[next_key2] = [s.newPosj..., next_key1, s.kj]
+        - 
+        -     # re-route the old pointers
+        0     s.pos[s.ki][5] = next_key1
+        0     s.pos[s.kj][4] = next_key2
+        - 
+        0     KEYCOUNT[] += 2
+        - 
+        0     return s
+        - end
+        - 
+        - export kinkBond!
+        - function kinkBond!(s::Species)
+        - 
+        -     # TODO: handle corner cases
+        0     @assert (s.newPosi == s.bprev) ⊻ (s.newPosj == s.bnext) begin
+        0         "Move is not a kink"
+        -     end
+        - 
+        -     # set angled site to 0, flat site to 1
+        0     if s.newPosi == s.bprev 
+ 24738336         s.latS[s.bi...] = 0
+ 10602144         s.latS[s.newPosj...] = 1
+        - 
+  3831520         s.pos[s.ki] = [s.newPosj..., s.kprev, s.kj]
+        - 
+        0     elseif s.newPosj == s.bnext
+ 10729872         s.latS[s.newPosi...] = 1
+ 25036240         s.latS[s.bj...] = 0
+        - 
+  3893136         s.pos[s.kj] = [s.newPosi..., s.ki, s.knext]
+        -     end
+        - 
+        0     return s
+        - end
+        - 
+        - export removeBond!
+        - function removeBond!(s::Species)
+        - 
+        -     # TODO: handle corner cases
+        0     @assert (s.newPosi == s.bprev) && (s.newPosj == s.bnext) begin
+        0         "Move is not a bond removal"
+        -     end
+        -     
+        -     # reset old lattice sites to 0
+   147168     s.latS[s.bi...] = 0
+   147168     s.latS[s.bj...] = 0
+        - 
+        -     # join ends together
+        0     s.pos[s.kprev][5] = s.knext
+        0     s.pos[s.knext][4] = s.kprev
+        - 
+        0     if s.pos[s.kprev][4] == 0
+        0         s.head = s.kprev   # TEST
+        -     end
+        - 
+        -     # remove keys associated with old bond
+        0     delete!(s.pos, s.ki)
+        0     delete!(s.pos, s.kj)
+        - 
+        0     return s
+        - end
+        - 
+        - export reptateBond!
+        - function reptateBond!(s::Species)
+        - end
+        - 
+        - export identifyBond!
+        - function identifyBond!(s::Species)
+        - 
+        0     @assert s.moveIdx >= 1 && s.moveIdx <= s.length begin
+        0         "s.moveIdx must be between 1 and Species length (# of monomers)"
+        -     end
+        - 
+845161888     keys_array = collect(keys(s.pos))  # TODO: this wastes allocs, fix it
+        - 
+        -     # pointers to the two beads (i and j) to be moved
+        0     s.ki = keys_array[s.moveIdx]
+        0     s.kj = s.pos[s.ki][5]
+        - 
+        -     # previous and next beads along the chain
+        0     s.kprev = s.pos[s.ki][4]
+        0     s.knext = s.kj == 0 ? 0 : s.pos[s.kj][5]
+        - 
+        -     # bond edge coordinates
+ 36268080     s.bi = view(s.pos[s.ki], 1:3)
+ 36508480     s.bj = s.kj == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kj], 1:3)
+        - 
+        -     # coordinates of previous and next beads relative to bond
+ 36503280     s.bprev = s.kprev == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kprev], 1:3)
+ 36740880     s.bnext = s.knext == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.knext], 1:3)
+        - 
+        -     # s.bondVec = [(s.bj[1] - s.bi[1]) % s.boxlength, 
+        -     #              (s.bj[2] - s.bi[2]) % s.boxlength, 
+        -     #              (s.bj[3] - s.bi[3]) % s.boxlength]
+        - 
+        0     for i in 1:3
+        0         s.bondVec[i] = (s.bj[i] - s.bi[i]) % s.boxlength
+        0     end
+        - 
+        0     return s
+        - end
+        - 
+        - # CONTEXT: needs s.bondVec to be set
+        - export moveTypes!
+        - function moveTypes!(s::Species)
+        - 
+        -     # dimensions along which to move
+        0     dims = findall(iszero, s.bondVec)
+        - 
+        0     @assert length(dims) == 2 begin
+        0         "bondVec must be aligned with x, y, or z axis"
+        -     end
+        - 
+        -     # build all possible moves each bond can make
+ 96330240     for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
+        -         
+        0         for i in 1:3
+        0             s.moveVec[i] = 0
+        0         end
+        - 
+        -         # flip direction along each dimension in the orthogonal plane
+        0         s.moveVec[dims[idx]] = sign
+        - 
+192660480         boxmod!(s.bi .+ s.moveVec, s.newPosi, Int32(1), s.boxlength)
+192660480         boxmod!(s.bj .+ s.moveVec, s.newPosj, Int32(1), s.boxlength)
+        -         
+        -         # 1 -> bond addition, 2 -> kink, 3 -> bond removal
+        0         s.moveTypes[i] = Int32(s.newPosi == s.bprev) + Int32(s.newPosj == s.bnext) + 1
+        0     end
+        - 
+        0     for i in 1:3
+        0         s.moveVec[i] = 0
+        0     end
+        - 
+        0     return s
+        - end
+        - 
+        - export makeMove!
+        - function makeMove!(s::Species)
+        - 
+        0     @assert s.moveType == 1 || s.moveType == 2 || s.moveType == 3 begin
+        0         "s.moveType must be either 1, 2, or 3"
+        -     end
+        - 
+        -     # bond addition
+        0     if s.moveType == 1
+        0         addBond!(s)
+        - 
+        -     # kink
+        0     elseif s.moveType == 2
+        0         kinkBond!(s)
+        - 
+        -     # bond removal  
+        0     elseif s.moveType == 3 
+        0         removeBond!(s)
+        -     end
+        - 
+        0     return s
+        - end
+        - 
+        - # executes a move on species s inside lattice l at position s.moveIdx, of type
+        - # moveType (add, remove or kink) sampled according to the metropolis algorithm
+        - export move!
+        - function move!(s::Species)
+        -     
+        -     moveExecuted = false
+        - 
+        -     # sample a bond at random along the chain
+        0     s.length = length(keys(s.pos))   # refactor for speed
+        0     s.moveIdx = rand(1:s.length)
+        - 
+        -     # find coordinates and keys of selected bond and adjacent beads
+        0     identifyBond!(s)
+        - 
+        -     # don't move if last bead was selected
+        0     if s.kj != 0
+        - 
+        -         # compute the possible move types around a bond
+        0         moveTypes!(s)
+        - 
+        -         # sample a move according to proposition probabilities
+        0         proposeMove!(s)
+        - 
+        -         # check for max length constraint and overlap
+        0         if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
+        - 
+        -             # accept move with metropolis criterion
+        0             if acceptMove(s)
+        - 
+        0                 makeMove!(s)
+        -                 moveExecuted = true
+        -             end
+        -         end
+        -     end
+        - 
+        0     return moveExecuted
+        - end

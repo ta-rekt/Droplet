@@ -27,7 +27,13 @@ slist = [s1]
 nframes = 500000
 step = 10000
 
-alphas = range(-1, stop=1, step=0.25)   # parallelized parameters (interaction potential)
+vals = range(-1, stop=1, step=0.25)   # parallelized parameters (int. pot.)
+alphas = zeros(63)
+
+for (i, v) in enumerate(vals)
+    alphas[(i-1)*7+1:i*7] = ones(7) .* v
+end
+
 betas = [1.0]    # chemical potential
 nparams = length(alphas)
 

@@ -8,8 +8,8 @@ function initPoly!(s::Species)
     v = zeros(Int32, 3)
 
     # line from center of one face to the other along x axis
-    for i in 1:s.boxlength
-        v[1] = i
+    for i in 1:s.length
+        v[1] = s.initPos === nothing ? i : i + s.initPos[1]
         v[2] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[2]
         v[3] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[3]
         s.pos[i] = [v..., i-1, i+1]  # last two indices are pointers to prev and next bead
@@ -18,7 +18,7 @@ function initPoly!(s::Species)
     # head and tail beads
     s.head = 1
     s.pos[s.head][4] = 0
-    s.pos[s.boxlength][5] = 0
+    s.pos[s.length][5] = 0
 
     s.bondVec = zeros(Int32, 3)
     s.moveVec = zeros(Int32, 3)
