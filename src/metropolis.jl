@@ -38,7 +38,10 @@ function proposeMove!(s::Species)
 
     for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
         
-        s.moveVec = [0,0,0]
+        for i in 1:3
+            s.moveVec[i] = 0
+        end
+        
         typ = s.moveTypes[i]
         p += s.moveTypeProbs[typ] / s.nTypes[typ]
 

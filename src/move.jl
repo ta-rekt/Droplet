@@ -122,7 +122,7 @@ function identifyBond!(s::Species)
         "s.moveIdx must be between 1 and Species length (# of monomers)"
     end
 
-    keys_array = collect(keys(s.pos))
+    keys_array = collect(keys(s.pos))  # TODO: this wastes allocs, fix it
 
     # pointers to the two beads (i and j) to be moved
     s.ki = keys_array[s.moveIdx]
@@ -140,9 +140,13 @@ function identifyBond!(s::Species)
     s.bprev = s.kprev == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.kprev], 1:3)
     s.bnext = s.knext == 0 ? view(Int32[-1,-1,-1], 1:3) : view(s.pos[s.knext], 1:3)
 
-    s.bondVec = [(s.bj[1] - s.bi[1]) % s.boxlength, 
-                 (s.bj[2] - s.bi[2]) % s.boxlength, 
-                 (s.bj[3] - s.bi[3]) % s.boxlength]
+    # s.bondVec = [(s.bj[1] - s.bi[1]) % s.boxlength, 
+    #              (s.bj[2] - s.bi[2]) % s.boxlength, 
+    #              (s.bj[3] - s.bi[3]) % s.boxlength]
+
+    for i in 1:3
+        s.bondVec[i] = (s.bj[i] - s.bi[i]) % s.boxlength
+    end
 
     return s
 end
@@ -161,8 +165,10 @@ function moveTypes!(s::Species)
     # build all possible moves each bond can make
     for (i, idx, sign) in zip(1:4, [1,1,2,2], [+1,-1,+1,-1])
         
-        s.moveVec = [0,0,0]
-        
+        for i in 1:3
+            s.moveVec[i] = 0
+        end
+
         # flip direction along each dimension in the orthogonal plane
         s.moveVec[dims[idx]] = sign
 
@@ -173,7 +179,9 @@ function moveTypes!(s::Species)
         s.moveTypes[i] = Int32(s.newPosi == s.bprev) + Int32(s.newPosj == s.bnext) + 1
     end
 
-    s.moveVec = [0,0,0]
+    for i in 1:3
+        s.moveVec[i] = 0
+    end
 
     return s
 end
