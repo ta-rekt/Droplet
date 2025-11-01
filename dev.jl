@@ -451,6 +451,7 @@ end
     nframes = 100
     step = 50
     deltaH = 0
+    
     moveMade = false
     radii = zeros(nframes)
     lengths = zeros(nframes)

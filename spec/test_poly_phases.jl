@@ -1,21 +1,18 @@
 ### physical parameters
 
-boxlength = 32
-nspecies = 1
-maxlength = 512
-
 global l = Lattice(;
-    boxlength = boxlength,
-    nspecies = nspecies
+    boxlength = 42,
+    nspecies = 1
 )
 
 # polymer
 global s1 = Species(;
-    length = boxlength,
-    maxlength = maxlength,
+    length = 32,
+    maxlength = 512,
     boxlength = boxlength,
     intPot = nothing,
-    chemPot = nothing
+    chemPot = nothing,
+    initPos = [5,21,21]
 )
 
 # list containing all species
@@ -24,16 +21,18 @@ slist = [s1]
 
 ### simulation parameters
 
-nframes = 500000
-step = 10000
+nframes = 10000
+step = 100
 
 vals = range(-1, stop=1, step=0.25)   # parallelized parameters (int. pot.)
-alphas = zeros(63)
+# alphas = zeros(9)
+nrepeats = 1
 
-for (i, v) in enumerate(vals)
-    alphas[(i-1)*7+1:i*7] = ones(7) .* v
-end
+# for (i, v) in enumerate(vals)
+#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+# end
 
+alphas = [-1.0]
 betas = [1.0]    # chemical potential
 nparams = length(alphas)
 
@@ -65,24 +64,36 @@ function target!(res, args...)
     lengths = zeros(nframes)
     hams = zeros(nframes)
     accs = zeros(nframes)
+    deltaH = 0
+    moveMade = false
     
-    hamInitial = s1.ham   # initial energy
+    radii[frame] = radius(s1)
+    lengths[frame] = s1.length
+    hams[frame] = s1.ham   # initial energy
+    accs[frame] = 0
     
     # run simluation
-    while frame <= nframes
+    while frame <= nframes - 1
+
+        if moveMade
+            deltaH += s1.deltaH
         
-        if mod(nmoves, step) == 0
-            
-            radii[frame] = radius(s1)
-            lengths[frame] = s1.length
-            hams[frame] = frame == 1 ? hamInitial : hams[frame-1] + s1.deltaH
-            accs[frame] = niter == 0 ? 0 : round(nmoves / niter, digits=2)
-            
-            frame += 1
+            if mod(nmoves, step) == 0
+                
+                frame += 1
+                
+                radii[frame] = radius(s1)
+                lengths[frame] = s1.length
+                hams[frame] = hams[frame-1] + deltaH
+                accs[frame] = niter == 0 ? 0 : nmoves / niter
+                
+                deltaH = 0
+            end
         end
         
+        moveMade = move!(s1)
+        nmoves += moveMade
         niter += 1
-        nmoves += move!(s1)
     end
 
     # collect results
@@ -91,12 +102,10 @@ function target!(res, args...)
     res["species_name"] = s1.name
     res["nframes"] = nframes
     res["step"] = step
-    
     res["alpha"] = alpha
     res["beta"] = beta
     res["maxlength"] = s1.maxlength
     res["boxlength"] = s1.boxlength
-
     res["gyration_radius"] = radii
     res["polymer_length"] = lengths
     res["hamiltonian"] = hams
