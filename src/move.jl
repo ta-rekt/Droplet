@@ -172,10 +172,6 @@ function identifyBond!(s::Species)
     s.bprev = s.kprev == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.kprev], RANGE_1_3)
     s.bnext = s.knext == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.knext], RANGE_1_3)
 
-    # s.bondVec = [(s.bj[1] - s.bi[1]) % s.boxlength, 
-    #              (s.bj[2] - s.bi[2]) % s.boxlength, 
-    #              (s.bj[3] - s.bi[3]) % s.boxlength]
-
     for i in RANGE_1_3
         s.bondVec[i] = (s.bj[i] - s.bi[i]) % s.boxlength
     end
