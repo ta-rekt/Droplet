@@ -91,7 +91,7 @@ function target!(res, args...)
             end
         end
         
-        moveMade = move!(s1)
+        moveMade = movePoly!(s1)
         nmoves += moveMade
         niter += 1
     end

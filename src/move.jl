@@ -143,10 +143,6 @@ function removeBond!(s::Species)
     return s
 end
 
-export reptateBond!
-function reptateBond!(s::Species)
-end
-
 export identifyBond!
 function identifyBond!(s::Species)
 
@@ -247,11 +243,12 @@ function makeMove!(s::Species)
     return s
 end
 
-# executes a move on species s inside lattice l at position s.moveIdx, of type
+# executes a move on polymer s inside lattice l at position s.moveIdx, of type
 # moveType (add, remove or kink) sampled according to the metropolis algorithm
-export move!
-function move!(s::Species)
+export movePoly!
+function movePoly!(s::Species)
     
+    @assert s.name[1] == 'p'
     moveExecuted = false
 
     # sample a bond at random along the chain
@@ -281,6 +278,39 @@ function move!(s::Species)
             end
         end
     end
+
+    return moveExecuted
+end
+
+# Executes a move on a species of bulk monomers diluted in the box
+# by a 3D random walk on each particle
+export moveBulkRw!
+function moveBulkRw!(s::Species)
+    
+    @assert s.name[1] == 'b'
+    moveExecuted = false
+
+    # sample a bond at random along the chain
+    s.moveIdx = rand(1:s.length)
+    
+    # turn off lattice site
+    s.latS[s.pos[s.moveIdx][1], s.pos[s.moveIdx][2], s.pos[s.moveIdx][3]] = 0
+
+    # sample an x/y/z direction and orientation at random
+    s.moveType = rand(RANGE_1_3)
+    s.pos[s.moveIdx][s.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
+    
+    # clip to within bounding box
+    if s.pos[s.moveIdx][s.moveType] > s.boxlength
+        s.pos[s.moveIdx][s.moveType] -= s.boxlength
+    elseif s.pos[s.moveIdx][s.moveType] < 0
+        s.pos[s.moveIdx][s.moveType] += s.boxlength
+    end
+
+    # update new lattice site
+    s.latS[s.pos[s.moveIdx][1], s.pos[s.moveIdx][2], s.pos[s.moveIdx][3]] = 1
+
+    moveExecuted = true
 
     return moveExecuted
 end

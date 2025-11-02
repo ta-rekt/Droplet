@@ -5,6 +5,7 @@ const RANGE_1_4 = 1:4
 const COORD_MOVES = [1,1,2,2]
 const MOVE_ORIENTATIONS = [+1,-1,+1,-1]
 const SPECIES_ID_COUNTER = Ref(1)
+const PKINK = 0.8
 
 export Species
 Base.@kwdef mutable struct Species

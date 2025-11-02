@@ -55,7 +55,7 @@ let
         boxlength = l.boxlength
     )
 
-    # dilute monomers
+    # Bulk monomers
     global s2 = Species(;
         length = 256,
         maxlength = 256,
@@ -64,7 +64,7 @@ let
 
     # initializing lattice and species
     initPoly!(s1)
-    initDilute!(s2)
+    initBulk!(s2)
     initLattice!(l, [s1, s2])
     
     for i in 1:16
@@ -131,7 +131,7 @@ let
         boxlength = l.boxlength
     )
 
-    # dilute monomers
+    # Bulk monomers
     global s2 = Species(;
         length = 256,
         maxlength = 256,
@@ -140,7 +140,7 @@ let
 
     # initializing lattice and species
     initPoly!(s1)
-    initDilute!(s2)
+    initBulk!(s2)
     initLattice!(l, [s1, s2])
 
     ### ### ### Adding a bond
@@ -269,7 +269,7 @@ let
         boxlength = l.boxlength
     )
 
-    # dilute monomers
+    # Bulk monomers
     global s2 = Species(;
         length = 256,
         maxlength = 256,
@@ -278,7 +278,7 @@ let
 
     # initializing lattice and species
     initPoly!(s1)
-    initDilute!(s2)
+    initBulk!(s2)
     initLattice!(l, [s1, s2])
 
     ### ### ### Adding a bond
@@ -364,7 +364,7 @@ let
         boxlength = l.boxlength
     )
 
-    # dilute monomers
+    # Bulk monomers
     global s2 = Species(;
         length = 256,
         maxlength = 256,
@@ -373,7 +373,7 @@ let
 
     # initializing lattice and species
     initPoly!(s1)
-    initDilute!(s2)
+    initBulk!(s2)
     initLattice!(l, [s1, s2])
 
     ### ### ### Adding a bond
@@ -425,7 +425,7 @@ end
         initPos = [5,21,21]
     )
 
-    # dilute monomers
+    # Bulk monomers
     global s2 = Species(;
         length = 16,
         maxlength = 16,
@@ -437,7 +437,7 @@ end
 
     # initialize lattice and species
     initPoly!(s1)
-    initDilute!(s2)
+    initBulk!(s2)
     initLattice!(l, slist)
     
     # initialize hamiltonians
@@ -513,7 +513,7 @@ end
             end
         end
         
-        moveMade = move!(s1)
+        moveMade = movePoly!(s1)
         nmoves += moveMade
         niter += 1
     end
@@ -660,7 +660,7 @@ let
         chemPot = 5
     )
 
-    # dilute monomers
+    # Bulk monomers
     global s2 = Species(;
         length = 256,
         maxlength = 256,
@@ -671,7 +671,7 @@ let
 
     # initializing lattice and species
     initPoly!(s1)
-    initDilute!(s2)
+    initBulk!(s2)
     initLattice!(l, [s1, s2])
 
     @show centerMass(s1) 

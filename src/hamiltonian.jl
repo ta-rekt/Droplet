@@ -25,6 +25,28 @@ function hamPoly!(s::Species)
     return s
 end
 
+# Hamiltonian of a dilute species in the bulk
+export hamBulk!
+function hamBulk!(s::Species)
+    
+    s.ham = 0
+    nnn = 0                # number of nearest neighbors
+      # initial posiion
+
+    for i in 1:s.length
+        pos = s.pos[i][RANGE_1_3]
+        nnn += nn(s, pos)
+    end
+
+    @assert key == 0 begin
+        "Tail is not N'th bead"
+    end
+
+    s.ham = - s.chemPot * s.length + s.intPot * nnn
+
+    return s
+end
+
 # Energy increment of a proposed move. Requires proposeMove! to be called
 # which sets moveType and newPosi/j. 
 export deltaHamPoly!
@@ -35,8 +57,6 @@ function deltaHamPoly!(s::Species)
     end
 
     s.deltaH = 0
-    # @show nn(s, s.newPosi)
-    # @show nn(s, s.newPosj)
 
     # bond addition
     if s.moveType == 1
@@ -74,14 +94,10 @@ function nn(s::Species, pos::Union{SubArray{Int32}, Vector{Int32}})
         pos[i] += 1
         boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
         n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
-        # @show s.tempVec
-        # @show i, pos, n
 
         pos[i] -= 2
         boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
         n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
-        # @show s.tempVec
-        # @show i, pos, n
 
         pos[i] += 1
     end
