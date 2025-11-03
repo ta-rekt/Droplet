@@ -1,7 +1,5 @@
 const KEYCOUNT = Ref(1)
 const SENTINEL = Int32[-1, -1, -1]
-const RANGE_1_3 = 1:3
-const RANGE_1_4 = 1:4
 const COORD_MOVES = [1,1,2,2]
 const MOVE_ORIENTATIONS = [+1,-1,+1,-1]
 const SPECIES_ID_COUNTER = Ref(1)

@@ -1,3 +1,28 @@
+############# Utilities #############
+
+# Number of nearest neighbors at a given position
+export nn
+function nn(s::Species, pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
+
+        pos[i] -= 2
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
+
+        pos[i] += 1
+    end
+
+    return n
+end
+
+
+############# Polymer Energy functions #############
+
 # Hamiltonian of a polymer
 export hamPoly!
 function hamPoly!(s::Species)
@@ -5,14 +30,14 @@ function hamPoly!(s::Species)
     s.ham = 0
     nnn = 0                # number of nearest neighbors
     key = s.head           # initial bead
-    pos = s.pos[key][RANGE_1_3]  # initial posiion
+    pos = s.pos[key][range(1, 3)]  # initial posiion
 
     for i in 1:s.length
         nnn += nn(s, pos)
         key = s.pos[key][5]    # next bead
 
         if key != 0
-            pos = s.pos[key][RANGE_1_3]  # next position
+            pos = s.pos[key][range(1, 3)]  # next position
         end
     end
 
@@ -21,28 +46,6 @@ function hamPoly!(s::Species)
     end
 
     s.ham = - (s.chemPot + s.intPot) * s.length + s.intPot * nnn
-
-    return s
-end
-
-# Hamiltonian of a dilute species in the bulk
-export hamBulk!
-function hamBulk!(s::Species)
-    
-    s.ham = 0
-    nnn = 0                # number of nearest neighbors
-      # initial posiion
-
-    for i in 1:s.length
-        pos = s.pos[i][RANGE_1_3]
-        nnn += nn(s, pos)
-    end
-
-    @assert key == 0 begin
-        "Tail is not N'th bead"
-    end
-
-    s.ham = - s.chemPot * s.length + s.intPot * nnn
 
     return s
 end
@@ -85,22 +88,36 @@ function deltaHamPoly!(s::Species)
     return s
 end
 
-# Number of nearest neighbors at a given position
-export nn
-function nn(s::Species, pos::Union{SubArray{Int32}, Vector{Int32}})
-    n = 0
 
-    for i in 1:3
-        pos[i] += 1
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
+############# Bulk energy functions #############
 
-        pos[i] -= 2
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
+# Hamiltonian of a dilute species in the bulk
+export hamBulk1s!
+function hamBulk1s!(s::Species)
+    
+    s.ham = 0
+    nnn = 0    # number of nearest neighbors
 
-        pos[i] += 1
+    for i in 1:s.length
+        pos = s.pos[i][range(1, 3)]
+        nnn += nn(s, pos)
     end
 
-    return n
+    @assert key == 0 begin
+        "Tail is not N'th bead"
+    end
+
+    s.ham = - s.chemPot * s.length + s.intPot * nnn
+
+    return s
+end
+
+# Energy increment for the bulk system
+export deltaHamBulk1s!
+function deltaHamBulk1s!(s::Species)
+
+    s.deltaH = 2 * s.intPot * (nn(s, s.newPosi) - nn(s, s.bi))
+    s.ham += s.deltaH
+
+    return s
 end

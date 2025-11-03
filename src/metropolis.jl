@@ -9,11 +9,11 @@ function proposeMove!(s::Species)
     end
 
     # compute how many of each move type there are
-    for j in RANGE_1_3
+    for j in range(1, 3)
         s.nTypes[j] = 0
     end
 
-    for i in RANGE_1_4
+    for i in range(1, 4)
         s.nTypes[s.moveTypes[i]] += 1
     end
     
@@ -38,9 +38,9 @@ function proposeMove!(s::Species)
     r = rand(Uniform(0,1))
     p = 0.0
 
-    for (i, idx, sign) in zip(RANGE_1_4, COORD_MOVES, MOVE_ORIENTATIONS)
+    for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
         
-        for i in RANGE_1_3
+        for i in range(1, 3)
             s.moveVec[i] = 0
         end
         
@@ -59,13 +59,13 @@ function proposeMove!(s::Species)
     end
 
     # translated position of selected bond (no allocation)
-    for j in RANGE_1_3
+    for j in range(1, 3)
         s.tempVec[j] = s.bi[j] + s.moveVec[j]
     end
     boxmod!(s.tempVec, s.newPosi, Int32(1), s.boxlength)
     
     # translated position of selected bond (no allocation)
-    for j in RANGE_1_3
+    for j in range(1, 3)
         s.tempVec[j] = s.bj[j] + s.moveVec[j]
     end
     boxmod!(s.tempVec, s.newPosj, Int32(1), s.boxlength)

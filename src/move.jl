@@ -1,3 +1,5 @@
+############# Utilities #############
+
 # ensures positions are periodic within the lattice's bounding box
 export boxmod!
 function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
@@ -28,6 +30,9 @@ function overlap(s::Species)
             (s.latS[s.newPosj[1], s.newPosj[2], s.newPosj[3]] == 1 && 
              !coords_equal(s.bnext, s.newPosj)))
 end
+
+
+############# Polymer move functions #############
 
 export addBond!
 function addBond!(s::Species)
@@ -143,6 +148,8 @@ function removeBond!(s::Species)
     return s
 end
 
+# Finds the bead coordinates, neighbording beads, and vector of the bond 
+# to which the bead selected by s.moveIdx belongs
 export identifyBond!
 function identifyBond!(s::Species)
 
@@ -161,21 +168,22 @@ function identifyBond!(s::Species)
     s.knext = s.kj == 0 ? 0 : s.pos[s.kj][5]
 
     # bond edge coordinates
-    s.bi = view(s.pos[s.ki], RANGE_1_3)
-    s.bj = s.kj == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.kj], RANGE_1_3)
+    s.bi = view(s.pos[s.ki], range(1, 3))
+    s.bj = s.kj == 0 ? view(SENTINEL, range(1, 3)) : view(s.pos[s.kj], range(1, 3))
 
     # coordinates of previous and next beads relative to bond
-    s.bprev = s.kprev == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.kprev], RANGE_1_3)
-    s.bnext = s.knext == 0 ? view(SENTINEL, RANGE_1_3) : view(s.pos[s.knext], RANGE_1_3)
+    s.bprev = s.kprev == 0 ? view(SENTINEL, range(1, 3)) : view(s.pos[s.kprev], range(1, 3))
+    s.bnext = s.knext == 0 ? view(SENTINEL, range(1, 3)) : view(s.pos[s.knext], range(1, 3))
 
-    for i in RANGE_1_3
+    for i in range(1, 3)
         s.bondVec[i] = (s.bj[i] - s.bi[i]) % s.boxlength
     end
 
     return s
 end
 
-# CONTEXT: needs s.bondVec to be set
+# Computes all possible move types for the selected bond
+# Warning: needs s.bondVec to be set
 export moveTypes!
 function moveTypes!(s::Species)
 
@@ -187,23 +195,23 @@ function moveTypes!(s::Species)
     end
 
     # build all possible moves each bond can make
-    for (i, idx, sign) in zip(RANGE_1_4, COORD_MOVES, MOVE_ORIENTATIONS)
+    for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
         
-        for i in RANGE_1_3
+        for i in range(1, 3)
             s.moveVec[i] = 0
         end
 
         # flip direction along each dimension in the orthogonal plane
         s.moveVec[dims[idx]] = sign
 
-        # Compute bi + moveVec manually (no allocation)
-        for j in RANGE_1_3
+        # Compute bi + moveVec
+        for j in range(1, 3)
             s.tempVec[j] = s.bi[j] + s.moveVec[j]
         end
         boxmod!(s.tempVec, s.newPosi, Int32(1), s.boxlength)
         
-        # Compute bj + moveVec manually (no allocation)
-        for j in RANGE_1_3
+        # Compute bj + moveVec
+        for j in range(1, 3)
             s.tempVec[j] = s.bj[j] + s.moveVec[j]
         end
         boxmod!(s.tempVec, s.newPosj, Int32(1), s.boxlength)
@@ -213,13 +221,14 @@ function moveTypes!(s::Species)
         s.moveTypes[i] = Int32(s.newPosi == s.bprev) + Int32(s.newPosj == s.bnext) + 1
     end
 
-    for i in RANGE_1_3
+    for i in range(1, 3)
         s.moveVec[i] = 0
     end
 
     return s
 end
 
+# Calls the appropriate operation (add, kink or remove) to execute a move
 export makeMove!
 function makeMove!(s::Species)
 
@@ -282,10 +291,19 @@ function movePoly!(s::Species)
     return moveExecuted
 end
 
+
+############# Bulk move functions #############
+
+# Translates a particle to a new position set by s.newPosi
+export moveParticle!
+function moveParticle!(s::Species)
+
+end
+
 # Executes a move on a species of bulk monomers diluted in the box
 # by a 3D random walk on each particle
-export moveBulkRw!
-function moveBulkRw!(s::Species)
+export moveBulk!
+function moveBulk!(s::Species)
     
     @assert s.name[1] == 'b'
     moveExecuted = false
@@ -297,7 +315,7 @@ function moveBulkRw!(s::Species)
     s.latS[s.pos[s.moveIdx][1], s.pos[s.moveIdx][2], s.pos[s.moveIdx][3]] = 0
 
     # sample an x/y/z direction and orientation at random
-    s.moveType = rand(RANGE_1_3)
+    s.moveType = rand(range(1, 3))
     s.pos[s.moveIdx][s.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
     
     # clip to within bounding box

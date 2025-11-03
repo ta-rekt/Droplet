@@ -27,7 +27,7 @@ using Test
         )
 
         initPoly!(s1)
-        initDilute!(s2)
+        initBulk!(s2)
         initLattice!(l, [s1, s2])
         
         for i in 1:16
@@ -96,7 +96,7 @@ using Test
 
         # initializing lattice and species
         initPoly!(s1)
-        initDilute!(s2)
+        initBulk!(s2)
         initLattice!(l, [s1, s2])
 
         ### ### ### Adding a bond
@@ -225,7 +225,7 @@ using Test
                 end
             end
             
-            moveMade = move!(s1)
+            moveMade = movePoly!(s1)
             nmoves += moveMade
         end
     end
