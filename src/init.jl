@@ -1,8 +1,20 @@
-############# Polymer initialization functions #############
+############# Species initialization functions #############
+
+######## Generic #######
+
+# initialize hamiltonian
+export initHam!
+function initHam!(s::AbstractSpecies)
+    ham!(s)
+    return s
+end
+
+
+######## Polymer #######
 
 # initializes bead locations of a long polymer in a doubly-linked list
-export init!
-function init!(p::Poly)
+export initSpecies!
+function initSpecies!(p::Poly)
     p.name = string("poly", p.id)
     p.pos = OrderedDict{Int32, Vector{Int32}}()
     v = zeros(Int32, 3)
@@ -35,19 +47,11 @@ function init!(p::Poly)
     return p
 end
 
-# initialize hamiltonian
-export initHam!
-function initHam!(p::Poly)
-    ham!(p)
-    return p
-end
-
-
-############# Bulk initialization functions #############
+######## Bulk #######
 
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
-export init!
-function init!(b::Bulk)
+export initSpecies!
+function initSpecies!(b::Bulk)
 
     b.name = string("bulk", b.id)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
@@ -62,15 +66,17 @@ function init!(b::Bulk)
     b.pos[1][4] = 0
     b.pos[b.length][5] = 0
 
+    b.tempVec = zeros(Int32, 3)
+
     return b
 end
 
 
-############# Lattice initialization functions #############
+############# System initialization functions #############
 
 # initializes lattice sites of each species from their bead locations
-export initLattice!
-function initLattice!(l::Lattice, slist::Vector{<:AbstractSpecies})
+export init!
+function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
     l.nspecies = length(slist)   # update number of species
     l.lat = zeros((l.nspecies, l.boxlength, l.boxlength, l.boxlength))
@@ -78,6 +84,10 @@ function initLattice!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
     # fill out lattice sites for each species
     for (i, s) in enumerate(slist)
+        
+        s.boxlength = l.boxlength
+        initSpecies!(s)
+
         l.speciesDir[s.id] = i
 
         # give species s a view on its lattice sites
@@ -85,6 +95,11 @@ function initLattice!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
         for j in 1:s.length
             s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = 1
+        end
+
+        # requires s.latS to be set
+        if hasproperty(s, :ham)
+            initHam!(s)
         end
     end
 

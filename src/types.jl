@@ -22,11 +22,11 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     # required fields
     length::Int32        # number of beads
     maxlength::Int32     # max number of beads
-    boxlength::Int32     # box linear dimension
     chemPot::Union{Nothing,Float64}   # monomer chemical potential
     intPot::Union{Nothing,Float64}    # monomer interaction potential
-
+    
     # key vector, position and initial, final bead positions
+    boxlength::Union{Nothing, Int32} = nothing    # box linear dimension
     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
     initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
@@ -76,11 +76,11 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
 
     # required fields
     length::Int32        # number of beads
-    boxlength::Int32     # box linear dimension
     chemPot::Union{Nothing,Float64}   # monomer chemical potential
     intPot::Union{Nothing,Float64}    # monomer interaction potential
 
     # key vector, position and initial, final bead positions
+    boxlength::Union{Nothing, Int32} = nothing
     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
     

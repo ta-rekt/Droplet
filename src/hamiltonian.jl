@@ -103,10 +103,6 @@ function ham!(b::Bulk)
         nnn += nn(b, pos)
     end
 
-    @assert key == 0 begin
-        "Tail is not N'th bead"
-    end
-
     b.ham = - b.chemPot * b.length + b.intPot * nnn
 
     return b

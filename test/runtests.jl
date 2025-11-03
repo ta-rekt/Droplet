@@ -12,7 +12,6 @@ using Test
         p = Poly(;
             length = 16,
             maxlength = 20,
-            boxlength = l.boxlength,
             intPot = 1.0,
             chemPot = 1.0
         )
@@ -20,14 +19,11 @@ using Test
         # dilute monomers
         b = Bulk(;
             length = 256,
-            boxlength = l.boxlength,
             intPot = 1.0,
             chemPot = 1.0
         )
 
-        init!(p)
-        init!(b)
-        initLattice!(l, [p, b])
+        init!(l, [p, b])
         
         for i in 1:16
             @test p.latS[i,8,8] == 1
@@ -79,7 +75,6 @@ using Test
         p = Poly(;
             length = 16,
             maxlength = 20,
-            boxlength = l.boxlength,
             intPot = 1.0,
             chemPot = 1.0
         )
@@ -87,15 +82,12 @@ using Test
         # dilute monomers
         b = Bulk(;
             length = 256,
-            boxlength = l.boxlength,
             intPot = 1.0,
             chemPot = 1.0
         )
 
-        # initializing lattice and species
-        init!(p)
-        init!(b)
-        initLattice!(l, [p, b])
+        # initialize the system
+        init!(l, [p, b])
 
         ### ### ### Adding a bond
 
@@ -170,7 +162,6 @@ using Test
         global p = Poly(;
             length = 32,
             maxlength = 24,
-            boxlength = l.boxlength,
             intPot = 1,
             chemPot = 1,
             initPos = [5,21,21]
@@ -179,11 +170,9 @@ using Test
         slist = [p]
 
         # initialize lattice and species
-        init!(p)
-        initLattice!(l, slist)
-        
-        # initialize hamiltonians
-        initHam!(p)
+        init!(l, slist)
+
+        # initial energy
         hamInitial = p.ham
 
         #### iterating multiple moves

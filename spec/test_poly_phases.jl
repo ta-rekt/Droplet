@@ -6,7 +6,7 @@ global l = Lattice(;
 )
 
 # polymer
-global s1 = Species(;
+global p = Poly(;
     length = 32,
     maxlength = 512,
     boxlength = boxlength,
@@ -16,7 +16,7 @@ global s1 = Species(;
 )
 
 # list containing all species
-slist = [s1]
+slist = [p]
 
 
 ### simulation parameters
@@ -45,16 +45,16 @@ function target!(res, args...)
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    s1 = slist[1]
-    s1.intPot = alpha
-    s1.chemPot = beta
+    p = slist[1]
+    p.intPot = alpha
+    p.chemPot = beta
 
     # initialize lattice and species
-    initPoly!(s1)
-    initLattice!(l, [s1])
+    init!(p)
+    initLattice!(l, [p])
 
     # initialize hamiltonians
-    initHamPoly!(s1)
+    initHam!(p)
 
     nmoves = 0
     niter = 0
@@ -67,23 +67,23 @@ function target!(res, args...)
     deltaH = 0
     moveMade = false
     
-    radii[frame] = radius(s1)
-    lengths[frame] = s1.length
-    hams[frame] = s1.ham   # initial energy
+    radii[frame] = radius(p)
+    lengths[frame] = p.length
+    hams[frame] = p.ham   # initial energy
     accs[frame] = 0
     
     # run simluation
     while frame <= nframes - 1
 
         if moveMade
-            deltaH += s1.deltaH
+            deltaH += p.deltaH
         
             if mod(nmoves, step) == 0
                 
                 frame += 1
                 
-                radii[frame] = radius(s1)
-                lengths[frame] = s1.length
+                radii[frame] = radius(p)
+                lengths[frame] = p.length
                 hams[frame] = hams[frame-1] + deltaH
                 accs[frame] = niter == 0 ? 0 : nmoves / niter
                 
@@ -91,26 +91,26 @@ function target!(res, args...)
             end
         end
         
-        moveMade = movePoly!(s1)
+        moveMade = move!(p)
         nmoves += moveMade
         niter += 1
     end
 
     # collect results
-    coords = Matrix{Int32}(undef, s1.length, 3)
+    coords = Matrix{Int32}(undef, p.length, 3)
 
-    res["species_name"] = s1.name
+    res["species_name"] = p.name
     res["nframes"] = nframes
     res["step"] = step
     res["alpha"] = alpha
     res["beta"] = beta
-    res["maxlength"] = s1.maxlength
-    res["boxlength"] = s1.boxlength
+    res["maxlength"] = p.maxlength
+    res["boxlength"] = p.boxlength
     res["gyration_radius"] = radii
     res["polymer_length"] = lengths
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
-    res["final_coordinates"] = extractCoords!(s1, coords)
+    res["final_coordinates"] = extractCoords!(p, coords)
     res["runtime_s"] = (time_ns() - t_start) / 1e9
 
     return res

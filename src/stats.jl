@@ -38,5 +38,5 @@ end
 export radiusSphere
 function radiusSphere(length)
     r = (3*length/(4*pi))^(1/3)
-    return sqrt(3/5)*radius
+    return sqrt(3/5)*r
 end
