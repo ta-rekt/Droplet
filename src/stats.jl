@@ -1,6 +1,6 @@
 # returns the center of mass of a species
 export centerMass
-function centerMass(s::Species)
+function centerMass(s::AbstractSpecies)
     cm = zeros(3)
 
     # compute average of all positions in pos
@@ -14,7 +14,7 @@ end
 # radius of gyration, mean squared distance btw each bead and
 # the center of mass
 export radius
-function radius(s::Species)
+function radius(s::AbstractSpecies)
     cm = centerMass(s)
     rg2 = 0
 

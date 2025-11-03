@@ -16,7 +16,7 @@ end
 
 # extracts the coordinates of a species' beads
 export extractCoords!
-function extractCoords!(s::Species, coords::Matrix)
+function extractCoords!(s::AbstractSpecies, coords::Matrix)
     key = s.head           # initial bead
     k = 1
     
@@ -34,7 +34,7 @@ end
 # slist is a list of species s, export the bead coordinates s.pos in a 
 # (s.length x 3)-shaped vector and associated metadata
 export exportSpecies!
-function exportSpecies!(slist::Vector, filename::String)
+function exportSpecies!(slist::Vector{AbstractSpecies}, filename::String)
     filename = string(filename, ".json")
     data = Dict()
     

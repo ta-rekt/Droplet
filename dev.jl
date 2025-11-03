@@ -679,3 +679,48 @@ let
     export!(l, outpath)
 
 end
+
+
+## 1010011111110000100000101010111100010100001100101110000
+# Multiple method definitions for a function
+
+let 
+    abstract type Person end
+    abstract type PersonA <: Person end
+    abstract type PersonB <: Person end
+
+    mutable struct A <: PersonA
+        name::String
+        ssn::Int
+    end
+
+    mutable struct B <: PersonB
+        name::String
+        ssn::Int
+    end
+
+    mutable struct C <: Person
+        name::String
+    end
+
+    function f(obj::A)
+        println(obj.name, obj.ssn)
+    end
+
+    function f(obj::B)
+        println(obj.name, obj.ssn)
+    end
+
+    function f(obj::C)
+        println(obj.name)
+    end
+
+    function g(obj::Person)
+        println(obj.ssn)
+    end
+
+    personA = A("Alice", 1)
+    personB = B("Bob", 2)
+    personC = C("Clarence")
+    g(personB)
+end

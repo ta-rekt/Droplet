@@ -24,171 +24,171 @@ end
 end
 
 export overlap
-function overlap(s::Species)
-    return ((s.latS[s.newPosi[1], s.newPosi[2], s.newPosi[3]] == 1 && 
-             !coords_equal(s.bprev, s.newPosi)) ||
-            (s.latS[s.newPosj[1], s.newPosj[2], s.newPosj[3]] == 1 && 
-             !coords_equal(s.bnext, s.newPosj)))
+function overlap(p::Poly)
+    return ((p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] == 1 && 
+             !coords_equal(p.bprev, p.newPosi)) ||
+            (p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] == 1 && 
+             !coords_equal(p.bnext, p.newPosj)))
 end
 
 
 ############# Polymer move functions #############
 
 export addBond!
-function addBond!(s::Species)
+function addBond!(p::Poly)
 
     # TODO: handle corner cases
-    @assert (s.newPosi != s.bprev) && (s.newPosj != s.bnext) begin
+    @assert (p.newPosi != p.bprev) && (p.newPosj != p.bnext) begin
         "Move is not a bond addition"
     end
 
     # set new lattice sites to 1
-    s.latS[s.newPosi...] = 1
-    s.latS[s.newPosj...] = 1
+    p.latS[p.newPosi...] = 1
+    p.latS[p.newPosj...] = 1
 
     # Find next available keys
     next_key1 = KEYCOUNT[] + 1
     next_key2 = KEYCOUNT[] + 2
-    while haskey(s.pos, next_key1) || haskey(s.pos, next_key2)
+    while haskey(p.pos, next_key1) || haskey(p.pos, next_key2)
         KEYCOUNT[] += 1
         next_key1 = KEYCOUNT[] + 1
         next_key2 = KEYCOUNT[] + 2
     end
 
     # add two new entries for the bond
-    s.pos[next_key1] = Vector{Int32}(undef, 5)
-    s.pos[next_key1][1] = s.newPosi[1]
-    s.pos[next_key1][2] = s.newPosi[2]
-    s.pos[next_key1][3] = s.newPosi[3]
-    s.pos[next_key1][4] = s.ki
-    s.pos[next_key1][5] = next_key2
+    p.pos[next_key1] = Vector{Int32}(undef, 5)
+    p.pos[next_key1][1] = p.newPosi[1]
+    p.pos[next_key1][2] = p.newPosi[2]
+    p.pos[next_key1][3] = p.newPosi[3]
+    p.pos[next_key1][4] = p.ki
+    p.pos[next_key1][5] = next_key2
 
-    s.pos[next_key2] = Vector{Int32}(undef, 5)
-    s.pos[next_key2][1] = s.newPosj[1]
-    s.pos[next_key2][2] = s.newPosj[2]
-    s.pos[next_key2][3] = s.newPosj[3]
-    s.pos[next_key2][4] = next_key1
-    s.pos[next_key2][5] = s.kj
+    p.pos[next_key2] = Vector{Int32}(undef, 5)
+    p.pos[next_key2][1] = p.newPosj[1]
+    p.pos[next_key2][2] = p.newPosj[2]
+    p.pos[next_key2][3] = p.newPosj[3]
+    p.pos[next_key2][4] = next_key1
+    p.pos[next_key2][5] = p.kj
 
     # re-route the old pointers
-    s.pos[s.ki][5] = next_key1
-    s.pos[s.kj][4] = next_key2
+    p.pos[p.ki][5] = next_key1
+    p.pos[p.kj][4] = next_key2
 
     # Update keys vector
-    push!(s.keys_vec, next_key1)
-    push!(s.keys_vec, next_key2)
+    push!(p.keys_vec, next_key1)
+    push!(p.keys_vec, next_key2)
 
     KEYCOUNT[] += 2
 
-    return s
+    return p
 end
 
 export kinkBond!
-function kinkBond!(s::Species)
+function kinkBond!(p::Poly)
 
     # TODO: handle corner cases
-    @assert (s.newPosi == s.bprev) ⊻ (s.newPosj == s.bnext) begin
+    @assert (p.newPosi == p.bprev) ⊻ (p.newPosj == p.bnext) begin
         "Move is not a kink"
     end
 
     # set angled site to 0, flat site to 1 (allocation-free: no splatting or array construction)
-    if s.newPosi == s.bprev 
-        s.latS[s.bi[1], s.bi[2], s.bi[3]] = 0
-        s.latS[s.newPosj[1], s.newPosj[2], s.newPosj[3]] = 1
+    if p.newPosi == p.bprev 
+        p.latS[p.bi[1], p.bi[2], p.bi[3]] = 0
+        p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = 1
 
-        s.pos[s.ki] = Vector{Int32}(undef, 5)
-        s.pos[s.ki][1] = s.newPosj[1]
-        s.pos[s.ki][2] = s.newPosj[2]
-        s.pos[s.ki][3] = s.newPosj[3]
-        s.pos[s.ki][4] = s.kprev
-        s.pos[s.ki][5] = s.kj
+        p.pos[p.ki] = Vector{Int32}(undef, 5)
+        p.pos[p.ki][1] = p.newPosj[1]
+        p.pos[p.ki][2] = p.newPosj[2]
+        p.pos[p.ki][3] = p.newPosj[3]
+        p.pos[p.ki][4] = p.kprev
+        p.pos[p.ki][5] = p.kj
 
-    elseif s.newPosj == s.bnext
-        s.latS[s.newPosi[1], s.newPosi[2], s.newPosi[3]] = 1
-        s.latS[s.bj[1], s.bj[2], s.bj[3]] = 0
+    elseif p.newPosj == p.bnext
+        p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = 1
+        p.latS[p.bj[1], p.bj[2], p.bj[3]] = 0
 
-        s.pos[s.kj] = Vector{Int32}(undef, 5)
-        s.pos[s.kj][1] = s.newPosi[1]
-        s.pos[s.kj][2] = s.newPosi[2]
-        s.pos[s.kj][3] = s.newPosi[3]
-        s.pos[s.kj][4] = s.ki
-        s.pos[s.kj][5] = s.knext
+        p.pos[p.kj] = Vector{Int32}(undef, 5)
+        p.pos[p.kj][1] = p.newPosi[1]
+        p.pos[p.kj][2] = p.newPosi[2]
+        p.pos[p.kj][3] = p.newPosi[3]
+        p.pos[p.kj][4] = p.ki
+        p.pos[p.kj][5] = p.knext
     end
 
-    return s
+    return p
 end
 
 export removeBond!
-function removeBond!(s::Species)
+function removeBond!(p::Poly)
 
     # TODO: handle corner cases
-    @assert (s.newPosi == s.bprev) && (s.newPosj == s.bnext) begin
+    @assert (p.newPosi == p.bprev) && (p.newPosj == p.bnext) begin
         "Move is not a bond removal"
     end
     
     # reset old lattice sites to 0
-    s.latS[s.bi...] = 0
-    s.latS[s.bj...] = 0
+    p.latS[p.bi...] = 0
+    p.latS[p.bj...] = 0
 
     # join ends together
-    s.pos[s.kprev][5] = s.knext
-    s.pos[s.knext][4] = s.kprev
+    p.pos[p.kprev][5] = p.knext
+    p.pos[p.knext][4] = p.kprev
 
-    if s.pos[s.kprev][4] == 0
-        s.head = s.kprev   # TEST
+    if p.pos[p.kprev][4] == 0
+        p.head = p.kprev   # TEST
     end
 
     # Update keys vector - remove both keys
-    filter!(k -> k != s.ki && k != s.kj, s.keys_vec)
+    filter!(k -> k != p.ki && k != p.kj, p.keys_vec)
 
     # remove keys associated with old bond
-    delete!(s.pos, s.ki)
-    delete!(s.pos, s.kj)
+    delete!(p.pos, p.ki)
+    delete!(p.pos, p.kj)
 
-    return s
+    return p
 end
 
 # Finds the bead coordinates, neighbording beads, and vector of the bond 
-# to which the bead selected by s.moveIdx belongs
+# to which the bead selected by p.moveIdx belongs
 export identifyBond!
-function identifyBond!(s::Species)
+function identifyBond!(p::Poly)
 
-    @assert s.moveIdx >= 1 && s.moveIdx <= s.length begin
-        "s.moveIdx must be between 1 and Species length (# of monomers)"
+    @assert p.moveIdx >= 1 && p.moveIdx <= p.length begin
+        "p.moveIdx must be between 1 and Species length (# of monomers)"
     end
 
-    # keys_array = collect(keys(s.pos))  # TODO: this wastes allocs, fix it
+    # keys_array = collect(keys(p.pos))  # TODO: this wastes allocs, fix it
 
     # pointers to the two beads (i and j) to be moved
-    s.ki = s.keys_vec[s.moveIdx]
-    s.kj = s.pos[s.ki][5]
+    p.ki = p.keys_vec[p.moveIdx]
+    p.kj = p.pos[p.ki][5]
 
     # previous and next beads along the chain
-    s.kprev = s.pos[s.ki][4]
-    s.knext = s.kj == 0 ? 0 : s.pos[s.kj][5]
+    p.kprev = p.pos[p.ki][4]
+    p.knext = p.kj == 0 ? 0 : p.pos[p.kj][5]
 
     # bond edge coordinates
-    s.bi = view(s.pos[s.ki], range(1, 3))
-    s.bj = s.kj == 0 ? view(SENTINEL, range(1, 3)) : view(s.pos[s.kj], range(1, 3))
+    p.bi = view(p.pos[p.ki], range(1, 3))
+    p.bj = p.kj == 0 ? view(SENTINEL, range(1, 3)) : view(p.pos[p.kj], range(1, 3))
 
     # coordinates of previous and next beads relative to bond
-    s.bprev = s.kprev == 0 ? view(SENTINEL, range(1, 3)) : view(s.pos[s.kprev], range(1, 3))
-    s.bnext = s.knext == 0 ? view(SENTINEL, range(1, 3)) : view(s.pos[s.knext], range(1, 3))
+    p.bprev = p.kprev == 0 ? view(SENTINEL, range(1, 3)) : view(p.pos[p.kprev], range(1, 3))
+    p.bnext = p.knext == 0 ? view(SENTINEL, range(1, 3)) : view(p.pos[p.knext], range(1, 3))
 
     for i in range(1, 3)
-        s.bondVec[i] = (s.bj[i] - s.bi[i]) % s.boxlength
+        p.bondVec[i] = (p.bj[i] - p.bi[i]) % p.boxlength
     end
 
-    return s
+    return p
 end
 
 # Computes all possible move types for the selected bond
-# Warning: needs s.bondVec to be set
+# Warning: needs p.bondVec to be set
 export moveTypes!
-function moveTypes!(s::Species)
+function moveTypes!(p::Poly)
 
     # dimensions along which to move
-    dims = findall(iszero, s.bondVec)
+    dims = findall(iszero, p.bondVec)
 
     @assert length(dims) == 2 begin
         "bondVec must be aligned with x, y, or z axis"
@@ -198,91 +198,91 @@ function moveTypes!(s::Species)
     for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
         
         for i in range(1, 3)
-            s.moveVec[i] = 0
+            p.moveVec[i] = 0
         end
 
         # flip direction along each dimension in the orthogonal plane
-        s.moveVec[dims[idx]] = sign
+        p.moveVec[dims[idx]] = sign
 
         # Compute bi + moveVec
         for j in range(1, 3)
-            s.tempVec[j] = s.bi[j] + s.moveVec[j]
+            p.tempVec[j] = p.bi[j] + p.moveVec[j]
         end
-        boxmod!(s.tempVec, s.newPosi, Int32(1), s.boxlength)
+        boxmod!(p.tempVec, p.newPosi, Int32(1), p.boxlength)
         
         # Compute bj + moveVec
         for j in range(1, 3)
-            s.tempVec[j] = s.bj[j] + s.moveVec[j]
+            p.tempVec[j] = p.bj[j] + p.moveVec[j]
         end
-        boxmod!(s.tempVec, s.newPosj, Int32(1), s.boxlength)
+        boxmod!(p.tempVec, p.newPosj, Int32(1), p.boxlength)
         
         
         # 1 -> bond addition, 2 -> kink, 3 -> bond removal
-        s.moveTypes[i] = Int32(s.newPosi == s.bprev) + Int32(s.newPosj == s.bnext) + 1
+        p.moveTypes[i] = Int32(p.newPosi == p.bprev) + Int32(p.newPosj == p.bnext) + 1
     end
 
     for i in range(1, 3)
-        s.moveVec[i] = 0
+        p.moveVec[i] = 0
     end
 
-    return s
+    return p
 end
 
 # Calls the appropriate operation (add, kink or remove) to execute a move
 export makeMove!
-function makeMove!(s::Species)
+function makeMove!(p::Poly)
 
-    @assert s.moveType == 1 || s.moveType == 2 || s.moveType == 3 begin
-        "s.moveType must be either 1, 2, or 3"
+    @assert p.moveType == 1 || p.moveType == 2 || p.moveType == 3 begin
+        "p.moveType must be either 1, 2, or 3"
     end
 
     # bond addition
-    if s.moveType == 1
-        addBond!(s)
+    if p.moveType == 1
+        addBond!(p)
 
     # kink
-    elseif s.moveType == 2
-        kinkBond!(s)
+    elseif p.moveType == 2
+        kinkBond!(p)
 
     # bond removal  
-    elseif s.moveType == 3 
-        removeBond!(s)
+    elseif p.moveType == 3 
+        removeBond!(p)
     end
 
-    return s
+    return p
 end
 
-# executes a move on polymer s inside lattice l at position s.moveIdx, of type
+# executes a move on polymer s inside lattice l at position p.moveIdx, of type
 # moveType (add, remove or kink) sampled according to the metropolis algorithm
-export movePoly!
-function movePoly!(s::Species)
+export move!
+function move!(p::Poly)
     
-    @assert s.name[1] == 'p'
+    @assert p.name[1] == 'p'
     moveExecuted = false
 
     # sample a bond at random along the chain
-    s.moveIdx = rand(1:s.length)
+    p.moveIdx = rand(1:p.length)
     
     # find coordinates and keys of selected bond and adjacent beads
-    identifyBond!(s)
+    identifyBond!(p)
     
     # don't move if last bead was selected
-    if s.kj != 0
+    if p.kj != 0
         
         # compute the possible move types around a bond
-        moveTypes!(s)
+        moveTypes!(p)
         
         # sample a move according to proposition probabilities
-        proposeMove!(s)
+        proposeMove!(p)
         
         # check for max length constraint and overlap
-        if !overlap(s) && !(s.moveType == 1 && s.length == s.maxlength)
+        if !overlap(p) && !(p.moveType == 1 && p.length == p.maxlength)
             
             # accept move with metropolis criterion
-            if acceptMove(s)
+            if acceptMove(p)
                 
-                makeMove!(s)
-                s.length = length(keys(s.pos))   # TODO: refactor for speed
+                makeMove!(p)
+                p.length = length(keys(p.pos))   # TODO: refactor for speed
                 moveExecuted = true
             end
         end
@@ -294,39 +294,39 @@ end
 
 ############# Bulk move functions #############
 
-# Translates a particle to a new position set by s.newPosi
-export moveParticle!
-function moveParticle!(s::Species)
-
+# Translates a particle to a new position set by p.newPosi
+export nudgeParticle!
+function nudgeParticle!(b::Bulk)
+    return b
 end
 
 # Executes a move on a species of bulk monomers diluted in the box
 # by a 3D random walk on each particle
-export moveBulk!
-function moveBulk!(s::Species)
+export move!
+function move!(b::Bulk)
     
-    @assert s.name[1] == 'b'
+    @assert b.name[1] == 'b'
     moveExecuted = false
 
     # sample a bond at random along the chain
-    s.moveIdx = rand(1:s.length)
+    b.moveIdx = rand(1:b.length)
     
     # turn off lattice site
-    s.latS[s.pos[s.moveIdx][1], s.pos[s.moveIdx][2], s.pos[s.moveIdx][3]] = 0
+    b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] = 0
 
     # sample an x/y/z direction and orientation at random
-    s.moveType = rand(range(1, 3))
-    s.pos[s.moveIdx][s.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
+    b.moveType = rand(range(1, 3))
+    b.pos[b.moveIdx][b.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
     
     # clip to within bounding box
-    if s.pos[s.moveIdx][s.moveType] > s.boxlength
-        s.pos[s.moveIdx][s.moveType] -= s.boxlength
-    elseif s.pos[s.moveIdx][s.moveType] < 0
-        s.pos[s.moveIdx][s.moveType] += s.boxlength
+    if b.pos[b.moveIdx][b.moveType] > b.boxlength
+        b.pos[b.moveIdx][b.moveType] -= b.boxlength
+    elseif b.pos[b.moveIdx][b.moveType] < 0
+        b.pos[b.moveIdx][b.moveType] += b.boxlength
     end
 
     # update new lattice site
-    s.latS[s.pos[s.moveIdx][1], s.pos[s.moveIdx][2], s.pos[s.moveIdx][3]] = 1
+    b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] = 1
 
     moveExecuted = true
 

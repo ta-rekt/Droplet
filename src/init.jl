@@ -1,69 +1,76 @@
+############# Polymer initialization functions #############
+
 # initializes bead locations of a long polymer in a doubly-linked list
-export initPoly!
-function initPoly!(s::Species)
-    s.name = string("poly", s.id)
-    s.pos = OrderedDict{Int32, Vector{Int32}}()
+export init!
+function init!(p::Poly)
+    p.name = string("poly", p.id)
+    p.pos = OrderedDict{Int32, Vector{Int32}}()
     v = zeros(Int32, 3)
 
     # line from center of one face to the other along x axis
-    for i in 1:s.length
-        v[1] = s.initPos === nothing ? i : i + s.initPos[1]
-        v[2] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[2]
-        v[3] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[3]
-        s.pos[i] = [v..., i-1, i+1]  # last two indices are pointers to prev and next bead
+    for i in 1:p.length
+        v[1] = p.initPos === nothing ? i : i + p.initPos[1]
+        v[2] = p.initPos === nothing ? div(p.boxlength, 2) : p.initPos[2]
+        v[3] = p.initPos === nothing ? div(p.boxlength, 2) : p.initPos[3]
+        p.pos[i] = [v..., i-1, i+1]  # last two indices are pointers to prev and next bead
     end
 
     # head and tail beads
-    s.head = 1
-    s.pos[s.head][4] = 0
-    s.pos[s.length][5] = 0
+    p.head = 1
+    p.pos[p.head][4] = 0
+    p.pos[p.length][5] = 0
 
     # key vector
-    s.keys_vec = collect(keys(s.pos))
+    p.keys_vec = collect(keys(p.pos))
 
-    s.tempVec = zeros(Int32, 3)
-    s.bondVec = zeros(Int32, 3)
-    s.moveVec = zeros(Int32, 3)
-    s.newPosi = zeros(Int32, 3)
-    s.newPosj = zeros(Int32, 3)
-    s.moveTypes = zeros(Int32, 4)
-    s.moveTypeProbs = [0,PKINK,0]
-    s.nTypes = zeros(Int32, 3)
+    p.tempVec = zeros(Int32, 3)
+    p.bondVec = zeros(Int32, 3)
+    p.moveVec = zeros(Int32, 3)
+    p.newPosi = zeros(Int32, 3)
+    p.newPosj = zeros(Int32, 3)
+    p.moveTypes = zeros(Int32, 4)
+    p.moveTypeProbs = [0,PKINK,0]
+    p.nTypes = zeros(Int32, 3)
 
-    return s
+    return p
 end
 
 # initialize hamiltonian
-export initHamPoly!
-function initHamPoly!(s::Species)
-    hamPoly!(s)
-    return s
+export initHam!
+function initHam!(p::Poly)
+    ham!(p)
+    return p
 end
 
-# initializes beads positioned uniformly randomly (dilute and well-mixed)
-export initBulk!
-function initBulk!(s::Species)
 
-    s.name = string("bulk", s.id)
-    s.pos = OrderedDict{Int32, Vector{Int32}}()
+############# Bulk initialization functions #############
+
+# initializes beads positioned uniformly randomly (dilute and well-mixed)
+export init!
+function init!(b::Bulk)
+
+    b.name = string("bulk", b.id)
+    b.pos = OrderedDict{Int32, Vector{Int32}}()
     
-    for i in 1:s.length
-        s.pos[i] = rand(1:s.boxlength, 5)
-        s.pos[i][4] = i-1
-        s.pos[i][5] = i+1
+    for i in 1:b.length
+        b.pos[i] = rand(1:b.boxlength, 5)
+        b.pos[i][4] = i-1
+        b.pos[i][5] = i+1
     end
     
     # head and tail beads
-    s.head = 1
-    s.pos[1][4] = 0
-    s.pos[s.length][5] = 0
+    b.pos[1][4] = 0
+    b.pos[b.length][5] = 0
 
-    return s
+    return b
 end
+
+
+############# Lattice initialization functions #############
 
 # initializes lattice sites of each species from their bead locations
 export initLattice!
-function initLattice!(l::Lattice, slist::Vector{Species})
+function initLattice!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
     l.nspecies = length(slist)   # update number of species
     l.lat = zeros((l.nspecies, l.boxlength, l.boxlength, l.boxlength))

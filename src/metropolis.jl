@@ -1,85 +1,87 @@
+############# Polymer metropolis functions #############
+
 # samples moves according to probabilities set by detailed balance
-# writes the sampled direction vector in s.moveVec
-# CONTEXT: needs s.moveTypes to be set
+# writes the sampled direction vector in p.moveVec
+# CONTEXT: needs p.moveTypes to be set
 export proposeMove!
-function proposeMove!(s::Species)
+function proposeMove!(p::Poly)
     
-    @assert !isnothing(s.moveTypes) begin
+    @assert !isnothing(p.moveTypes) begin
         "moveTypes! has not been called yet"
     end
 
     # compute how many of each move type there are
     for j in range(1, 3)
-        s.nTypes[j] = 0
+        p.nTypes[j] = 0
     end
 
     for i in range(1, 4)
-        s.nTypes[s.moveTypes[i]] += 1
+        p.nTypes[p.moveTypes[i]] += 1
     end
     
-    N = s.length
+    N = p.length
     
     # set Pkink to zero if no kinks are possible
-    Pkink = s.nTypes[2] == 0 ? 0 : s.moveTypeProbs[2]
+    Pkink = p.nTypes[2] == 0 ? 0 : p.moveTypeProbs[2]
     
     # Padd
-    s.moveTypeProbs[1] = s.nTypes[3] == 0 ? (1 - Pkink) : (1 - Pkink) * (N + 2) / (2*N + 2)
+    p.moveTypeProbs[1] = p.nTypes[3] == 0 ? (1 - Pkink) : (1 - Pkink) * (N + 2) / (2*N + 2)
     
     # Premove
-    s.moveTypeProbs[3] = s.nTypes[3] == 0 ? 0 : (1 - Pkink) * N / (2*N + 2)
+    p.moveTypeProbs[3] = p.nTypes[3] == 0 ? 0 : (1 - Pkink) * N / (2*N + 2)
 
-    @assert s.moveTypeProbs[1] + s.moveTypeProbs[3] + Pkink == 1 begin
+    @assert p.moveTypeProbs[1] + p.moveTypeProbs[3] + Pkink == 1 begin
         "Proposition probabilities don't sum to 1"
     end
 
-    dims = findall(iszero, s.bondVec)
+    dims = findall(iszero, p.bondVec)
 
     # sample move types according to proposed probabilities
     r = rand(Uniform(0,1))
-    p = 0.0
+    prob = 0.0
 
     for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
         
         for i in range(1, 3)
-            s.moveVec[i] = 0
+            p.moveVec[i] = 0
         end
         
-        typ = s.moveTypes[i]
-        p += s.moveTypeProbs[typ] / s.nTypes[typ]
+        typ = p.moveTypes[i]
+        prob += p.moveTypeProbs[typ] / p.nTypes[typ]
 
-        if r < p
-            s.moveVec[dims[idx]] = sign
-            s.moveType = typ
+        if r < prob
+            p.moveVec[dims[idx]] = sign
+            p.moveType = typ
             break
         end
     end
 
-    @assert dot(s.bondVec, s.moveVec) == 0 begin
+    @assert dot(p.bondVec, p.moveVec) == 0 begin
         "Move is not orthogonal to bond direction"
     end
 
     # translated position of selected bond (no allocation)
     for j in range(1, 3)
-        s.tempVec[j] = s.bi[j] + s.moveVec[j]
+        p.tempVec[j] = p.bi[j] + p.moveVec[j]
     end
-    boxmod!(s.tempVec, s.newPosi, Int32(1), s.boxlength)
+    boxmod!(p.tempVec, p.newPosi, Int32(1), p.boxlength)
     
     # translated position of selected bond (no allocation)
     for j in range(1, 3)
-        s.tempVec[j] = s.bj[j] + s.moveVec[j]
+        p.tempVec[j] = p.bj[j] + p.moveVec[j]
     end
-    boxmod!(s.tempVec, s.newPosj, Int32(1), s.boxlength)
+    boxmod!(p.tempVec, p.newPosj, Int32(1), p.boxlength)
 
-    return s
+    return p
 end
 
 # accepts or rejects according to the metropolis criterion
 export acceptMove
-function acceptMove(s::Species)
+function acceptMove(p::Poly)
 
-    deltaHamPoly!(s)
+    deltaHam!(p)
     
-    p = min(1, exp(-s.deltaH))
+    p = min(1, exp(-p.deltaH))
     r = rand(Uniform(0,1))
 
     if r < p
@@ -88,3 +90,7 @@ function acceptMove(s::Species)
         return false
     end
 end
+
+
+############# Bulk metropolis functions #############
+

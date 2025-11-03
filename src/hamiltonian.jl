@@ -2,7 +2,7 @@
 
 # Number of nearest neighbors at a given position
 export nn
-function nn(s::Species, pos::Union{SubArray{Int32}, Vector{Int32}})
+function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
 
     for i in 1:3
@@ -21,23 +21,24 @@ function nn(s::Species, pos::Union{SubArray{Int32}, Vector{Int32}})
 end
 
 
+
 ############# Polymer Energy functions #############
 
 # Hamiltonian of a polymer
-export hamPoly!
-function hamPoly!(s::Species)
+export ham!
+function ham!(p::Poly)
 
-    s.ham = 0
+    p.ham = 0
     nnn = 0                # number of nearest neighbors
-    key = s.head           # initial bead
-    pos = s.pos[key][range(1, 3)]  # initial posiion
+    key = p.head           # initial bead
+    pos = p.pos[key][range(1, 3)]  # initial posiion
 
-    for i in 1:s.length
-        nnn += nn(s, pos)
-        key = s.pos[key][5]    # next bead
+    for i in 1:p.length
+        nnn += nn(p, pos)
+        key = p.pos[key][5]    # next bead
 
         if key != 0
-            pos = s.pos[key][range(1, 3)]  # next position
+            pos = p.pos[key][range(1, 3)]  # next position
         end
     end
 
@@ -45,79 +46,79 @@ function hamPoly!(s::Species)
         "Tail is not N'th bead"
     end
 
-    s.ham = - (s.chemPot + s.intPot) * s.length + s.intPot * nnn
+    p.ham = - (p.chemPot + p.intPot) * p.length + p.intPot * nnn
 
-    return s
+    return p
 end
 
 # Energy increment of a proposed move. Requires proposeMove! to be called
 # which sets moveType and newPosi/j. 
-export deltaHamPoly!
-function deltaHamPoly!(s::Species)
+export deltaHam!
+function deltaHam!(p::Poly)
 
-    @assert s.moveType == 1 || s.moveType == 2 || s.moveType == 3 begin
-        "s.moveType must be either 1, 2, or 3"
+    @assert p.moveType == 1 || p.moveType == 2 || p.moveType == 3 begin
+        "p.moveType must be either 1, 2, or 3"
     end
 
-    s.deltaH = 0
+    p.deltaH = 0
 
     # bond addition
-    if s.moveType == 1
-        s.deltaH = (- 2 * (s.chemPot + s.intPot) 
-                    + s.intPot * (2*(nn(s, s.newPosi) + nn(s, s.newPosj)) + 2))
+    if p.moveType == 1
+        p.deltaH = (- 2 * (p.chemPot + p.intPot) 
+                    + p.intPot * (2*(nn(p, p.newPosi) + nn(p, p.newPosj)) + 2))
 
     # kink
-    elseif s.moveType == 2
+    elseif p.moveType == 2
 
-        if s.newPosi == s.bprev 
-            s.deltaH = 2 * s.intPot * (nn(s, s.newPosj) - nn(s, s.bi))
-        elseif s.newPosj == s.bnext
-            s.deltaH = 2 * s.intPot * (nn(s, s.newPosi) - nn(s, s.bj))
+        if p.newPosi == p.bprev 
+            p.deltaH = 2 * p.intPot * (nn(p, p.newPosj) - nn(p, p.bi))
+        elseif p.newPosj == p.bnext
+            p.deltaH = 2 * p.intPot * (nn(p, p.newPosi) - nn(p, p.bj))
         else
             error("Move is not a kink")
         end
 
     # bond removal  
-    elseif s.moveType == 3 
-        s.deltaH = (2 * (s.chemPot + s.intPot)  
-                    - s.intPot * (2*(nn(s, s.bi) + nn(s, s.bj)) - 2))
+    elseif p.moveType == 3 
+        p.deltaH = (2 * (p.chemPot + p.intPot)  
+                    - p.intPot * (2*(nn(p, p.bi) + nn(p, p.bj)) - 2))
     end
 
-    s.ham += s.deltaH
+    p.ham += p.deltaH
 
-    return s
+    return p
 end
 
 
 ############# Bulk energy functions #############
 
 # Hamiltonian of a dilute species in the bulk
-export hamBulk1s!
-function hamBulk1s!(s::Species)
+export ham!
+function ham!(b::Bulk)
     
-    s.ham = 0
+    b.ham = 0
     nnn = 0    # number of nearest neighbors
 
-    for i in 1:s.length
-        pos = s.pos[i][range(1, 3)]
-        nnn += nn(s, pos)
+    for i in 1:b.length
+        pos = b.pos[i][range(1, 3)]
+        nnn += nn(b, pos)
     end
 
     @assert key == 0 begin
         "Tail is not N'th bead"
     end
 
-    s.ham = - s.chemPot * s.length + s.intPot * nnn
+    b.ham = - b.chemPot * b.length + b.intPot * nnn
 
-    return s
+    return b
 end
 
 # Energy increment for the bulk system
-export deltaHamBulk1s!
-function deltaHamBulk1s!(s::Species)
+export deltaHam!
+function deltaHam!(b::Bulk)
 
-    s.deltaH = 2 * s.intPot * (nn(s, s.newPosi) - nn(s, s.bi))
-    s.ham += s.deltaH
+    b.deltaH = 2 * b.intPot * (nn(b, b.newPosi) - nn(b, b.bi))
+    b.ham += b.deltaH
 
-    return s
+    return b
 end

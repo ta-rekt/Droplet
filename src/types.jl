@@ -5,8 +5,12 @@ const MOVE_ORIENTATIONS = [+1,-1,+1,-1]
 const SPECIES_ID_COUNTER = Ref(1)
 const PKINK = 0.8
 
-export Species
-Base.@kwdef mutable struct Species
+abstract type AbstractSpecies end
+abstract type AbstractPoly <: AbstractSpecies end
+abstract type AbstractBulk <: AbstractSpecies end 
+
+export Poly
+Base.@kwdef mutable struct Poly <: AbstractPoly
     
     id::Int32 = begin
       SPECIES_ID_COUNTER[] += 1
@@ -57,10 +61,48 @@ Base.@kwdef mutable struct Species
     # energy
     ham::Union{Nothing, Float64} = nothing       # Hamiltonian
     deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
-
-    # number of monomer species, their density
 end
 
+
+export Bulk
+Base.@kwdef mutable struct Bulk <: AbstractBulk
+    
+    id::Int32 = begin
+      SPECIES_ID_COUNTER[] += 1
+      SPECIES_ID_COUNTER[]
+    end
+
+    name::String = ""    # unique name of this species
+
+    # required fields
+    length::Int32        # number of beads
+    boxlength::Int32     # box linear dimension
+    chemPot::Union{Nothing,Float64}   # monomer chemical potential
+    intPot::Union{Nothing,Float64}    # monomer interaction potential
+
+    # key vector, position and initial, final bead positions
+    keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
+    pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
+    
+    # lattice view
+    latS::Union{Nothing, AbstractArray{Int32}} = nothing
+
+    # moveTypes! variables
+    moveVec::Union{Nothing, Vector{Int32}} = nothing
+    newPos::Union{Nothing, Vector{Int32}} = nothing
+    moveTypes::Union{Nothing, Vector{Int32}} = nothing     # array of possible move types around a given bead
+    tempVec::Union{Nothing, Vector{Int32}} = nothing
+
+    # proposeMove! variables
+    moveTypeProbs::Union{Nothing, Vector{Float64}} = nothing   # move proposal probabilities
+    nTypes::Union{Nothing, Vector{Float64}} = nothing          # how many of each move type there are
+    
+    # energy
+    ham::Union{Nothing, Float64} = nothing       # Hamiltonian
+    deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
+  end
+
+  
 export Lattice
 Base.@kwdef mutable struct Lattice
     boxlength::Int32     # lattice linear dimension 
