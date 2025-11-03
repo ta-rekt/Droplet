@@ -23,6 +23,9 @@ end
     return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
 end
 
+
+############# Polymer move functions #############
+
 export overlap
 function overlap(p::Poly)
     return ((p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] == 1 && 
@@ -30,9 +33,6 @@ function overlap(p::Poly)
             (p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] == 1 && 
              !coords_equal(p.bnext, p.newPosj)))
 end
-
-
-############# Polymer move functions #############
 
 export addBond!
 function addBond!(p::Poly)
@@ -257,7 +257,6 @@ end
 export move!
 function move!(p::Poly)
     
-    @assert p.name[1] == 'p'
     moveExecuted = false
 
     # sample a bond at random along the chain
@@ -294,41 +293,47 @@ end
 
 ############# Bulk move functions #############
 
-# Translates a particle to a new position set by p.newPosi
-export nudgeParticle!
-function nudgeParticle!(b::Bulk)
+export overlap
+function overlap(b::Bulk)
+    return (b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] == 1)
+end
+
+# Translates a particle to a new position set by b.newPos
+export makeMove!
+function makeMove!(b::Bulk)
+    
+    # update lattice sites
+    b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] = 0
+    b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = 1
+
+    # update current position
+    for i in range(1, 3)
+        b.pos[b.moveIdx][i] = b.newPos[i]
+    end
+
     return b
 end
 
 # Executes a move on a species of bulk monomers diluted in the box
-# by a 3D random walk on each particle
 export move!
 function move!(b::Bulk)
     
-    @assert b.name[1] == 'b'
     moveExecuted = false
 
-    # sample a bond at random along the chain
+    # sample a particle at random
     b.moveIdx = rand(1:b.length)
     
-    # turn off lattice site
-    b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] = 0
+    # PROPOSE: new particle position
+    proposeMove!(b)
 
-    # sample an x/y/z direction and orientation at random
-    b.moveType = rand(range(1, 3))
-    b.pos[b.moveIdx][b.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
-    
-    # clip to within bounding box
-    if b.pos[b.moveIdx][b.moveType] > b.boxlength
-        b.pos[b.moveIdx][b.moveType] -= b.boxlength
-    elseif b.pos[b.moveIdx][b.moveType] < 0
-        b.pos[b.moveIdx][b.moveType] += b.boxlength
+    if !overlap(b)
+
+        if acceptMove!(b)
+
+            makeMove!(b)
+            moveExecuted = true
+        end
     end
-
-    # update new lattice site
-    b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] = 1
-
-    moveExecuted = true
 
     return moveExecuted
 end

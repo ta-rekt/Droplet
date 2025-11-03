@@ -21,7 +21,6 @@ function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
 end
 
 
-
 ############# Polymer Energy functions #############
 
 # Hamiltonian of a polymer
@@ -117,7 +116,7 @@ end
 export deltaHam!
 function deltaHam!(b::Bulk)
 
-    b.deltaH = 2 * b.intPot * (nn(b, b.newPosi) - nn(b, b.bi))
+    b.deltaH = 2 * b.intPot * (nn(b, b.newPos) - nn(b, b.bi))
     b.ham += b.deltaH
 
     return b

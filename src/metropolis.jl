@@ -1,3 +1,22 @@
+############# General metropolis functions #############
+
+# accepts or rejects according to the metropolis criterion
+export acceptMove
+function acceptMove(s::AbstractSpecies)
+
+    deltaHam!(s)
+    
+    prob = min(1, exp(-s.deltaH))
+    r = rand(Uniform(0,1))
+
+    if r < prob
+        return true
+    else
+        return false
+    end
+end
+
+
 ############# Polymer metropolis functions #############
 
 # samples moves according to probabilities set by detailed balance
@@ -75,22 +94,26 @@ function proposeMove!(p::Poly)
     return p
 end
 
-# accepts or rejects according to the metropolis criterion
-export acceptMove
-function acceptMove(p::Poly)
-
-    deltaHam!(p)
-    
-    p = min(1, exp(-p.deltaH))
-    r = rand(Uniform(0,1))
-
-    if r < p
-        return true
-    else
-        return false
-    end
-end
-
 
 ############# Bulk metropolis functions #############
 
+export proposeMove!
+function proposeMove!(b::Bulk)
+
+    for i in range(1, 3)
+        b.newPos[i] = b.pos[b.moveIdx][i]
+    end
+
+    # sample an x/y/z direction and orientation at random
+    b.moveType = rand(range(1, 3))
+    b.newPos[b.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
+    
+    # clip to within bounding box
+    if b.newPos[b.moveType] > b.boxlength
+        b.newPos[b.moveType] -= b.boxlength
+    elseif b.newPos[b.moveType] < 0
+        b.newPos[b.moveType] += b.boxlength
+    end
+
+    return b
+end

@@ -90,7 +90,7 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     # moveTypes! variables
     moveVec::Union{Nothing, Vector{Int32}} = nothing
     newPos::Union{Nothing, Vector{Int32}} = nothing
-    moveTypes::Union{Nothing, Vector{Int32}} = nothing     # array of possible move types around a given bead
+    moveType::Union{Nothing, Vector{Int32}} = nothing     # array of possible move types around a given bead
     tempVec::Union{Nothing, Vector{Int32}} = nothing
 
     # proposeMove! variables
@@ -102,7 +102,7 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
   end
 
-  
+
 export Lattice
 Base.@kwdef mutable struct Lattice
     boxlength::Int32     # lattice linear dimension 
