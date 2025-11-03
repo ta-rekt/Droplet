@@ -298,6 +298,13 @@ function overlap(b::Bulk)
     return (b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] == 1)
 end
 
+export identifyBond!
+function identifyBond!(b::Bulk)
+    b.bi = view(b.pos[b.moveIdx], range(1, 3))
+
+    return b
+end
+
 # Translates a particle to a new position set by b.newPos
 export makeMove!
 function makeMove!(b::Bulk)
@@ -322,13 +329,16 @@ function move!(b::Bulk)
 
     # sample a particle at random
     b.moveIdx = rand(1:b.length)
+
+    # find coordinates and keys of selected bond
+    identifyBond!(b)
     
-    # PROPOSE: new particle position
+    # sample a move uniformly in each direction
     proposeMove!(b)
 
     if !overlap(b)
 
-        if acceptMove!(b)
+        if acceptMove(b)
 
             makeMove!(b)
             moveExecuted = true

@@ -14,17 +14,28 @@ function load!(l::Lattice, filename::String)
     return l
 end
 
-# extracts the coordinates of a species' beads
+# extracts the coordinates of a polymer's beads
 export extractCoords!
-function extractCoords!(s::AbstractSpecies, coords::Matrix)
-    key = s.head           # initial bead
+function extractCoords!(p::Poly, coords::Matrix)
+    key = p.head           # initial bead
     k = 1
     
-    for k in 1:s.length
+    for k in 1:p.length
         if key != 0
-            coords[k, :] = s.pos[key][1:3] # next position
-            key = s.pos[key][5]    # next bead
+            coords[k, :] = p.pos[key][1:3] # next position
+            key = p.pos[key][5]    # next bead
         end
+    end
+
+    return coords
+end
+
+# extracts the coordinates of a polymer's beads
+export extractCoords!
+function extractCoords!(b::Bulk, coords::Matrix)
+
+    for k in 1:b.length
+        coords[k, :] = b.pos[k][1:3] # next position
     end
 
     return coords
@@ -41,22 +52,29 @@ function exportSpecies!(slist::Vector{<:AbstractSpecies}, filename::String)
     for (i, si) in enumerate(slist)
         data[i] = Dict()
 
-        # Extract coordinates (first 3 elements of each position vector)
-        coords = Matrix{Int32}(undef, si.length, 3)
-        extractCoords!(si, coords)
-
-        # @assert k == si.length begin
-        #     "Tail is not N'th bead"
-        # end
-
+        # Extract coordinates (first 3 elements of each position vector) if possible
+        coords = Array{Int32}(undef, 0, 3)
+        if hasproperty(si, :length) && hasproperty(si, :pos)
+            try
+                coords = Matrix{Int32}(undef, Int(si.length), 3)
+                extractCoords!(si, coords)
+            catch
+                # leave coords empty on failure
+                coords = Array{Int32}(undef, 0, 3)
+            end
+        end
         data[i]["coords"] = coords
-        data[i]["name"] = si.name
-        data[i]["maxlength"] = si.maxlength
-        data[i]["boxlength"] = si.boxlength
-        data[i]["chemPot"] = si.chemPot
-        data[i]["intPot"] = si.intPot
-        data[i]["initPos"] = si.initPos
-        data[i]["finalPos"] = si.finalPos
+
+        # helper to return property value or nothing if missing
+        issetprop = (obj, name) -> hasproperty(obj, name) ? getproperty(obj, name) : nothing
+
+        data[i]["name"] = issetprop(si, :name)
+        data[i]["maxlength"] = issetprop(si, :maxlength)
+        data[i]["boxlength"] = issetprop(si, :boxlength)
+        data[i]["chemPot"] = issetprop(si, :chemPot)
+        data[i]["intPot"] = issetprop(si, :intPot)
+        data[i]["initPos"] = issetprop(si, :initPos)
+        data[i]["finalPos"] = issetprop(si, :finalPos)
     end
     
     open(filename, "w") do f

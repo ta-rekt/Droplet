@@ -402,12 +402,12 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing poly move
+# Testing move poly
 @time let
     date = "20251028"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
-    outfile = "testpoly"
+    outfile = "test"
     outpath = string(outdir, outfile)
 
     global l = Lattice(;
@@ -419,115 +419,92 @@ end
     global p = Poly(;
         length = 32,
         maxlength = 256,
-        boxlength = l.boxlength,
         intPot = 1,
         chemPot = 1,
-        initPos = [5,21,21]
+        initPos = [1, 21, 21]
     )
 
     # Bulk monomers
     global b = Bulk(;
-        length = 16,
-        boxlength = l.boxlength,
-        intPot = 0.0,
-        chemPot = 0.0
+        length = 512,
+        intPot = -1.0,
+        chemPot = 1.0
     )
-    slist = [p]
 
-    # initialize lattice and species
-    init!(p)
-    init!(b)
-    initLattice!(l, slist)
+    # list of species
+    slist = [p, b]
+
+    # initialize system
+    init!(l, slist)
     
-    # initialize hamiltonians
-    initHam!(p)
+    # initial energy
     hamInitial = p.ham
 
     #### iterating multiple moves
+
+    nframes = 100
+    step = 10
+    frame = 1
     nmoves = 0
     niter = 0
-    frame = 1
-    nframes = 100
-    step = 50
-    deltaH = 0
     
-    moveMade = false
     radii = zeros(nframes)
     lengths = zeros(nframes)
     hams = zeros(nframes)
     accDeltaH = zeros(nframes)
     moves = ["add", "kink", "remove"]
+    moveMade = false
 
     # println("Frame ", frame)
     # @show p.moveIdx, p.moveType, p.moveVec, p.length
     # @show p.pos
     
     # first frame
-    radii[frame] = radius(p)
-    lengths[frame] = p.length
+    radii[frame] = radius(b)
+    lengths[frame] = b.length
     accDeltaH[frame] = hamInitial
     
-    ham!(p)
+    ham!(b)
     hams[frame] = hamInitial
-    
-    # @show p.ham, p.deltaH
-    # println("")
 
     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
 
     while frame <= nframes - 1
-        
-        if moveMade
 
-            deltaH += p.deltaH
+        for (i, s) in enumerate([b])
 
-            if mod(nmoves, step) == 0
-            
-                frame += 1
+            deltaH = 0
 
-                # println("Frame ", frame)
-                # @show p.moveIdx, moves[p.moveType], p.moveVec, p.length
-                # @show p.pos
-                radii[frame] = radius(p)
-                lengths[frame] = p.length
-                accDeltaH[frame] = accDeltaH[frame-1] + deltaH
-                deltaH = 0
-                
-                ham!(p)
-                hams[frame] = p.ham
+            if moveMade
+                deltaH += s.deltaH
 
-                # @show p.ham, p.deltaH
-                # println("")
-                
-                # export!(l, string(outpath, "_frame$(frame)"))
-                exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+                if mod(nmoves, step) == 0
+                    frame += 1
 
-                if hams[frame] != accDeltaH[frame]
-                    println("Frame ", frame)
-                    @show p.moveIdx, moves[p.moveType], p.moveVec, p.length
-                    @show p.pos
-                    @show p.ham, p.deltaH
-                    @assert hams[frame] == accDeltaH[frame]
+                    if typeof(s) == Poly
+                        radii[frame] = radius(s)
+                        lengths[frame] = s.length
+                    end
+
+                    accDeltaH[frame] = accDeltaH[frame-1] + deltaH
+                    deltaH = 0
+                    
+                    ham!(s)
+                    hams[frame] = s.ham
+
+                    exportSpecies!(slist, string(outpath, "_frame$(frame)"))
                 end
             end
+            
+            moveMade = move!(s)
+            nmoves += moveMade
+            niter += 1
         end
-        
-        moveMade = move!(p)
-        nmoves += moveMade
-        niter += 1
     end
 
     # gyration radii of a straight line and a sphere of volume 'length'
-    rg_line = radiusLine(p.boxlength)
-    rg_sphere = radiusSphere(length(keys(p.pos)))
 
     println("Acceptance rate: ", nmoves / niter)
-
-    ham!(p)
-    println("Hamiltonian: ", p.ham)
-
-    # plot(1:nframes, radii, label = "radius of gyration")
-    # plot!(1:nframes, lengths, label = "polymer length")
 
     p1 = plot(1:nframes, radii;
         label = "radius of gyration",

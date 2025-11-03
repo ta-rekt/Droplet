@@ -66,6 +66,7 @@ function initSpecies!(b::Bulk)
     b.pos[1][4] = 0
     b.pos[b.length][5] = 0
 
+    b.newPos = zeros(Int32, 3)
     b.tempVec = zeros(Int32, 3)
 
     return b

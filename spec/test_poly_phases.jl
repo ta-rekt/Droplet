@@ -9,7 +9,6 @@ global l = Lattice(;
 global p = Poly(;
     length = 32,
     maxlength = 512,
-    boxlength = boxlength,
     intPot = nothing,
     chemPot = nothing,
     initPos = [5,21,21]
@@ -50,11 +49,7 @@ function target!(res, args...)
     p.chemPot = beta
 
     # initialize lattice and species
-    init!(p)
-    initLattice!(l, [p])
-
-    # initialize hamiltonians
-    initHam!(p)
+    init!(l, [p])
 
     nmoves = 0
     niter = 0

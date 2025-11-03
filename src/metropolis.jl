@@ -1,4 +1,4 @@
-############# General metropolis functions #############
+############# Generic metropolis functions #############
 
 # accepts or rejects according to the metropolis criterion
 export acceptMove
@@ -101,19 +101,15 @@ export proposeMove!
 function proposeMove!(b::Bulk)
 
     for i in range(1, 3)
-        b.newPos[i] = b.pos[b.moveIdx][i]
+        b.tempVec[i] = b.pos[b.moveIdx][i]
     end
 
     # sample an x/y/z direction and orientation at random
     b.moveType = rand(range(1, 3))
-    b.newPos[b.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
+    b.tempVec[b.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
     
     # clip to within bounding box
-    if b.newPos[b.moveType] > b.boxlength
-        b.newPos[b.moveType] -= b.boxlength
-    elseif b.newPos[b.moveType] < 0
-        b.newPos[b.moveType] += b.boxlength
-    end
+    boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
 
     return b
 end

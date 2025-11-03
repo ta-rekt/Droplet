@@ -88,9 +88,11 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
 
     # moveTypes! variables
+    bi::Union{Nothing, AbstractArray{Int32}} = nothing
+    moveIdx::Union{Nothing, Int32}      = nothing 
     moveVec::Union{Nothing, Vector{Int32}} = nothing
     newPos::Union{Nothing, Vector{Int32}} = nothing
-    moveType::Union{Nothing, Vector{Int32}} = nothing     # array of possible move types around a given bead
+    moveType::Union{Nothing, Int32} = nothing     # array of possible move types around a given bead
     tempVec::Union{Nothing, Vector{Int32}} = nothing
 
     # proposeMove! variables
