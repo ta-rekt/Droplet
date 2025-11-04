@@ -112,7 +112,7 @@ end
 export deltaHam!
 function deltaHam!(b::Bulk)
 
-    b.deltaH = 2 * b.intPot * (nn(b, b.newPos) - nn(b, b.bi))
+    b.deltaH = b.intPot * (2*(nn(b, b.newPos) - nn(b, b.bi)) - 2)
     b.ham += b.deltaH
 
     return b

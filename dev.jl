@@ -402,7 +402,7 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing move poly
+# Testing move
 @time let
     date = "20251028"
     outdir = "data/$(date)/"
@@ -411,57 +411,47 @@ end
     outpath = string(outdir, outfile)
 
     global l = Lattice(;
-        boxlength = 42,
+        boxlength = 8,
         nspecies = 2
     )
 
     # polymer
     global p = Poly(;
-        length = 32,
-        maxlength = 256,
+        length = 8,
+        maxlength = 24,
         intPot = 1,
         chemPot = 1,
-        initPos = [1, 21, 21]
+        initPos = [0,4,4]
     )
 
-    # Bulk monomers
     global b = Bulk(;
-        length = 512,
-        intPot = -1.0,
-        chemPot = 1.0
+        length = 64,
+        intPot = -1,
+        chemPot = 1
     )
 
-    # list of species
     slist = [p, b]
 
-    # initialize system
+    # initialize lattice and species
     init!(l, slist)
-    
+
     # initial energy
-    hamInitial = p.ham
+    hamInitial = b.ham
 
     #### iterating multiple moves
-
-    nframes = 100
-    step = 10
-    frame = 1
     nmoves = 0
+    frame = 1
+    nframes = 1000
+    step = 500
+    deltaH = 0
     niter = 0
+    moveMade = false
     
     radii = zeros(nframes)
-    lengths = zeros(nframes)
     hams = zeros(nframes)
     accDeltaH = zeros(nframes)
-    moves = ["add", "kink", "remove"]
-    moveMade = false
-
-    # println("Frame ", frame)
-    # @show p.moveIdx, p.moveType, p.moveVec, p.length
-    # @show p.pos
     
     # first frame
-    radii[frame] = radius(b)
-    lengths[frame] = b.length
     accDeltaH[frame] = hamInitial
     
     ham!(b)
@@ -473,24 +463,22 @@ end
 
         for (i, s) in enumerate([b])
 
-            deltaH = 0
-
             if moveMade
+
                 deltaH += s.deltaH
 
                 if mod(nmoves, step) == 0
+                
                     frame += 1
 
-                    if typeof(s) == Poly
-                        radii[frame] = radius(s)
-                        lengths[frame] = s.length
-                    end
-
+                    radii[frame] = radius(s)
                     accDeltaH[frame] = accDeltaH[frame-1] + deltaH
                     deltaH = 0
                     
                     ham!(s)
                     hams[frame] = s.ham
+
+                    # @assert hams[frame] == accDeltaH[frame]
 
                     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
                 end
