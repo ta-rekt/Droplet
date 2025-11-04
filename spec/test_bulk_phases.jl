@@ -18,7 +18,7 @@ slist = [b]
 
 ### simulation parameters
 
-nframes = 10000  
+nframes = 50000  
 step = 10000     
 
 vals = range(-1, stop=1, step=0.25)   # parallelized parameters (int. pot.)
