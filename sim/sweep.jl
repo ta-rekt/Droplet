@@ -39,7 +39,7 @@ let
 
     
     ### write data
-    file = string(outdir, "_cpu$(cpukey).json")
+    file = string(outdir, "/output_cpu$(cpukey).json")
 
     open(file, "w") do f
         JSON.print(f, results, 4)

@@ -441,7 +441,7 @@ end
     #### iterating multiple moves
     nmoves = 0
     frame = 1
-    nframes = 1000
+    nframes = 100
     step = 500
     deltaH = 0
     niter = 0
@@ -464,11 +464,9 @@ end
         for (i, s) in enumerate([b])
 
             if moveMade
-
                 deltaH += s.deltaH
 
                 if mod(nmoves, step) == 0
-                
                     frame += 1
 
                     radii[frame] = radius(s)
