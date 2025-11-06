@@ -411,13 +411,13 @@ end
     outpath = string(outdir, outfile)
 
     global l = Lattice(;
-        boxlength = 8,
+        boxlength = 6,
         nspecies = 2
     )
 
     # polymer
     global p = Poly(;
-        length = 8,
+        length = 6,
         maxlength = 24,
         intPot = 1,
         chemPot = 1,
@@ -441,8 +441,8 @@ end
     #### iterating multiple moves
     nmoves = 0
     frame = 1
-    nframes = 100
-    step = 500
+    nframes = 1000
+    step = 1
     deltaH = 0
     niter = 0
     moveMade = false
@@ -476,7 +476,11 @@ end
                     ham!(s)
                     hams[frame] = s.ham
 
-                    # @assert hams[frame] == accDeltaH[frame]
+                    if hams[frame] != accDeltaH[frame]
+                        print("Frame: ", frame)
+                        exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+                        @assert hams[frame] == accDeltaH[frame]
+                    end
 
                     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
                 end

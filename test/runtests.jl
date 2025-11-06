@@ -151,7 +151,7 @@ using Test
         @test p.moveTypes == [1,2,1,2]
     end
 
-    @testset "Hamiltonian" begin
+    @testset "Hamiltonian (poly)" begin
 
         global l = Lattice(;
             boxlength = 42,
@@ -165,6 +165,71 @@ using Test
             intPot = 1,
             chemPot = 1,
             initPos = [5,21,21]
+        )
+
+        slist = [p]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        # initial energy
+        hamInitial = p.ham
+
+        #### iterating multiple moves
+        nmoves = 0
+        frame = 1
+        nframes = 100
+        step = 50
+        deltaH = 0
+        moveMade = false
+        
+        hams = zeros(nframes)
+        accDeltaH = zeros(nframes)
+        
+        # first frame
+        accDeltaH[frame] = hamInitial
+        
+        ham!(p)
+        hams[frame] = hamInitial
+
+        while frame <= nframes - 1
+            
+            if moveMade
+
+                deltaH += p.deltaH
+
+                if mod(nmoves, step) == 0
+                
+                    frame += 1
+
+                    accDeltaH[frame] = accDeltaH[frame-1] + deltaH
+                    deltaH = 0
+                    
+                    ham!(p)
+                    hams[frame] = p.ham
+
+                    @test hams[frame] == accDeltaH[frame]
+                end
+            end
+            
+            moveMade = move!(p)
+            nmoves += moveMade
+        end
+    end
+
+
+    @testset "Hamiltonian (bulk)" begin
+
+        global l = Lattice(;
+            boxlength = 32,
+            nspecies = 1
+        )
+
+        # polymer
+        global p = Bulk(;
+            length = 1000,
+            intPot = -1,
+            chemPot = 1
         )
 
         slist = [p]

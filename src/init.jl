@@ -55,9 +55,16 @@ function initSpecies!(b::Bulk)
 
     b.name = string("bulk", b.id)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
-    
+
+    pos_idxs = sample(0:(b.boxlength^3-1), b.length, replace=false)
+
     for i in 1:b.length
-        b.pos[i] = rand(1:b.boxlength, 5)
+        b.pos[i] = zeros(5)
+        mx = mod(pos_idxs[i], b.boxlength^2)
+
+        b.pos[i][1] = div(pos_idxs[i], b.boxlength^2) + 1
+        b.pos[i][2] = div(mx, b.boxlength) + 1
+        b.pos[i][3] = mod(mx, b.boxlength) + 1
         b.pos[i][4] = i-1
         b.pos[i][5] = i+1
     end

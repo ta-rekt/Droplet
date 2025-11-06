@@ -295,7 +295,7 @@ end
 
 export overlap
 function overlap(b::Bulk)
-    return (b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] == 1)
+    return b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] == 1
 end
 
 export identifyBond!
