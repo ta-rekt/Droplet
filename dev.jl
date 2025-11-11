@@ -425,7 +425,7 @@ end
     )
 
     global b = Bulk(;
-        length = 64,
+        length = 215,
         intPot = -1,
         chemPot = 1
     )
@@ -441,7 +441,7 @@ end
     #### iterating multiple moves
     nmoves = 0
     frame = 1
-    nframes = 1000
+    nframes = 10
     step = 1
     deltaH = 0
     niter = 0

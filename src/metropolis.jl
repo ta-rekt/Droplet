@@ -113,3 +113,50 @@ function proposeMove!(b::Bulk)
 
     return b
 end
+
+
+############# FastBulk metropolis functions #############
+
+export proposeMove!
+function proposeMove!(b::FastBulk)
+
+    for i in range(1, 3)
+        b.tempVec[i] = b.pos[b.moveIdx][i]
+    end
+
+    @assert isempty(b.freeNNs) begin
+        "No free nearest neighbor sites: proposing an impossible move"
+    end
+
+    # sample an index of b.nnIdxs's zero values at random
+    b.moveType = rand(b.freeNNs)
+    axis = div(b.moveType + 1, 2)
+    dir = mod(b.moveType + 1, 2) * 2 - 1
+
+    b.tempVec[axis] = b.pos[b.moveIdx][axis] + dir
+
+    # TODO: hastings factor. two terms: 
+    # 1. |S(x)| / |S(x')|, where S(x) is the size of the movable set of config. x
+    # 2. |M(x)| / |M(x')|, where M(x) is the number of free nearest neighbs around b.bi
+
+    # clip to within bounding box
+    boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+
+    return b
+end
+
+# accepts or rejects according to the metropolis criterion
+export acceptMove
+function acceptMove(b::FastBulk)
+
+    deltaHam!(b)
+    
+    prob = min(1, b.hastingsFactor * exp(-b.deltaH))
+    r = rand(Uniform(0,1))
+
+    if r < prob
+        return true
+    else
+        return false
+    end
+end

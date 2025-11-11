@@ -8,6 +8,9 @@ const PKINK = 0.8
 abstract type AbstractSpecies end
 abstract type AbstractPoly <: AbstractSpecies end
 abstract type AbstractBulk <: AbstractSpecies end 
+abstract type AbstractFastBulk <: AbstractBulk end 
+
+######## Polymer #######
 
 export Poly
 Base.@kwdef mutable struct Poly <: AbstractPoly
@@ -64,6 +67,8 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
 end
 
 
+######## Bulk #######
+
 export Bulk
 Base.@kwdef mutable struct Bulk <: AbstractBulk
     
@@ -89,21 +94,72 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
-    moveIdx::Union{Nothing, Int32}      = nothing 
+    moveIdx::Union{Nothing, Int32} = nothing 
     moveVec::Union{Nothing, Vector{Int32}} = nothing
     newPos::Union{Nothing, Vector{Int32}} = nothing
     moveType::Union{Nothing, Int32} = nothing     # array of possible move types around a given bead
     tempVec::Union{Nothing, Vector{Int32}} = nothing
 
     # proposeMove! variables
+    movableIdxs::Union{Nothing, Vector{Int32}} = nothing  # coordinates of unconfined particles
     moveTypeProbs::Union{Nothing, Vector{Float64}} = nothing   # move proposal probabilities
-    nTypes::Union{Nothing, Vector{Float64}} = nothing          # how many of each move type there are
+    nnsOld::Union{Nothing, Int32} = nothing          # number of nearest neighbs of old site
+    nnsNew::Union{Nothing, Int32} = nothing          # number of nearest neighbs of new site
     
     # energy
     ham::Union{Nothing, Float64} = nothing       # Hamiltonian
     deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
-  end
+end
 
+
+######## FastBulk #######
+
+export FastBulk
+Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
+    
+    id::Int32 = begin
+      SPECIES_ID_COUNTER[] += 1
+      SPECIES_ID_COUNTER[]
+    end
+
+    name::String = ""    # unique name of this species
+
+    # required fields
+    length::Int32        # number of beads
+    chemPot::Union{Nothing,Float64}   # monomer chemical potential
+    intPot::Union{Nothing,Float64}    # monomer interaction potential
+
+    # key vector, position and initial, final bead positions
+    boxlength::Union{Nothing, Int32} = nothing
+    keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
+    pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
+    
+    # lattice view
+    latS::Union{Nothing, AbstractArray{Int32}} = nothing
+
+    # moveTypes! variables
+    bi::Union{Nothing, AbstractArray{Int32}} = nothing
+    moveIdx::Union{Nothing, Int32} = nothing 
+    moveVec::Union{Nothing, Vector{Int32}} = nothing
+    newPos::Union{Nothing, Vector{Int32}} = nothing
+    moveType::Union{Nothing, Int32} = nothing     # array of possible move types around a given bead
+    tempVec::Union{Nothing, Vector{Int32}} = nothing
+    nnIdxs::Union{Nothing, Vector{Int32}} = nothing
+
+    # proposeMove! variables
+    movableIdxs::Union{Nothing, Set{Int32}} = nothing  # coordinates of unconfined particles
+    freeNNs::Union{Nothing, Set{Int32}} = nothing   # move proposal probabilities
+    nnsOld::Union{Nothing, Int32} = nothing          # number of nearest neighbs of old site
+    nnsNew::Union{Nothing, Int32} = nothing          # number of nearest neighbs of new site
+    hastingsFactor::Union{Nothing, Float64} = nothing
+    
+    # energy
+    ham::Union{Nothing, Float64} = nothing       # Hamiltonian
+    deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
+end
+
+
+######## Lattice #######
 
 export Lattice
 Base.@kwdef mutable struct Lattice

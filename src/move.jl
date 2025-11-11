@@ -1,28 +1,3 @@
-############# Utilities #############
-
-# ensures positions are periodic within the lattice's bounding box
-export boxmod!
-function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
-                 w::Union{SubArray{Int32}, Vector{Int32}}, 
-                 lb::Int32, ub::Int32)
-
-    for i in eachindex(v)
-        if v[i] > ub
-            w[i] = v[i] - (ub - lb + 1)
-        elseif v[i] < lb
-            w[i] = v[i] + (ub - lb + 1)
-        else
-            w[i] = v[i]
-        end
-    end
-    
-    return w
-end
-
-@inline function coords_equal(a, b)
-    return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
-end
-
 
 ############# Polymer move functions #############
 
@@ -310,7 +285,7 @@ export makeMove!
 function makeMove!(b::Bulk)
     
     # update lattice sites
-    b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] = 0
+    b.latS[b.bi[1], b.bi[2], b.bi[3]] = 0
     b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = 1
 
     # update current position
@@ -329,6 +304,86 @@ function move!(b::Bulk)
 
     # sample a particle at random
     b.moveIdx = rand(1:b.length)
+
+    # find coordinates and keys of selected bond
+    identifyBond!(b)
+    
+    # sample a move uniformly in each direction
+    proposeMove!(b)
+
+    if !overlap(b)
+
+        if acceptMove(b)
+
+            makeMove!(b)
+            moveExecuted = true
+        end
+    end
+
+    return moveExecuted
+end
+
+
+############# FastBulk move functions #############
+
+export identifyBond!
+function identifyBond!(b::FastBulk)
+    b.bi = view(b.pos[b.moveIdx], range(1, 3))
+
+    # find current nns, add them to b.movableIdxs, including new position's index
+    nnIdxs(b, b.bi)
+    
+    for nnIdx in b.nnIdxs
+        if nnIdx > 0
+            push!(b.movableIdxs, nnIdx)
+        end
+    end
+
+    return b
+end
+
+# Translates a particle to a new position set by b.newPos
+export makeMove!
+function makeMove!(b::FastBulk)
+    
+    # delete old lattice site
+    b.latS[b.bi[1], b.bi[2], b.bi[3]] = 0
+    b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = b.moveIdx
+
+    # find if new position's nns are no longer movable
+    nnIdxs(b, b.newPos)
+
+    for nnIdx in b.nnIdxs
+        if nnIdx > 0
+            if nn(b, b.pos[nnIdx][range(1, 3)]) == 6
+                pop!(b.movableIdxs, nnIdx)
+            end
+        end
+    end
+
+    # add new site to movableIdxs
+    push!(b.movableIdxs, b.moveIdx)
+    
+    # update current position and new lattice site
+    for i in range(1, 3)
+        b.pos[b.moveIdx][i] = b.newPos[i]
+    end
+
+    @assert b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] == b.moveIdx begin
+        "Invalid index-position correspondence"
+    end
+
+    return b
+end
+
+# Executes a move on a species of bulk monomers diluted in the box
+export move!
+function move!(b::FastBulk)
+    
+    moveExecuted = false
+
+    # sample a particle at random among movable particles
+    b.moveIdx = rand(b.movableIdxs)
 
     # find coordinates and keys of selected bond
     identifyBond!(b)

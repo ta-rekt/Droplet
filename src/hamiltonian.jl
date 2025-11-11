@@ -1,26 +1,3 @@
-############# Utilities #############
-
-# Number of nearest neighbors at a given position
-export nn
-function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
-    n = 0
-
-    for i in range(1, 3)
-        pos[i] += 1
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
-
-        pos[i] -= 2
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]]
-
-        pos[i] += 1
-    end
-
-    return n
-end
-
-
 ############# Polymer Energy functions #############
 
 # Hamiltonian of a polymer

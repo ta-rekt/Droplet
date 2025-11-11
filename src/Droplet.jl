@@ -13,6 +13,7 @@ module Droplet
     include("hamiltonian.jl")
     include("metropolis.jl")
     include("move.jl")
+    include("port.jl")
     include("init.jl")
     include("utils.jl")
     include("stats.jl")

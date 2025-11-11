@@ -1,92 +1,78 @@
-# saves a lattice's state into a binary file
-export save!
-function save!(l::Lattice, filename::String)
-    filename = string(filename, ".bin")
-    Serialization.serialize(filename, l.lat)
+############# Generic utilities #############
+
+# ensures positions are periodic within the lattice's bounding box
+export boxmod!
+function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
+                 w::Union{SubArray{Int32}, Vector{Int32}}, 
+                 lb::Int32, ub::Int32)
+
+    for i in eachindex(v)
+        if v[i] > ub
+            w[i] = v[i] - (ub - lb + 1)
+        elseif v[i] < lb
+            w[i] = v[i] + (ub - lb + 1)
+        else
+            w[i] = v[i]
+        end
+    end
+    
+    return w
 end
 
-# loads a lattice's state from a binary file
-export load!
-function load!(l::Lattice, filename::String)
-    filename = string(filename, ".bin")
-    l.lat = Serialization.deserialize(filename)
+# Number of nearest neighbors at a given position
+export nn
+function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
 
-    return l
+    for i in range(1, 3)
+        pos[i] += 1
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += (s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+
+        pos[i] -= 2
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += (s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+
+        pos[i] += 1
+    end
+
+    return n
 end
 
-# extracts the coordinates of a polymer's beads
-export extractCoords!
-function extractCoords!(p::Poly, coords::Matrix)
-    key = p.head           # initial bead
+export coords_equal
+@inline function coords_equal(a, b)
+    return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
+end
+
+
+############# FastBulk utilities #############
+
+# Set of nearest neighbors of a given position
+export nnIdxs
+function nnIdxs(b::AbstractFastBulk, pos::Union{SubArray{Int32}, Vector{Int32}})
     k = 1
-    
-    for k in 1:p.length
-        if key != 0
-            coords[k, :] = p.pos[key][1:3] # next position
-            key = p.pos[key][5]    # next bead
+
+    for i in range(1, 3)
+        pos[i] += 1
+        boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
+        b.nnIdxs[k] = b.latS[b.tempVec[1], b.tempVec[2], b.tempVec[3]]
+        k += 1
+
+        if b.nnIdxs[k] == 0
+            push!(b.freeNNs, k)
         end
-    end
 
-    return coords
-end
+        pos[i] -= 2
+        boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
+        b.nnIdxs[k] = b.latS[b.tempVec[1], b.tempVec[2], b.tempVec[3]]
+        k += 1
 
-# extracts the coordinates of a polymer's beads
-export extractCoords!
-function extractCoords!(b::Bulk, coords::Matrix)
-
-    for k in 1:b.length
-        coords[k, :] = b.pos[k][1:3] # next position
-    end
-
-    return coords
-end
-
-# exports a list of species to JSON for python compatibility
-# slist is a list of species s, export the bead coordinates s.pos in a 
-# (s.length x 3)-shaped vector and associated metadata
-export exportSpecies!
-function exportSpecies!(slist::Vector{<:AbstractSpecies}, filename::String)
-    filename = string(filename, ".json")
-    data = Dict()
-    
-    for (i, si) in enumerate(slist)
-        data[i] = Dict()
-
-        # Extract coordinates (first 3 elements of each position vector) if possible
-        coords = Array{Int32}(undef, 0, 3)
-        if hasproperty(si, :length) && hasproperty(si, :pos)
-            try
-                coords = Matrix{Int32}(undef, Int(si.length), 3)
-                extractCoords!(si, coords)
-            catch
-                # leave coords empty on failure
-                coords = Array{Int32}(undef, 0, 3)
-            end
+        if b.nnIdxs[k] == 0
+            push!(b.freeNNs, k)
         end
-        data[i]["coords"] = coords
 
-        # helper to return property value or nothing if missing
-        issetprop = (obj, name) -> hasproperty(obj, name) ? getproperty(obj, name) : nothing
+        pos[i] += 1
+    end
 
-        data[i]["name"] = issetprop(si, :name)
-        data[i]["maxlength"] = issetprop(si, :maxlength)
-        data[i]["boxlength"] = issetprop(si, :boxlength)
-        data[i]["chemPot"] = issetprop(si, :chemPot)
-        data[i]["intPot"] = issetprop(si, :intPot)
-        data[i]["initPos"] = issetprop(si, :initPos)
-        data[i]["finalPos"] = issetprop(si, :finalPos)
-    end
-    
-    open(filename, "w") do f
-        JSON.print(f, data, 4)
-    end
-end
-
-# exports the full state of a lattice
-export export!
-function export!(l::Lattice, filename::String)
-    filename = string(filename, ".json")
-    open(filename, "w") do f
-        JSON.print(f, l.lat, 4)
-    end
+    return b
 end

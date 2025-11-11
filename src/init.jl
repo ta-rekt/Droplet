@@ -47,6 +47,7 @@ function initSpecies!(p::Poly)
     return p
 end
 
+
 ######## Bulk #######
 
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
@@ -62,19 +63,68 @@ function initSpecies!(b::Bulk)
         b.pos[i] = zeros(5)
         mx = mod(pos_idxs[i], b.boxlength^2)
 
-        b.pos[i][1] = div(pos_idxs[i], b.boxlength^2) + 1
-        b.pos[i][2] = div(mx, b.boxlength) + 1
-        b.pos[i][3] = mod(mx, b.boxlength) + 1
-        b.pos[i][4] = i-1
-        b.pos[i][5] = i+1
+        b.pos[i][1] = div(pos_idxs[i], b.boxlength^2) + 1 # x coordinate
+        b.pos[i][2] = div(mx, b.boxlength) + 1            # y coordinate
+        b.pos[i][3] = mod(mx, b.boxlength) + 1            # z coordinate
+        b.pos[i][4] = i - 1
+        b.pos[i][5] = i + 1
     end
-    
+
     # head and tail beads
     b.pos[1][4] = 0
     b.pos[b.length][5] = 0
 
+    b.nnsOld = 0
+    b.nnsNew = 0
     b.newPos = zeros(Int32, 3)
     b.tempVec = zeros(Int32, 3)
+
+    return b
+end
+
+
+######## FastBulk #######
+
+# initializes beads positioned uniformly randomly (dilute and well-mixed)
+export initSpecies!
+function initSpecies!(b::FastBulk)
+
+    b.name = string("bulk", b.id)
+    b.pos = OrderedDict{Int32, Vector{Int32}}()
+
+    pos_idxs = sample(0:(b.boxlength^3-1), b.length, replace=false)
+
+    for i in 1:b.length
+        b.pos[i] = zeros(5)
+        mx = mod(pos_idxs[i], b.boxlength^2)
+
+        b.pos[i][1] = div(pos_idxs[i], b.boxlength^2) + 1 # x coordinate
+        b.pos[i][2] = div(mx, b.boxlength) + 1            # y coordinate
+        b.pos[i][3] = mod(mx, b.boxlength) + 1            # z coordinate
+        b.pos[i][4] = i - 1
+        b.pos[i][5] = i + 1
+    end
+
+    # build set of movable particles
+    b.movableIdxs = Set{Int32}()
+    b.freeNNs = Set{Int32}()
+    b.hastingsFactor = 1
+
+    for i in 1:b.length
+        if nn(b, b.pos[i][range(1,3)]) < 6
+            push!(b.movableIdxs, i)
+        end
+    end
+
+    # head and tail beads
+    b.pos[1][4] = 0
+    b.pos[b.length][5] = 0
+
+    b.nnsOld = 0
+    b.nnsNew = 0
+    b.newPos = zeros(Int32, 3)
+    b.tempVec = zeros(Int32, 3)
+    b.nnIdxs = zeros(Int32, 6)
 
     return b
 end
@@ -101,8 +151,15 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         # give species s a view on its lattice sites
         s.latS = view(l.lat, i, :, :, :)
 
-        for j in 1:s.length
-            s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = 1
+        # TODO: apply this to all species
+        if s <: AbstractFastBulk
+            for j in 1:s.length
+                s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = j
+            end
+        else
+            for j in 1:s.length
+                s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = 1
+            end
         end
 
         # requires s.latS to be set
