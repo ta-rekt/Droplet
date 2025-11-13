@@ -330,7 +330,7 @@ export identifyBond!
 function identifyBond!(b::FastBulk)
     b.bi = view(b.pos[b.moveIdx], range(1, 3))
 
-    # find current nns, add them to b.movableIdxs, including new position's index
+    # find current nns, add them to b.movableIdxs
     nnIdxs(b, b.bi)
     
     for nnIdx in b.nnIdxs

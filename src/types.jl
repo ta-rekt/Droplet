@@ -33,6 +33,7 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
     initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
+    initShape::Union{Nothing, String} = nothing
     finalPos::Union{Nothing, Vector{Int32}} = nothing   # anchor position on the other side
 
     # addBond!, removeBond!, identifyBond! variables
@@ -88,7 +89,9 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     boxlength::Union{Nothing, Int32} = nothing
     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
-    
+    initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
+    initShape::Union{Nothing, String} = nothing
+
     # lattice view
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
 
@@ -133,7 +136,9 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     boxlength::Union{Nothing, Int32} = nothing
     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
-    
+    initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
+    initShape::Union{Nothing, String} = nothing
+
     # lattice view
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
 

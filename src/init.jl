@@ -10,6 +10,74 @@ function initHam!(s::AbstractSpecies)
 end
 
 
+# initializes lattice sites from a list of presets
+export initShape!
+function initShape!(s::AbstractBulk)
+    if s.initShape == "uniform"
+        # sample uniformly randomly
+        pos_idxs = sample(0:(s.boxlength^3-1), s.length, replace=false)
+        
+        for i in 1:s.length
+            s.pos[i] = zeros(5)
+            mx = mod(pos_idxs[i], s.boxlength^2)
+            
+            s.pos[i][1] = div(pos_idxs[i], s.boxlength^2) + 1 # x coordinate
+            s.pos[i][2] = div(mx, s.boxlength) + 1            # y coordinate
+            s.pos[i][3] = mod(mx, s.boxlength) + 1            # z coordinate
+            s.pos[i][4] = i - 1
+            s.pos[i][5] = i + 1
+        end
+        
+    elseif s.initShape == "line"
+        # line from initial position
+        v = zeros(Int32, 3)
+        
+        for i in 1:s.length
+            s.pos[i][1] = s.initPos === nothing ? i : i + s.initPos[1] - 1
+            s.pos[i][2] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[2]
+            s.pos[i][3] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[3]
+            s.pos[i][4] = i - 1
+            s.pos[i][5] = i + 1
+        end
+        
+    elseif s.initShape == "box"
+        # filled box shape
+        idx = 1
+        box_side = ceil(Int, s.length^(1/3))
+        centerxyz = div(s.boxlength, 2)
+        startPos = s.initPos === nothing ? [centerxyz, centerxyz, centerxyz] : s.initPos
+        
+        for x in 0:(box_side-1)
+            for y in 0:(box_side-1)
+                for z in 0:(box_side-1)
+                    if idx > s.length
+                        break
+                    end
+                    s.pos[idx] = zeros(5)
+                    s.pos[idx][1] = startPos[1] + x - div(box_side, 2)
+                    s.pos[idx][2] = startPos[2] + y - div(box_side, 2)
+                    s.pos[idx][3] = startPos[3] + z - div(box_side, 2)
+                    s.pos[idx][4] = idx - 1
+                    s.pos[idx][5] = idx + 1
+                    idx += 1
+                end
+                if idx > s.length
+                    break
+                end
+            end
+            if idx > s.length
+                break
+            end
+        end
+    end
+    
+    # head and tail beads
+    s.pos[1][4] = 0
+    s.pos[s.length][5] = 0
+    
+    return s
+end
+
 ######## Polymer #######
 
 # initializes bead locations of a long polymer in a doubly-linked list

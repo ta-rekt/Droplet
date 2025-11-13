@@ -40,3 +40,32 @@ function radiusSphere(length)
     r = (3*length/(4*pi))^(1/3)
     return sqrt(3/5)*r
 end
+
+# connected components
+# pseudocode:
+
+# ccs = []
+# DFS(1, [])
+
+# function DFS(bi, marked)
+#   if bi not in marked
+#       push!(marked, bi)
+
+#   allMarked = true
+#
+#   for bj in nearestNeighbs(bi)
+#       if bj != 0
+    #       if bj not in marked
+    #           allMarked = false
+    #           marked = DFS(bj, marked)
+#   
+#   if allMarked
+#       return marked
+
+export connComp
+function connComp(s::AbstractSpecies)
+
+    ccs = []
+    
+
+end
