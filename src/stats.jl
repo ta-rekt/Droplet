@@ -11,7 +11,7 @@ function centerMass(s::AbstractSpecies)
     return cm ./ s.length
 end
 
-# radius of gyration, mean squared distance btw each bead and
+# radius of gyration, mean squared distance between each bead and
 # the center of mass
 export radius
 function radius(s::AbstractSpecies)
@@ -41,31 +41,46 @@ function radiusSphere(length)
     return sqrt(3/5)*r
 end
 
-# connected components
-# pseudocode:
 
-# ccs = []
-# DFS(1, [])
+# Depth-first search: takes a bead index bi and marks all beads
+# traversed starting from bi (adds their indices to the marked list)
+export dfs
+function dfs(s::AbstractFastBulk, bi::Int32, marked::Vector{Int32})
+    if bi not in marked
+        push!(marked, bi)
+    end
 
-# function DFS(bi, marked)
-#   if bi not in marked
-#       push!(marked, bi)
+    nnIdxs!(s, s.pos[bi])
 
-#   allMarked = true
-#
-#   for bj in nearestNeighbs(bi)
-#       if bj != 0
-    #       if bj not in marked
-    #           allMarked = false
-    #           marked = DFS(bj, marked)
-#   
-#   if allMarked
-#       return marked
+    for bj in s.nnIdxs
+        if bj != 0
+            if bj not in marked
+                marked = dfs(s, bj, marked)
+            end
+        end
+    end
 
-export connComp
-function connComp(s::AbstractSpecies)
+    return marked
+end
+
+# Connected components in the lattice
+export cc
+function cc(s::AbstractFastBulk)
 
     ccs = []
-    
+    marked = Set(range(1, s.length))  # all keys
+    marked_bi = []
 
+    while !isempty(marked)
+        bi = marked[1]
+        marked_bi = dfs(s, bi, marked_bi)
+
+        for bj in marked_bi
+            pop!(marked, bj)
+        end
+
+        push!(ccs, marked_bi)
+    end
+
+    return ccs
 end

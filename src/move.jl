@@ -331,7 +331,7 @@ function identifyBond!(b::FastBulk)
     b.bi = view(b.pos[b.moveIdx], range(1, 3))
 
     # find current nns, add them to b.movableIdxs
-    nnIdxs(b, b.bi)
+    nnIdxs!(b, b.bi)
     
     for nnIdx in b.nnIdxs
         if nnIdx > 0
@@ -351,7 +351,7 @@ function makeMove!(b::FastBulk)
     b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = b.moveIdx
 
     # find if new position's nns are no longer movable
-    nnIdxs(b, b.newPos)
+    nnIdxs!(b, b.newPos)
 
     for nnIdx in b.nnIdxs
         if nnIdx > 0

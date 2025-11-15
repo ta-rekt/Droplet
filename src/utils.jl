@@ -48,8 +48,8 @@ end
 ############# FastBulk utilities #############
 
 # Set of nearest neighbors of a given position
-export nnIdxs
-function nnIdxs(b::AbstractFastBulk, pos::Union{SubArray{Int32}, Vector{Int32}})
+export nnIdxs!
+function nnIdxs!(b::AbstractFastBulk, pos::Union{SubArray{Int32}, Vector{Int32}})
     k = 1
 
     for i in range(1, 3)
