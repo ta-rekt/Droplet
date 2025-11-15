@@ -9,66 +9,88 @@ function initHam!(s::AbstractSpecies)
     return s
 end
 
+# initial configurations
+export initUniform!
+function initUniform!(pos::OrderedDict{Int32, Vector{Int32}}, boxlength::Int32, length::Int32)
+    # sample uniformly randomly
+    pos_idxs = sample(0:(boxlength^3-1), length, replace=false)
+    
+    for i in 1:length
+        pos[i] = zeros(5)
+        mx = mod(pos_idxs[i], boxlength^2)
+        
+        pos[i][1] = div(pos_idxs[i], boxlength^2) + 1 # x coordinate
+        pos[i][2] = div(mx, boxlength) + 1            # y coordinate
+        pos[i][3] = mod(mx, boxlength) + 1            # z coordinate
+        pos[i][4] = i - 1
+        pos[i][5] = i + 1
+    end
 
-# initializes lattice sites from a list of presets
-export initShape!
-function initShape!(s::AbstractBulk)
-    if s.initShape == "uniform"
-        # sample uniformly randomly
-        pos_idxs = sample(0:(s.boxlength^3-1), s.length, replace=false)
-        
-        for i in 1:s.length
-            s.pos[i] = zeros(5)
-            mx = mod(pos_idxs[i], s.boxlength^2)
-            
-            s.pos[i][1] = div(pos_idxs[i], s.boxlength^2) + 1 # x coordinate
-            s.pos[i][2] = div(mx, s.boxlength) + 1            # y coordinate
-            s.pos[i][3] = mod(mx, s.boxlength) + 1            # z coordinate
-            s.pos[i][4] = i - 1
-            s.pos[i][5] = i + 1
-        end
-        
-    elseif s.initShape == "line"
-        # line from initial position
-        v = zeros(Int32, 3)
-        
-        for i in 1:s.length
-            s.pos[i][1] = s.initPos === nothing ? i : i + s.initPos[1] - 1
-            s.pos[i][2] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[2]
-            s.pos[i][3] = s.initPos === nothing ? div(s.boxlength, 2) : s.initPos[3]
-            s.pos[i][4] = i - 1
-            s.pos[i][5] = i + 1
-        end
-        
-    elseif s.initShape == "box"
-        # filled box shape
-        idx = 1
-        box_side = ceil(Int, s.length^(1/3))
-        centerxyz = div(s.boxlength, 2)
-        startPos = s.initPos === nothing ? [centerxyz, centerxyz, centerxyz] : s.initPos
-        
-        for x in 0:(box_side-1)
-            for y in 0:(box_side-1)
-                for z in 0:(box_side-1)
-                    if idx > s.length
-                        break
-                    end
-                    s.pos[idx] = zeros(5)
-                    s.pos[idx][1] = startPos[1] + x - div(box_side, 2)
-                    s.pos[idx][2] = startPos[2] + y - div(box_side, 2)
-                    s.pos[idx][3] = startPos[3] + z - div(box_side, 2)
-                    s.pos[idx][4] = idx - 1
-                    s.pos[idx][5] = idx + 1
-                    idx += 1
-                end
-                if idx > s.length
+    return pos
+end
+
+export initLine!
+function initLine!(pos::OrderedDict{Int32, Vector{Int32}}, 
+                   initPos::Union{Nothing, Vector{Int32}}, 
+                   boxlength::Int32,
+                   length::Int32)
+
+    # line from center of one face to the other along x axis
+    for i in 1:length
+        pos[i] = zeros(5)
+        pos[i][1] = initPos === nothing ? i : i + initPos[1] - 1
+        pos[i][2] = initPos === nothing ? div(boxlength, 2) : initPos[2]
+        pos[i][3] = initPos === nothing ? div(boxlength, 2) : initPos[3]
+        pos[i][4] = i - 1
+        pos[i][5] = i + 1
+    end
+
+    return pos
+end
+
+export initBox!
+function initBox!(pos::OrderedDict{Int32, Vector{Int32}}, 
+                  initPos::Union{Nothing, Vector{Int32}},
+                  length::Int32)
+    # filled box shape
+    idx = 1
+    box_side = ceil(Int, length^(1/3))
+    startPos = initPos === nothing ? [0, 0, 0] : initPos
+    
+    for x in 0:(box_side-1)
+        for y in 0:(box_side-1)
+            for z in 0:(box_side-1)
+                if idx > length
                     break
                 end
+                pos[idx] = zeros(5)
+                pos[idx][1] = startPos[1] + x - div(box_side, 2)
+                pos[idx][2] = startPos[2] + y - div(box_side, 2)
+                pos[idx][3] = startPos[3] + z - div(box_side, 2)
+                pos[idx][4] = idx - 1
+                pos[idx][5] = idx + 1
+                idx += 1
             end
-            if idx > s.length
+            if idx > length
                 break
             end
         end
+        if idx > length
+            break
+        end
+    end
+end
+
+
+######## Polymer #######
+
+# initializes species configuration from a list of presets
+export initShape!
+function initShape!(s::AbstractPoly)
+    if s.initShape == "line" || s.initShape === nothing
+        initLine!(s.pos, s.initPos, s.boxlength, s.length)
+    else
+        error("s.initShape should be string or nothing")
     end
     
     # head and tail beads
@@ -78,27 +100,16 @@ function initShape!(s::AbstractBulk)
     return s
 end
 
-######## Polymer #######
-
 # initializes bead locations of a long polymer in a doubly-linked list
 export initSpecies!
 function initSpecies!(p::Poly)
     p.name = string("poly", p.id)
     p.pos = OrderedDict{Int32, Vector{Int32}}()
-    v = zeros(Int32, 3)
-
-    # line from center of one face to the other along x axis
-    for i in 1:p.length
-        v[1] = p.initPos === nothing ? i : i + p.initPos[1]
-        v[2] = p.initPos === nothing ? div(p.boxlength, 2) : p.initPos[2]
-        v[3] = p.initPos === nothing ? div(p.boxlength, 2) : p.initPos[3]
-        p.pos[i] = [v..., i-1, i+1]  # last two indices are pointers to prev and next bead
-    end
+    
+    initShape!(p)
 
     # head and tail beads
     p.head = 1
-    p.pos[p.head][4] = 0
-    p.pos[p.length][5] = 0
 
     # key vector
     p.keys_vec = collect(keys(p.pos))
@@ -118,6 +129,25 @@ end
 
 ######## Bulk #######
 
+# initializes species configuration from a list of presets
+export initShape!
+function initShape!(s::AbstractBulk)
+    if s.initShape == "uniform" || s.initShape === nothing
+        initUniform!(s.pos, s.boxlength, s.length)
+
+    elseif s.initShape == "box"
+        initBox!(s.pos, s.initPos, s.length)
+    else
+        error("s.initShape should be string or nothing")
+    end
+    
+    # head and tail beads
+    s.pos[1][4] = 0
+    s.pos[s.length][5] = 0
+    
+    return s
+end
+
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
 export initSpecies!
 function initSpecies!(b::Bulk)
@@ -125,22 +155,7 @@ function initSpecies!(b::Bulk)
     b.name = string("bulk", b.id)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
 
-    pos_idxs = sample(0:(b.boxlength^3-1), b.length, replace=false)
-
-    for i in 1:b.length
-        b.pos[i] = zeros(5)
-        mx = mod(pos_idxs[i], b.boxlength^2)
-
-        b.pos[i][1] = div(pos_idxs[i], b.boxlength^2) + 1 # x coordinate
-        b.pos[i][2] = div(mx, b.boxlength) + 1            # y coordinate
-        b.pos[i][3] = mod(mx, b.boxlength) + 1            # z coordinate
-        b.pos[i][4] = i - 1
-        b.pos[i][5] = i + 1
-    end
-
-    # head and tail beads
-    b.pos[1][4] = 0
-    b.pos[b.length][5] = 0
+    initShape!(b)
 
     b.nnsOld = 0
     b.nnsNew = 0
@@ -160,18 +175,7 @@ function initSpecies!(b::FastBulk)
     b.name = string("bulk", b.id)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
 
-    pos_idxs = sample(0:(b.boxlength^3-1), b.length, replace=false)
-
-    for i in 1:b.length
-        b.pos[i] = zeros(5)
-        mx = mod(pos_idxs[i], b.boxlength^2)
-
-        b.pos[i][1] = div(pos_idxs[i], b.boxlength^2) + 1 # x coordinate
-        b.pos[i][2] = div(mx, b.boxlength) + 1            # y coordinate
-        b.pos[i][3] = mod(mx, b.boxlength) + 1            # z coordinate
-        b.pos[i][4] = i - 1
-        b.pos[i][5] = i + 1
-    end
+    initShape!(b)
 
     # build set of movable particles
     b.movableIdxs = Set{Int32}()
@@ -183,10 +187,6 @@ function initSpecies!(b::FastBulk)
             push!(b.movableIdxs, i)
         end
     end
-
-    # head and tail beads
-    b.pos[1][4] = 0
-    b.pos[b.length][5] = 0
 
     b.nnsOld = 0
     b.nnsNew = 0
@@ -220,7 +220,7 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         s.latS = view(l.lat, i, :, :, :)
 
         # TODO: apply this to all species
-        if s <: AbstractFastBulk
+        if typeof(s) <: AbstractFastBulk
             for j in 1:s.length
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = j
             end

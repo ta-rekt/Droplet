@@ -646,7 +646,6 @@ let
 
 end
 
-
 ## 1010011111110000100000101010111100010100001100101110000
 # Multiple method definitions for a function
 
@@ -691,4 +690,46 @@ let
     g(personB)
 
     @time hasproperty(personC, :ssn)
+end
+
+## 1010011111110000100000101010111100010100001100101110000
+# Testing DFS and connected components
+
+let 
+    date = "20251115"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "test"
+    outpath = string(outdir, outfile)
+
+    global l = Lattice(;
+        boxlength = 16,
+        nspecies = 2
+    )
+
+    # polymer
+    global p = Poly(;
+        length = 16,
+        maxlength = 24,
+        intPot = -1,
+        chemPot = 1,
+        initPos = [0,8,8]
+    )
+
+    global b = Bulk(;
+        length = 20,
+        intPot = -1,
+        chemPot = 1,
+        initShape = "box"
+    )
+
+    slist = [p, b]
+
+    # initialize lattice and species
+    init!(l, slist)
+
+    frame = 1
+
+    exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+
 end

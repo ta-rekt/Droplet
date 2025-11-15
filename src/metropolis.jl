@@ -128,7 +128,7 @@ function proposeMove!(b::FastBulk)
         "No free nearest neighbor sites: proposing an impossible move"
     end
 
-    # sample an index of b.nnIdxs's zero values at random
+    # propose a move uniformly among the free sites
     b.moveType = rand(b.freeNNs)
     axis = div(b.moveType + 1, 2)
     dir = mod(b.moveType + 1, 2) * 2 - 1
