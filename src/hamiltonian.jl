@@ -70,7 +70,7 @@ end
 
 # Hamiltonian of a dilute species in the bulk
 export ham!
-function ham!(b::Bulk)
+function ham!(b::AbstractBulk)
     
     b.ham = 0
     nnn = 0    # number of nearest neighbors
@@ -87,7 +87,7 @@ end
 
 # Energy increment for the bulk system
 export deltaHam!
-function deltaHam!(b::Bulk)
+function deltaHam!(b::AbstractBulk)
 
     b.deltaH = b.intPot * (2*(nn(b, b.newPos) - nn(b, b.bi)) - 2)
     b.ham += b.deltaH

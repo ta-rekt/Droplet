@@ -56,20 +56,20 @@ function nnIdxs!(b::AbstractFastBulk, pos::Union{SubArray{Int32}, Vector{Int32}}
         pos[i] += 1
         boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
         b.nnIdxs[k] = b.latS[b.tempVec[1], b.tempVec[2], b.tempVec[3]]
-        k += 1
-
+        
         if b.nnIdxs[k] == 0
             push!(b.freeNNs, k)
         end
+        k += 1
 
         pos[i] -= 2
         boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
         b.nnIdxs[k] = b.latS[b.tempVec[1], b.tempVec[2], b.tempVec[3]]
-        k += 1
-
+        
         if b.nnIdxs[k] == 0
             push!(b.freeNNs, k)
         end
+        k += 1
 
         pos[i] += 1
     end

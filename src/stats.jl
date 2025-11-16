@@ -46,20 +46,23 @@ end
 # traversed starting from bi (adds their indices to the marked list)
 export dfs
 function dfs(s::AbstractFastBulk, bi::Int32, marked::Vector{Int32})
-    if bi not in marked
+    if !(bi in marked)
         push!(marked, bi)
     end
 
-    nnIdxs!(s, s.pos[bi])
+    nnIdxs!(s, s.pos[bi][range(1,3)])
+    nnIdxs = deepcopy(s.nnIdxs)
+    @show bi, nnIdxs, marked
 
-    for bj in s.nnIdxs
+    for bj in nnIdxs
         if bj != 0
-            if bj not in marked
+            if !(bj in marked)
                 marked = dfs(s, bj, marked)
             end
         end
     end
 
+    println("done with ", bi)
     return marked
 end
 
@@ -67,19 +70,25 @@ end
 export cc
 function cc(s::AbstractFastBulk)
 
-    ccs = []
-    marked = Set(range(1, s.length))  # all keys
-    marked_bi = []
+    ccs = Vector{Vector{Int32}}(undef, 0)
+    marked = Set{Int32}(range(1, s.length))  # all keys
+    marked_bi = Vector{Int32}(undef, 0)
 
     while !isempty(marked)
-        bi = marked[1]
+        bi = pop!(marked)
         marked_bi = dfs(s, bi, marked_bi)
 
         for bj in marked_bi
-            pop!(marked, bj)
+            if bi != bj
+                @show bi, bj
+                @show marked
+                @show marked_bi
+                pop!(marked, bj)
+            end
         end
 
         push!(ccs, marked_bi)
+        marked_bi = Vector{Int32}(undef, 0)
     end
 
     return ccs

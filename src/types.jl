@@ -138,6 +138,7 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
     initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
     initShape::Union{Nothing, String} = nothing
+    initParams::Union{Nothing, Int32} = nothing
 
     # lattice view
     latS::Union{Nothing, AbstractArray{Int32}} = nothing

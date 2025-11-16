@@ -713,14 +713,15 @@ let
         maxlength = 24,
         intPot = -1,
         chemPot = 1,
-        initPos = [0,8,8]
+        initPos = [1,8,8]
     )
 
-    global b = Bulk(;
-        length = 20,
+    global b = FastBulk(;
+        length = 2,
         intPot = -1,
         chemPot = 1,
-        initShape = "box"
+        initShape = "box",
+        initParams = 7
     )
 
     slist = [p, b]
@@ -728,8 +729,11 @@ let
     # initialize lattice and species
     init!(l, slist)
 
-    frame = 1
+    @show b.length
+    @show cc(b)
+    @show b.pos
 
+    frame = 1
     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
 
 end

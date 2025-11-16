@@ -16,7 +16,7 @@ end
 
 # extracts the coordinates of a polymer's beads
 export extractCoords!
-function extractCoords!(p::Poly, coords::Matrix)
+function extractCoords!(p::AbstractPoly, coords::Matrix)
     key = p.head           # initial bead
     k = 1
     
@@ -32,7 +32,7 @@ end
 
 # extracts the coordinates of a polymer's beads
 export extractCoords!
-function extractCoords!(b::Bulk, coords::Matrix)
+function extractCoords!(b::AbstractBulk, coords::Matrix)
 
     for k in 1:b.length
         coords[k, :] = b.pos[k][1:3] # next position

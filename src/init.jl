@@ -50,32 +50,36 @@ end
 
 export initBox!
 function initBox!(pos::OrderedDict{Int32, Vector{Int32}}, 
-                  initPos::Union{Nothing, Vector{Int32}},
-                  length::Int32)
+                  latticelength::Int32,
+                  length::Int32,
+                  startPos::Union{Nothing, Vector{Int32}},
+                  newIndex::Int = 1)
+
     # filled box shape
-    idx = 1
+    idx = newIndex
     box_side = ceil(Int, length^(1/3))
-    startPos = initPos === nothing ? [0, 0, 0] : initPos
+    offset = div(box_side, 2)
     
     for x in 0:(box_side-1)
         for y in 0:(box_side-1)
             for z in 0:(box_side-1)
-                if idx > length
+                if idx >= length + newIndex
                     break
                 end
+
                 pos[idx] = zeros(5)
-                pos[idx][1] = startPos[1] + x - div(box_side, 2)
-                pos[idx][2] = startPos[2] + y - div(box_side, 2)
-                pos[idx][3] = startPos[3] + z - div(box_side, 2)
+                pos[idx][1] = startPos[1] + x - offset
+                pos[idx][2] = startPos[2] + y - offset
+                pos[idx][3] = startPos[3] + z - offset
                 pos[idx][4] = idx - 1
                 pos[idx][5] = idx + 1
                 idx += 1
             end
-            if idx > length
+            if idx >= length + newIndex
                 break
             end
         end
-        if idx > length
+        if idx >= length + newIndex
             break
         end
     end
@@ -136,7 +140,28 @@ function initShape!(s::AbstractBulk)
         initUniform!(s.pos, s.boxlength, s.length)
 
     elseif s.initShape == "box"
-        initBox!(s.pos, s.initPos, s.length)
+        beadsPerBox = s.length
+        totalBeads = beadsPerBox * s.initParams
+        
+        for i in 1:s.initParams
+            initPos = zeros(Int32, 3)
+            offset = div(s.boxlength, 2 * s.initParams)
+            
+            if !(s.initPos === nothing)
+                initPos[1] = s.initPos[1] + offset * (2 * i - s.initParams - 1)
+                initPos[2] = s.initPos[2]
+                initPos[3] = s.initPos[3]
+            else
+                initPos[1] = div(s.boxlength, 2) + offset * (2 * i - s.initParams - 1)
+                initPos[2] = div(s.boxlength, 2)
+                initPos[3] = div(s.boxlength, 2)
+            end
+
+            startIdx = beadsPerBox * (i - 1) + 1
+            initBox!(s.pos, s.boxlength, beadsPerBox, initPos, startIdx)
+        end
+        
+        s.length = totalBeads   # total length = length of each box * nboxes
     else
         error("s.initShape should be string or nothing")
     end
@@ -182,17 +207,17 @@ function initSpecies!(b::FastBulk)
     b.freeNNs = Set{Int32}()
     b.hastingsFactor = 1
 
-    for i in 1:b.length
-        if nn(b, b.pos[i][range(1,3)]) < 6
-            push!(b.movableIdxs, i)
-        end
-    end
-
     b.nnsOld = 0
     b.nnsNew = 0
     b.newPos = zeros(Int32, 3)
     b.tempVec = zeros(Int32, 3)
     b.nnIdxs = zeros(Int32, 6)
+
+    for i in 1:b.length
+        if nn(b, b.pos[i][range(1,3)]) < 6
+            push!(b.movableIdxs, i)
+        end
+    end
 
     return b
 end
@@ -211,13 +236,13 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
     # fill out lattice sites for each species
     for (i, s) in enumerate(slist)
         
+        # give species s a view on its lattice sites
+        s.latS = view(l.lat, i, :, :, :)
+
         s.boxlength = l.boxlength
         initSpecies!(s)
 
         l.speciesDir[s.id] = i
-
-        # give species s a view on its lattice sites
-        s.latS = view(l.lat, i, :, :, :)
 
         # TODO: apply this to all species
         if typeof(s) <: AbstractFastBulk
