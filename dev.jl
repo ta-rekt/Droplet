@@ -717,12 +717,7 @@ let
 
     init!(l, [b])
 
-    @show x = cc(b)
-    y = Set{Set{Int32}}()
-    y0 = Set{Int32}(range(1,8))
-    push!(y, y0)
-
-    @assert x == y
+    @show keys(b.pos)
 
     exportSpecies!([b], string(outpath, "_frame$(1)"))
 

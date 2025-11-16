@@ -1,10 +1,12 @@
-# returns the center of mass of a species
+# returns the center of mass of all (or a subset of) particles of a species
 export centerMass
-function centerMass(s::AbstractSpecies)
+function centerMass(s::AbstractSpecies, 
+                    subset::Union{Nothing, Vector{Int32}} = nothing)
     cm = zeros(3)
+    subset = subset === nothing ? eachindex(s.pos) : subset
 
     # compute average of all positions in pos
-    for i in eachindex(s.pos)
+    for i in subset
         cm = cm .+ view(s.pos[i], 1:3)
     end
 
@@ -41,6 +43,27 @@ function radiusSphere(length)
     return sqrt(3/5)*r
 end
 
+# density of particles of species s inside a bounding box
+# bbox[1] = [xl, xh], bbox[2] = [yl, yh], bbox[3] = [zl, zh]
+export density
+function density(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
+    count = 0
+    xl, xh = bbox[1]
+    yl, yh = bbox[2]
+    zl, zh = bbox[3]
+    vol = abs(xh - xl) * abs(yh - yl) * abs(zh - zl)
+
+    for x in range(xl, xh)
+        for y in range(yl, yh)
+            for z in range(zl, zh)
+                count += s.latS[x,y,z]
+            end
+        end
+    end
+
+    return count / vol
+end
+
 
 # Depth-first search: takes a bead index bi and marks all beads
 # traversed starting from bi (adds their indices to the marked list)
@@ -52,7 +75,6 @@ function dfs(s::AbstractFastBulk, bi::Int32, marked::Set{Int32})
 
     nnIdxs!(s, s.pos[bi][range(1,3)])
     nnIdxs = deepcopy(s.nnIdxs)
-    # @show bi, nnIdxs, marked
 
     for bj in nnIdxs
         if bj != 0
@@ -62,7 +84,6 @@ function dfs(s::AbstractFastBulk, bi::Int32, marked::Set{Int32})
         end
     end
 
-    # println("done with ", bi)
     return marked
 end
 
@@ -71,7 +92,7 @@ export cc
 function cc(s::AbstractFastBulk)
 
     ccs = Set{Set{Int32}}()
-    marked = Set{Int32}(range(1, s.length))  # all keys
+    marked = Set{Int32}(keys(s.pos))  # all keys
     marked_bi = Set{Int32}()
 
     while !isempty(marked)
@@ -80,9 +101,6 @@ function cc(s::AbstractFastBulk)
 
         for bj in marked_bi
             if bi != bj
-                # @show bi, bj
-                # @show marked
-                # @show marked_bi
                 pop!(marked, bj)
             end
         end
