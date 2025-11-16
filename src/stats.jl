@@ -45,14 +45,14 @@ end
 # Depth-first search: takes a bead index bi and marks all beads
 # traversed starting from bi (adds their indices to the marked list)
 export dfs
-function dfs(s::AbstractFastBulk, bi::Int32, marked::Vector{Int32})
+function dfs(s::AbstractFastBulk, bi::Int32, marked::Set{Int32})
     if !(bi in marked)
         push!(marked, bi)
     end
 
     nnIdxs!(s, s.pos[bi][range(1,3)])
     nnIdxs = deepcopy(s.nnIdxs)
-    @show bi, nnIdxs, marked
+    # @show bi, nnIdxs, marked
 
     for bj in nnIdxs
         if bj != 0
@@ -62,7 +62,7 @@ function dfs(s::AbstractFastBulk, bi::Int32, marked::Vector{Int32})
         end
     end
 
-    println("done with ", bi)
+    # println("done with ", bi)
     return marked
 end
 
@@ -70,9 +70,9 @@ end
 export cc
 function cc(s::AbstractFastBulk)
 
-    ccs = Vector{Vector{Int32}}(undef, 0)
+    ccs = Set{Set{Int32}}()
     marked = Set{Int32}(range(1, s.length))  # all keys
-    marked_bi = Vector{Int32}(undef, 0)
+    marked_bi = Set{Int32}()
 
     while !isempty(marked)
         bi = pop!(marked)
@@ -80,15 +80,15 @@ function cc(s::AbstractFastBulk)
 
         for bj in marked_bi
             if bi != bj
-                @show bi, bj
-                @show marked
-                @show marked_bi
+                # @show bi, bj
+                # @show marked
+                # @show marked_bi
                 pop!(marked, bj)
             end
         end
 
         push!(ccs, marked_bi)
-        marked_bi = Vector{Int32}(undef, 0)
+        marked_bi = Set{Int32}()
     end
 
     return ccs

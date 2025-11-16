@@ -704,36 +704,26 @@ let
 
     global l = Lattice(;
         boxlength = 16,
-        nspecies = 2
-    )
-
-    # polymer
-    global p = Poly(;
-        length = 16,
-        maxlength = 24,
-        intPot = -1,
-        chemPot = 1,
-        initPos = [1,8,8]
+        nspecies = 1
     )
 
     global b = FastBulk(;
-        length = 2,
+        length = 8,
         intPot = -1,
         chemPot = 1,
-        initShape = "box",
-        initParams = 7
+        initShape = "line"
+        # initParams = 1
     )
 
-    slist = [p, b]
+    init!(l, [b])
 
-    # initialize lattice and species
-    init!(l, slist)
+    @show x = cc(b)
+    y = Set{Set{Int32}}()
+    y0 = Set{Int32}(range(1,8))
+    push!(y, y0)
 
-    @show b.length
-    @show cc(b)
-    @show b.pos
+    @assert x == y
 
-    frame = 1
-    exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+    exportSpecies!([b], string(outpath, "_frame$(1)"))
 
 end

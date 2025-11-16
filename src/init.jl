@@ -94,7 +94,7 @@ function initShape!(s::AbstractPoly)
     if s.initShape == "line" || s.initShape === nothing
         initLine!(s.pos, s.initPos, s.boxlength, s.length)
     else
-        error("s.initShape should be string or nothing")
+        error("Invalid string for s.initShape")
     end
     
     # head and tail beads
@@ -139,6 +139,9 @@ function initShape!(s::AbstractBulk)
     if s.initShape == "uniform" || s.initShape === nothing
         initUniform!(s.pos, s.boxlength, s.length)
 
+    elseif s.initShape == "line"    
+        initLine!(s.pos, s.initPos, s.boxlength, s.length)
+
     elseif s.initShape == "box"
         beadsPerBox = s.length
         totalBeads = beadsPerBox * s.initParams
@@ -163,7 +166,7 @@ function initShape!(s::AbstractBulk)
         
         s.length = totalBeads   # total length = length of each box * nboxes
     else
-        error("s.initShape should be string or nothing")
+        error("Invalid string for s.initShape")
     end
     
     # head and tail beads

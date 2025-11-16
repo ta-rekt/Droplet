@@ -153,13 +153,13 @@ using Test
 
     @testset "Hamiltonian (poly)" begin
 
-        global l = Lattice(;
+        l = Lattice(;
             boxlength = 42,
             nspecies = 2
         )
 
         # polymer
-        global p = Poly(;
+        p = Poly(;
             length = 32,
             maxlength = 24,
             intPot = 1,
@@ -220,13 +220,13 @@ using Test
 
     @testset "Hamiltonian (bulk)" begin
 
-        global l = Lattice(;
+        l = Lattice(;
             boxlength = 32,
             nspecies = 1
         )
 
         # polymer
-        global p = Bulk(;
+        p = Bulk(;
             length = 1000,
             intPot = -1,
             chemPot = 1
@@ -280,5 +280,74 @@ using Test
             moveMade = move!(p)
             nmoves += moveMade
         end
+    end
+
+    @testset "Connected components (multiple)" begin
+
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        b = FastBulk(;
+            length = 2,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 2
+        )
+
+        init!(l, [b])
+
+        @test cc(b) == Set([Set([4,3]), Set([2,1])])
+    end
+
+    @testset "Connected components (single)" begin
+
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        b = FastBulk(;
+            length = 20,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1
+        )
+
+        init!(l, [b])
+
+        x = cc(b)
+        y = Set{Set{Int32}}()
+        y0 = Set{Int32}(range(1,20))
+        push!(y, y0)
+    
+        @test x == y
+    end
+
+    @testset "Connected components (line)" begin
+
+        global l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        global b = FastBulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "line"
+        )
+
+        init!(l, [b])
+
+        x = cc(b)
+        y = Set{Set{Int32}}()
+        y0 = Set{Int32}(range(1,8))
+        push!(y, y0)
+
+        @test x == y
     end
 end
