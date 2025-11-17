@@ -289,7 +289,7 @@ using Test
             nspecies = 1
         )
 
-        b = FastBulk(;
+        b = Bulk(;
             length = 2,
             intPot = -1,
             chemPot = 1,
@@ -297,9 +297,18 @@ using Test
             initParams = 2
         )
 
-        init!(l, [b])
+        fb = FastBulk(;
+            length = 2,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 2
+        )
+
+        init!(l, [b, fb])
 
         @test cc(b) == Set([Set([4,3]), Set([2,1])])
+        @test cc(fb) == Set([Set([4,3]), Set([2,1])])
     end
 
     @testset "Connected components (single)" begin
@@ -309,7 +318,7 @@ using Test
             nspecies = 1
         )
 
-        b = FastBulk(;
+        b = Bulk(;
             length = 20,
             intPot = -1,
             chemPot = 1,
@@ -317,7 +326,22 @@ using Test
             initParams = 1
         )
 
-        init!(l, [b])
+        fb = FastBulk(;
+            length = 20,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1
+        )
+
+        init!(l, [b, fb])
+
+        fx = cc(fb)
+        fy = Set{Set{Int32}}()
+        fy0 = Set{Int32}(range(1,20))
+        push!(fy, fy0)
+    
+        @test fx == fy
 
         x = cc(b)
         y = Set{Set{Int32}}()
@@ -329,19 +353,26 @@ using Test
 
     @testset "Connected components (line)" begin
 
-        global l = Lattice(;
+        l = Lattice(;
             boxlength = 16,
-            nspecies = 1
+            nspecies = 2
         )
 
-        global b = FastBulk(;
+        b = Bulk(;
             length = 8,
             intPot = -1,
             chemPot = 1,
             initShape = "line"
         )
 
-        init!(l, [b])
+        fb = FastBulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "line"
+        )
+
+        init!(l, [b, fb])
 
         x = cc(b)
         y = Set{Set{Int32}}()
@@ -349,5 +380,12 @@ using Test
         push!(y, y0)
 
         @test x == y
+
+        fx = cc(fb)
+        fy = Set{Set{Int32}}()
+        fy0 = Set{Int32}(range(1,8))
+        push!(fy, fy0)
+
+        @test fx == fy
     end
 end

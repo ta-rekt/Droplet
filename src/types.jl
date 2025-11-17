@@ -91,6 +91,7 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
     initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
     initShape::Union{Nothing, String} = nothing
+    initParams::Union{Nothing, Int32} = nothing
 
     # lattice view
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -102,10 +103,11 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     newPos::Union{Nothing, Vector{Int32}} = nothing
     moveType::Union{Nothing, Int32} = nothing     # array of possible move types around a given bead
     tempVec::Union{Nothing, Vector{Int32}} = nothing
+    nnIdxs::Union{Nothing, Vector{Int32}} = nothing
 
     # proposeMove! variables
     movableIdxs::Union{Nothing, Vector{Int32}} = nothing  # coordinates of unconfined particles
-    moveTypeProbs::Union{Nothing, Vector{Float64}} = nothing   # move proposal probabilities
+    freeNNs::Union{Nothing, Set{Int32}} = nothing   # move proposal probabilities
     nnsOld::Union{Nothing, Int32} = nothing          # number of nearest neighbs of old site
     nnsNew::Union{Nothing, Int32} = nothing          # number of nearest neighbs of new site
     

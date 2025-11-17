@@ -182,13 +182,16 @@ function initSpecies!(b::Bulk)
 
     b.name = string("bulk", b.id)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
-
+    
     initShape!(b)
+    
+    b.freeNNs = Set{Int32}()
 
     b.nnsOld = 0
     b.nnsNew = 0
     b.newPos = zeros(Int32, 3)
     b.tempVec = zeros(Int32, 3)
+    b.nnIdxs = zeros(Int32, 6)
 
     return b
 end
@@ -248,7 +251,7 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         l.speciesDir[s.id] = i
 
         # TODO: apply this to all species
-        if typeof(s) <: AbstractFastBulk
+        if typeof(s) <: AbstractBulk
             for j in 1:s.length
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = j
             end
