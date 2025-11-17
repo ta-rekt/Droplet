@@ -56,7 +56,7 @@ function density(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     for x in range(xl, xh)
         for y in range(yl, yh)
             for z in range(zl, zh)
-                count += s.latS[x,y,z]
+                count += (s.latS[x,y,z] > 0)
             end
         end
     end

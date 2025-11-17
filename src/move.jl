@@ -270,7 +270,7 @@ end
 
 export overlap
 function overlap(b::Bulk)
-    return b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] == 1
+    return b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] > 0
 end
 
 export identifyBond!
@@ -286,11 +286,17 @@ function makeMove!(b::Bulk)
     
     # update lattice sites
     b.latS[b.bi[1], b.bi[2], b.bi[3]] = 0
-    b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = 1
+    b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = b.moveIdx
 
     # update current position
     for i in range(1, 3)
         b.pos[b.moveIdx][i] = b.newPos[i]
+    end
+
+    @assert b.latS[b.pos[b.moveIdx][1], 
+                   b.pos[b.moveIdx][2], 
+                   b.pos[b.moveIdx][3]] == b.moveIdx begin
+        "Invalid index-position correspondence"
     end
 
     return b
@@ -369,7 +375,9 @@ function makeMove!(b::FastBulk)
         b.pos[b.moveIdx][i] = b.newPos[i]
     end
 
-    @assert b.latS[b.pos[b.moveIdx][1], b.pos[b.moveIdx][2], b.pos[b.moveIdx][3]] == b.moveIdx begin
+    @assert b.latS[b.pos[b.moveIdx][1], 
+                   b.pos[b.moveIdx][2], 
+                   b.pos[b.moveIdx][3]] == b.moveIdx begin
         "Invalid index-position correspondence"
     end
 
