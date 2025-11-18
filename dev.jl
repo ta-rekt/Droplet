@@ -593,16 +593,6 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# What is context?
-
-let 
-    filename = "ctx.json"
-    open(filename, "w") do f
-        JSON.print(f, CONTEXT, 4)
-    end
-end
-
-## 1010011111110000100000101010111100010100001100101110000
 # Testing center of mass
 
 let 
@@ -693,32 +683,9 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing DFS and connected components
+# Testing droplet density
 
-let 
-    date = "20251115"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "test"
-    outpath = string(outdir, outfile)
+let
 
-    global l = Lattice(;
-        boxlength = 16,
-        nspecies = 1
-    )
-
-    global b = FastBulk(;
-        length = 8,
-        intPot = -1,
-        chemPot = 1,
-        initShape = "line"
-        # initParams = 1
-    )
-
-    init!(l, [b])
-
-    @show keys(b.pos)
-
-    exportSpecies!([b], string(outpath, "_frame$(1)"))
 
 end

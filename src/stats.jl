@@ -1,7 +1,7 @@
 # returns the center of mass of all (or a subset of) particles of a species
 export centerMass
 function centerMass(s::AbstractSpecies, 
-                    subset::Union{Nothing, Vector{Int32}} = nothing)
+                    subset::Union{Nothing, Set{Int32}} = nothing)
     cm = zeros(3)
     subset = subset === nothing ? eachindex(s.pos) : subset
 
@@ -10,7 +10,7 @@ function centerMass(s::AbstractSpecies,
         cm = cm .+ view(s.pos[i], 1:3)
     end
 
-    return cm ./ s.length
+    return cm ./ length(subset)
 end
 
 
@@ -52,6 +52,7 @@ end
 export density
 function density(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     count = 0
+    pos = zeros(3)
     xl, xh = bbox[1]
     yl, yh = bbox[2]
     zl, zh = bbox[3]
@@ -60,7 +61,8 @@ function density(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     for x in range(xl, xh)
         for y in range(yl, yh)
             for z in range(zl, zh)
-                count += (s.latS[x,y,z] > 0)
+                boxmod!([x,y,z], pos, Int32(1), s.boxlength)
+                count += (s.latS[pos[1], pos[2], pos[3]] > 0)
             end
         end
     end
@@ -69,10 +71,58 @@ function density(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
 end
 
 
-# density of droplets above a given size
 export dropletDensity
-function dropletDensity(s::AbstractBulk, minsize::Int32)
+function dropletDensity(s::AbstractSpecies, ccs::Set{Set{Int32}})
+    
+    dens = Vector{Float64}(undef, 0)
 
+    for (i, cc) in enumerate(ccs)
+        # center of mass of each droplet
+        cm = centerMass(s, cc)
+
+        # compute bbox given droplet size
+        b = max(1, 0.25 * (length(cc))^(1/3))
+        bbox = [[floor(Int32, cm[1] - 0.5*b), floor(Int32, cm[1] + 0.5*b)],
+                [floor(Int32, cm[2] - 0.5*b), floor(Int32, cm[2] + 0.5*b)],
+                [floor(Int32, cm[3] - 0.5*b), floor(Int32, cm[3] + 0.5*b)]]
+
+        # droplet density
+        push!(dens, density(s, bbox))
+    end
+
+    return dens
+end
+
+
+# density of dilute medium 
+export diluteDensity
+function diluteDensity(s::AbstractBulk)
+
+    # find bounding boxes lying entirely outside any droplet
+    l = s.boxlength
+    b = div(l, 8)
+    bboxes = zeros(Int32, 8, 3, 2)
+    bboxes[1] = [[1, b],[1, b],[1, b]]
+    bboxes[2] = [[1, b],[1, b],[l - b + 1, l]]
+    bboxes[3] = [[1, b],[l - b + 1, l],[1, b]]
+    bboxes[4] = [[1, b],[l - b + 1, l],[l - b + 1, l]]
+    bboxes[5] = [[l - b + 1, l],[1, b],[1, b]]
+    bboxes[6] = [[l - b + 1, l],[1, b],[l - b + 1, l]]
+    bboxes[7] = [[l - b + 1, l],[l - b + 1, l],[1, b]]
+    bboxes[8] = [[l - b + 1, l],[l - b + 1, l],[l - b + 1, l]]
+
+    # return the densities inside these bounding boxes
+    dens = Dict{Int32, Float64}()
+
+    for i in range(1, 8)
+        push!(dens, (i => density(s, bboxes[i])))
+    end
+
+    for i in range(1, 4)
+        pop!(dens, argmin(dens))
+    end
+
+    return sum(values(dens)) / length(dens)
 end
 
 
