@@ -72,21 +72,19 @@ end
 
 
 export dropletDensity
-function dropletDensity(s::AbstractSpecies, ccs::Set{Set{Int32}})
+function dropletDensity(s::AbstractSpecies, ccs::Vector{Set{Int32}})
     
     dens = Vector{Float64}(undef, 0)
 
     for (i, cc) in enumerate(ccs)
         # center of mass of each droplet
         cm = centerMass(s, cc)
-        @show cm
 
         # compute bbox given droplet size
         b = 0.3 * (length(cc))^(1/3)
         bbox = [[round(Int32, cm[1] - 0.49*b), round(Int32, cm[1] + 0.5*b)],
                 [round(Int32, cm[2] - 0.49*b), round(Int32, cm[2] + 0.5*b)],
                 [round(Int32, cm[3] - 0.49*b), round(Int32, cm[3] + 0.5*b)]]
-        @show bbox
 
         # droplet density
         push!(dens, boxDensity(s, bbox))
@@ -157,7 +155,7 @@ end
 export cc
 function cc(s::AbstractBulk)
 
-    ccs = Set{Set{Int32}}()
+    ccs = Vector{Set{Int32}}()
     marked = Set{Int32}(keys(s.pos))  # all keys
     marked_bi = Set{Int32}()
 

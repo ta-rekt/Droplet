@@ -61,6 +61,7 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     # proposeMove! variables
     moveTypeProbs::Union{Nothing, Vector{Float64}} = nothing   # move proposal probabilities
     nTypes::Union{Nothing, Vector{Float64}} = nothing          # how many of each move type there are
+    hastingsFactor::Union{Nothing, Float64} = nothing
     
     # energy
     ham::Union{Nothing, Float64} = nothing       # Hamiltonian
@@ -110,6 +111,7 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     freeNNs::Union{Nothing, Set{Int32}} = nothing   # move proposal probabilities
     nnsOld::Union{Nothing, Int32} = nothing          # number of nearest neighbs of old site
     nnsNew::Union{Nothing, Int32} = nothing          # number of nearest neighbs of new site
+    hastingsFactor::Union{Nothing, Float64} = nothing
     
     # energy
     ham::Union{Nothing, Float64} = nothing       # Hamiltonian

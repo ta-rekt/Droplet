@@ -133,6 +133,7 @@ function initSpecies!(p::Poly)
     p.moveTypes = zeros(Int32, 4)
     p.moveTypeProbs = [0,PKINK,0]
     p.nTypes = zeros(Int32, 3)
+    p.hastingsFactor = 1.0
 
     return p
 end
@@ -193,7 +194,7 @@ function initSpecies!(b::Bulk)
     initShape!(b)
     
     b.freeNNs = Set{Int32}()
-
+    b.hastingsFactor = 1.0
     b.nnsOld = 0
     b.nnsNew = 0
     b.newPos = zeros(Int32, 3)
@@ -218,7 +219,7 @@ function initSpecies!(b::FastBulk)
     # build set of movable particles
     b.movableIdxs = Set{Int32}()
     b.freeNNs = Set{Int32}()
-    b.hastingsFactor = 1
+    b.hastingsFactor = 1.0
 
     b.nnsOld = 0
     b.nnsNew = 0

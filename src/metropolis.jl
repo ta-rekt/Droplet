@@ -6,7 +6,7 @@ function acceptMove(s::AbstractSpecies)
 
     deltaHam!(s)
     
-    prob = min(1, exp(-s.deltaH))
+    prob = min(1, s.hastingsFactor * exp(-s.deltaH))
     r = rand(Uniform(0,1))
 
     if r < prob
@@ -143,20 +143,4 @@ function proposeMove!(b::FastBulk)
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
 
     return b
-end
-
-# accepts or rejects according to the metropolis criterion
-export acceptMove
-function acceptMove(b::FastBulk)
-
-    deltaHam!(b)
-    
-    prob = min(1, b.hastingsFactor * exp(-b.deltaH))
-    r = rand(Uniform(0,1))
-
-    if r < prob
-        return true
-    else
-        return false
-    end
 end

@@ -307,8 +307,8 @@ using Test
 
         init!(l, [b, fb])
 
-        @test cc(b) == Set([Set([4,3]), Set([2,1])])
-        @test cc(fb) == Set([Set([4,3]), Set([2,1])])
+        @test cc(b) == Vector([Set([4,3]), Set([2,1])])
+        @test cc(fb) == Vector([Set([4,3]), Set([2,1])])
     end
 
     @testset "Connected components (single)" begin
@@ -337,14 +337,14 @@ using Test
         init!(l, [b, fb])
 
         fx = cc(fb)
-        fy = Set{Set{Int32}}()
+        fy = Vector{Set{Int32}}()
         fy0 = Set{Int32}(range(1,20))
         push!(fy, fy0)
     
         @test fx == fy
 
         x = cc(b)
-        y = Set{Set{Int32}}()
+        y = Vector{Set{Int32}}()
         y0 = Set{Int32}(range(1,20))
         push!(y, y0)
     
@@ -375,14 +375,14 @@ using Test
         init!(l, [b, fb])
 
         x = cc(b)
-        y = Set{Set{Int32}}()
+        y = Vector{Set{Int32}}()
         y0 = Set{Int32}(range(1,8))
         push!(y, y0)
 
         @test x == y
 
         fx = cc(fb)
-        fy = Set{Set{Int32}}()
+        fy = Vector{Set{Int32}}()
         fy0 = Set{Int32}(range(1,8))
         push!(fy, fy0)
 
