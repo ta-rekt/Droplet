@@ -388,4 +388,124 @@ using Test
 
         @test fx == fy
     end
+
+    @testset "Box density (uniform)" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        b = Bulk(;
+            length = 256,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "uniform",
+            initParams = 2
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        @test boxDensity(b, [[Int32(1), b.boxlength], 
+                            [Int32(1), b.boxlength], 
+                            [Int32(1), b.boxlength]]) == b.length / b.boxlength ^ 3
+    end
+
+    @testset "Box density (full box)" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        b = Bulk(;
+            length = 27,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [2,2,2]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        y = b.length / 3 ^ 3
+        x = boxDensity(b, [[Int32(1), Int32(3)], 
+                        [Int32(1), Int32(3)], 
+                        [Int32(1), Int32(3)]])
+        @test x == y
+
+        b = Bulk(;
+            length = 26,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [2,2,2]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        y = 26/27
+        x = boxDensity(b, [[Int32(1), Int32(3)], 
+                        [Int32(1), Int32(3)], 
+                        [Int32(1), Int32(3)]])
+        @test x == y
+
+        y = 7/27
+        x = boxDensity(b, [[Int32(2), Int32(4)], 
+                        [Int32(2), Int32(4)], 
+                        [Int32(2), Int32(4)]])
+
+        @test x == y
+
+        y = 0.0
+        x = boxDensity(b, [[Int32(3), Int32(5)], 
+                        [Int32(3), Int32(5)], 
+                        [Int32(3), Int32(5)]])
+
+        @test x == y
+
+        y = 0.0
+        x = boxDensity(b, [[Int32(4), Int32(6)], 
+                        [Int32(4), Int32(6)], 
+                        [Int32(4), Int32(6)]])
+
+        @test x == y
+
+
+        b = Bulk(;
+            length = 27,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [2,2,1]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        y = 1.0
+        x = boxDensity(b, [[Int32(1), Int32(3)], 
+                        [Int32(1), Int32(3)], 
+                        [Int32(0), Int32(2)]])
+        @test x == y
+
+        y = 2/3
+        x = boxDensity(b, [[Int32(1), Int32(3)], 
+                        [Int32(1), Int32(3)], 
+                        [Int32(1), Int32(3)]])
+        @test x == y
+    end
+
 end

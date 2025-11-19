@@ -683,9 +683,61 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing droplet density
+# Testing density
 
-let
+@time let
+    date = "20251119"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "test"
+    outpath = string(outdir, outfile)
 
+    l = Lattice(;
+        boxlength = 16,
+        nspecies = 1
+    )
+
+    b = Bulk(;
+        length = 26,
+        intPot = -1,
+        chemPot = 1,
+        initShape = "box",
+        initParams = 1,
+        initPos = [2,2,2]
+    )
+
+    slist = [b]
+
+    # initialize lattice and species
+    init!(l, slist)
+
+    y = 26/27
+    x = boxDensity(b, [[Int32(1), Int32(3)], 
+                       [Int32(1), Int32(3)], 
+                       [Int32(1), Int32(3)]])
+    @show x, y
+
+    y = 7/27
+    x = boxDensity(b, [[Int32(2), Int32(4)], 
+                       [Int32(2), Int32(4)], 
+                       [Int32(2), Int32(4)]])
+
+    @show x, y
+
+    y = 0.0
+    x = boxDensity(b, [[Int32(3), Int32(5)], 
+                       [Int32(3), Int32(5)], 
+                       [Int32(3), Int32(5)]])
+
+    @show x, y
+
+    y = 0.0
+    x = boxDensity(b, [[Int32(4), Int32(6)], 
+                       [Int32(4), Int32(6)], 
+                       [Int32(4), Int32(6)]])
+
+    @show x, y
+
+    exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
 end

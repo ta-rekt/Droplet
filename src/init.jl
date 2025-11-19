@@ -58,7 +58,9 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
     # filled box shape
     idx = newIndex
     box_side = ceil(Int, length^(1/3))
-    offset = div(box_side, 2)
+    offset = Int32(div(box_side, 2))
+    clippedPos = zeros(Int32, 3)
+    rawPos = zeros(Int32, 3)
     
     for x in 0:(box_side-1)
         for y in 0:(box_side-1)
@@ -68,9 +70,14 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
                 end
 
                 pos[idx] = zeros(5)
-                pos[idx][1] = startPos[1] + x - offset
-                pos[idx][2] = startPos[2] + y - offset
-                pos[idx][3] = startPos[3] + z - offset
+                rawPos = [startPos[1] + Int32(x) - offset,
+                          startPos[2] + Int32(y) - offset,
+                          startPos[3] + Int32(z) - offset]
+                boxmod!(rawPos, clippedPos, Int32(1), latticelength)
+
+                pos[idx][1] = clippedPos[1]
+                pos[idx][2] = clippedPos[2]
+                pos[idx][3] = clippedPos[3]
                 pos[idx][4] = idx - 1
                 pos[idx][5] = idx + 1
                 idx += 1

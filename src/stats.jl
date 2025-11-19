@@ -49,14 +49,14 @@ end
 
 # density of particles of species s inside a bounding box
 # bbox[1] = [xl, xh], bbox[2] = [yl, yh], bbox[3] = [zl, zh]
-export density
-function density(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
+export boxDensity
+function boxDensity(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     count = 0
-    pos = zeros(3)
+    pos = zeros(Int32, 3)
     xl, xh = bbox[1]
     yl, yh = bbox[2]
     zl, zh = bbox[3]
-    vol = abs(xh - xl) * abs(yh - yl) * abs(zh - zl)
+    vol = abs(xh - xl + 1) * abs(yh - yl + 1) * abs(zh - zl + 1)
 
     for x in range(xl, xh)
         for y in range(yl, yh)
@@ -87,7 +87,7 @@ function dropletDensity(s::AbstractSpecies, ccs::Set{Set{Int32}})
                 [floor(Int32, cm[3] - 0.5*b), floor(Int32, cm[3] + 0.5*b)]]
 
         # droplet density
-        push!(dens, density(s, bbox))
+        push!(dens, boxDensity(s, bbox))
     end
 
     return dens
@@ -98,7 +98,7 @@ end
 export diluteDensity
 function diluteDensity(s::AbstractBulk)
 
-    # find bounding boxes lying entirely outside any droplet
+    # 8 bounding boxes, one at each corner of the lattice
     l = s.boxlength
     b = div(l, 8)
     bboxes = zeros(Int32, 8, 3, 2)
@@ -111,17 +111,19 @@ function diluteDensity(s::AbstractBulk)
     bboxes[7] = [[l - b + 1, l],[l - b + 1, l],[1, b]]
     bboxes[8] = [[l - b + 1, l],[l - b + 1, l],[l - b + 1, l]]
 
-    # return the densities inside these bounding boxes
+    # return the densities inside each of the 8 bounding boxes
     dens = Dict{Int32, Float64}()
 
     for i in range(1, 8)
-        push!(dens, (i => density(s, bboxes[i])))
+        push!(dens, (i => boxDensity(s, bboxes[i])))
     end
 
+    # select 4 boxes with the lowest density
     for i in range(1, 4)
         pop!(dens, argmin(dens))
     end
 
+    # return average density of those 4 boxes
     return sum(values(dens)) / length(dens)
 end
 
