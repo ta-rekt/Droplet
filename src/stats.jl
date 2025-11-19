@@ -79,12 +79,14 @@ function dropletDensity(s::AbstractSpecies, ccs::Set{Set{Int32}})
     for (i, cc) in enumerate(ccs)
         # center of mass of each droplet
         cm = centerMass(s, cc)
+        @show cm
 
         # compute bbox given droplet size
-        b = max(1, 0.25 * (length(cc))^(1/3))
-        bbox = [[floor(Int32, cm[1] - 0.5*b), floor(Int32, cm[1] + 0.5*b)],
-                [floor(Int32, cm[2] - 0.5*b), floor(Int32, cm[2] + 0.5*b)],
-                [floor(Int32, cm[3] - 0.5*b), floor(Int32, cm[3] + 0.5*b)]]
+        b = 0.3 * (length(cc))^(1/3)
+        bbox = [[round(Int32, cm[1] - 0.49*b), round(Int32, cm[1] + 0.5*b)],
+                [round(Int32, cm[2] - 0.49*b), round(Int32, cm[2] + 0.5*b)],
+                [round(Int32, cm[3] - 0.49*b), round(Int32, cm[3] + 0.5*b)]]
+        @show bbox
 
         # droplet density
         push!(dens, boxDensity(s, bbox))
@@ -101,7 +103,7 @@ function diluteDensity(s::AbstractBulk)
     # 8 bounding boxes, one at each corner of the lattice
     l = s.boxlength
     b = div(l, 8)
-    bboxes = zeros(Int32, 8, 3, 2)
+    bboxes = Vector{Vector{Vector{Int32}}}(undef, 8)
     bboxes[1] = [[1, b],[1, b],[1, b]]
     bboxes[2] = [[1, b],[1, b],[l - b + 1, l]]
     bboxes[3] = [[1, b],[l - b + 1, l],[1, b]]

@@ -693,17 +693,16 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 16,
+        boxlength = 32,
         nspecies = 1
     )
 
     b = Bulk(;
-        length = 26,
+        length = 16^3,
         intPot = -1,
         chemPot = 1,
-        initShape = "box",
-        initParams = 1,
-        initPos = [2,2,2]
+        initShape = "uniform",
+        initParams = 1
     )
 
     slist = [b]
@@ -711,32 +710,11 @@ end
     # initialize lattice and species
     init!(l, slist)
 
-    y = 26/27
-    x = boxDensity(b, [[Int32(1), Int32(3)], 
-                       [Int32(1), Int32(3)], 
-                       [Int32(1), Int32(3)]])
-    @show x, y
+    ccs = cc(b)
+    # @show ccs
 
-    y = 7/27
-    x = boxDensity(b, [[Int32(2), Int32(4)], 
-                       [Int32(2), Int32(4)], 
-                       [Int32(2), Int32(4)]])
-
-    @show x, y
-
-    y = 0.0
-    x = boxDensity(b, [[Int32(3), Int32(5)], 
-                       [Int32(3), Int32(5)], 
-                       [Int32(3), Int32(5)]])
-
-    @show x, y
-
-    y = 0.0
-    x = boxDensity(b, [[Int32(4), Int32(6)], 
-                       [Int32(4), Int32(6)], 
-                       [Int32(4), Int32(6)]])
-
-    @show x, y
+    # @show dropletDensity(b, ccs)
+    @show diluteDensity(b)
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
