@@ -804,14 +804,19 @@ function dropletVolume(s::AbstractSpecies, droplet::Set{Int32})
     return bbox_vol - length(marked_bi)
 end
 
-function dropletDensitiesExact(s::AbstractSpecies, ccs::Vector{Set{Int32}})
-    dens = Vector{Float64}(undef, 0)
+function dropletDensitiesExact(s::AbstractSpecies, droplets::Vector{Set{Int32}})
+    densities = Vector{Float64}(undef, 0)
 
-    for (i, cc) in enumerate(ccs)
-        push!(dens, length(cc) / dropletVolume(s, cc))
+    for d in droplets
+        push!(densities, length(d) / dropletVolume(s, d))
     end
 
-    return dens
+    return densities
+end
+
+# (number of particles - total droplet size) / (volume - total droplet volume)
+function diluteDensityExact(s::AbstractSpecies, droplets::Vector{Set{Int32}})
+
 end
 
 @time let
@@ -827,12 +832,12 @@ end
     )
 
     b = Bulk(;
-        length = 8,
+        length = 27,
         intPot = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [2,2,2]
+        initPos = [1,1,2]
     )
 
     slist = [b]

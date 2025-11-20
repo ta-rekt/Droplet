@@ -48,12 +48,22 @@ end
 # Set of nearest neighbors of a given position
 # WARNING: will break if called on a Poly TODO: fix
 export nnIdxs!
-function nnIdxs!(b::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
+function nnIdxs!(b::AbstractSpecies, 
+                 pos::Union{SubArray{Int32}, Vector{Int32}},
+                 periodicBounds::Bool = true)
     k = 1
 
     for i in range(1, 3)
         pos[i] += 1
-        boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
+
+        if periodicBounds
+            boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
+        else
+            for i in range(1, 3)
+                b.tempVec[i] = max(1, pos[i])
+                b.tempVec[i] = min(b.boxlength, pos[i])
+            end
+        end 
         b.nnIdxs[k] = b.latS[b.tempVec[1], b.tempVec[2], b.tempVec[3]]
         
         if b.nnIdxs[k] == 0
@@ -62,7 +72,15 @@ function nnIdxs!(b::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
         k += 1
 
         pos[i] -= 2
-        boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
+        
+        if periodicBounds
+            boxmod!(pos, b.tempVec, Int32(1), b.boxlength)
+        else
+            for i in range(1, 3)
+                b.tempVec[i] = max(1, pos[i])
+                b.tempVec[i] = min(b.boxlength, pos[i])
+            end
+        end 
         b.nnIdxs[k] = b.latS[b.tempVec[1], b.tempVec[2], b.tempVec[3]]
         
         if b.nnIdxs[k] == 0

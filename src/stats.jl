@@ -135,12 +135,12 @@ end
 # traversed starting from bi (adds their indices to the marked list)
 # WARNING: will break if called on Poly TODO: fix
 export dfs
-function dfs(s::AbstractSpecies, bi::Int32, marked::Set{Int32})
+function dfs(s::AbstractSpecies, bi::Int32, marked::Set{Int32}, periodicBounds::Bool = true)
     if !(bi in marked)
         push!(marked, bi)
     end
 
-    nnIdxs!(s, s.pos[bi][range(1,3)])
+    nnIdxs!(s, s.pos[bi][range(1,3)], periodicBounds)
     nnIdxs = deepcopy(s.nnIdxs)
 
     for bj in nnIdxs
@@ -158,7 +158,7 @@ end
 # connected components
 # WARNING: will break if called on Poly TODO: fix
 export cc
-function cc(s::AbstractSpecies)
+function cc(s::AbstractSpecies, periodicBounds::Bool = true)
 
     ccs = Vector{Set{Int32}}()
     marked = Set{Int32}(keys(s.pos))  # all keys
@@ -166,7 +166,7 @@ function cc(s::AbstractSpecies)
 
     while !isempty(marked)
         bi = pop!(marked)
-        marked_bi = dfs(s, bi, marked_bi)
+        marked_bi = dfs(s, bi, marked_bi, periodicBounds)
 
         for bj in marked_bi
             if bi != bj

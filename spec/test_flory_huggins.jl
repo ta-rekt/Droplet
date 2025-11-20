@@ -16,7 +16,7 @@ b = Bulk(;
 slist = [b]
 
 # minimum size of a droplet for detection
-minsize = 50
+minsize = 5
 
 ### simulation parameters
 
