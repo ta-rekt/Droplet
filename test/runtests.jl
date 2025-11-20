@@ -27,7 +27,7 @@ using Test
         
         for i in 1:16
             @test p.latS[i,8,8] == 1
-            @test l.lat[1,i,8,8] == 1
+            @test l.lat[2,i,8,8] == 1
         end
 
         @test p.pos[1][4] == 0

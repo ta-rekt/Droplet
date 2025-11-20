@@ -244,14 +244,15 @@ export init!
 function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
     l.nspecies = length(slist)   # update number of species
-    l.lat = zeros((l.nspecies, l.boxlength, l.boxlength, l.boxlength))
+    l.lat = zeros((l.nspecies + 1, l.boxlength, l.boxlength, l.boxlength))
     l.speciesDir = Dict{Int, Int}()
 
     # fill out lattice sites for each species
     for (i, s) in enumerate(slist)
         
-        # give species s a view on its lattice sites
-        s.latS = view(l.lat, i, :, :, :)
+        # give species s a view on its lattice sites, and on the co-lattice
+        s.latS = view(l.lat, i + 1, :, :, :)
+        s.colatS = view(l.lat, 1, :, :, :)
 
         s.boxlength = l.boxlength
         initSpecies!(s)

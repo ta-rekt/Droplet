@@ -685,6 +685,61 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing density
 
+# finds the bounding box of a droplet, adds 1 along each axis for the empty
+# space around the droplet to be connected
+# TODO: split droplets that cross lattice boundaries upstream of this function
+function dropletBbox(s::AbstractSpecies, droplet::Set{Int32})
+
+    # start with position of an arbitrary particle in the droplet
+    key0 = pop!(droplet)
+    xb = [s.pos[key0][1], s.pos[key0][1]]
+    yb = [s.pos[key0][2], s.pos[key0][2]]
+    zb = [s.pos[key0][3], s.pos[key0][3]]
+
+    for (i, key) in enumerate(droplet)
+        # compute lower bounds
+        xb[1] = pos[key][1] < xb[1] ? pos[key][1] : xb[1]
+        yb[1] = pos[key][2] < yb[1] ? pos[key][2] : yb[1]
+        zb[1] = pos[key][3] < zb[1] ? pos[key][3] : zb[1]
+
+        # compute upper bounds
+        xb[2] = pos[key][1] > xb[2] ? pos[key][1] : xb[2]
+        yb[2] = pos[key][2] > yb[2] ? pos[key][2] : yb[2]
+        zb[2] = pos[key][3] > zb[2] ? pos[key][3] : zb[2]
+    end
+
+    # add 1 and clip to lattice bounds
+    xb[1] = max(xb[1] - 1, 1)
+    yb[1] = max(yb[1] - 1, 1)
+    zb[1] = max(zb[1] - 1, 1)
+
+    xb[2] = min(xb[2] + 1, s.boxlength)
+    yb[2] = min(yb[2] + 1, s.boxlength)
+    zb[2] = min(zb[2] + 1, s.boxlength)
+
+    return [xb, yb, zb]
+end
+
+# returns the exact volume of a droplet. BFS on the empty space
+# inside the bounding box, subtracts that from the volume of the box
+# WARNING: handle single particles inside the bbox
+function dropletVolume(s::AbstractSpecies, droplet::Set{Int32})
+
+    bbox = dropletBbox(s, droplet)
+    
+
+end
+
+function dropletDensitiesExact(s::AbstractSpecies, ccs::Vector{Set{Int32}})
+    dens = Vector{Float64}(undef, 0)
+
+    for (i, cc) in enumerate(ccs)
+        push!(dens, length(cc) / dropletVolume(s, cc))
+    end
+
+    return dens
+end
+
 @time let
     date = "20251119"
     outdir = "data/$(date)/"
@@ -693,16 +748,17 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 32,
+        boxlength = 16,
         nspecies = 1
     )
 
     b = Bulk(;
-        length = 16^3,
+        length = 8,
         intPot = -1,
         chemPot = 1,
-        initShape = "uniform",
-        initParams = 1
+        initShape = "box",
+        initParams = 1,
+        initPos = [2,2,2]
     )
 
     slist = [b]
@@ -713,7 +769,8 @@ end
     ccs = cc(b)
     # @show ccs
 
-    # @show dropletDensity(b, ccs)
+    @show centerMass(b, pop!(ccs))
+    @show dropletDensity(b, ccs)
     @show diluteDensity(b)
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))

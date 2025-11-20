@@ -37,7 +37,8 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     finalPos::Union{Nothing, Vector{Int32}} = nothing   # anchor position on the other side
 
     # addBond!, removeBond!, identifyBond! variables
-    latS::Union{Nothing, AbstractArray{Int32}} = nothing
+    latS::Union{Nothing, AbstractArray{Int32}} = nothing   # lattice
+    colatS::Union{Nothing, AbstractArray{Int32}} = nothing   # co-lattice (lattice of holes)
     head::Union{Nothing, Int32} = nothing
     ki::Union{Nothing, Int32} = nothing
     kj::Union{Nothing, Int32} = nothing
@@ -94,8 +95,9 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     initShape::Union{Nothing, String} = nothing
     initParams::Union{Nothing, Int32} = nothing
 
-    # lattice view
+    # lattice and co-lattice views
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
+    colatS::Union{Nothing, AbstractArray{Int32}} = nothing   # co-lattice (lattice of holes)
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -144,8 +146,9 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     initShape::Union{Nothing, String} = nothing
     initParams::Union{Nothing, Int32} = nothing
 
-    # lattice view
+    # lattice and co-lattice views
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
+    colatS::Union{Nothing, AbstractArray{Int32}} = nothing   # co-lattice (lattice of holes)
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing

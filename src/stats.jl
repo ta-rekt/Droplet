@@ -70,7 +70,8 @@ function boxDensity(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     return count / vol
 end
 
-
+# TODO: refactor: find the bounding box of a droplet and prune it by removing empty sites
+# starting from the outer shell going inwards
 export dropletDensity
 function dropletDensity(s::AbstractSpecies, ccs::Vector{Set{Int32}})
     
@@ -95,6 +96,8 @@ end
 
 
 # density of dilute medium 
+# TODO: refactor: count particles not in any droplet of size >=3
+# divide by box volume - sum of droplet volumes
 export diluteDensity
 function diluteDensity(s::AbstractBulk)
 
