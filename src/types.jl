@@ -10,6 +10,31 @@ abstract type AbstractPoly <: AbstractSpecies end
 abstract type AbstractBulk <: AbstractSpecies end 
 abstract type AbstractFastBulk <: AbstractBulk end 
 
+
+######## Generic species #######
+
+export Species
+Base.@kwdef mutable struct Species <: AbstractSpecies
+    id::Int32 = begin
+      SPECIES_ID_COUNTER[] += 1
+      SPECIES_ID_COUNTER[]
+    end
+
+    name::String = ""    # unique name of this species
+
+    # required fields
+    length::Union{Nothing, Int32} = nothing       # number of beads
+    maxlength::Union{Nothing, Int32} = nothing   # max number of beads
+    boxlength::Union{Nothing, Int32} = nothing    # box linear dimension
+    pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing   # xyz coordinates of all the beads
+    head::Union{Nothing, Int32} = nothing
+    latS::Union{Nothing, AbstractArray{Int32}} = nothing   # lattice
+    tempVec::Union{Nothing, Vector{Int32}} = nothing
+    nnIdxs::Union{Nothing, Vector{Int32}} = nothing
+    freeNNs::Union{Nothing, Set{Int32}} = nothing
+    
+end
+
 ######## Polymer #######
 
 export Poly
@@ -38,7 +63,7 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
 
     # addBond!, removeBond!, identifyBond! variables
     latS::Union{Nothing, AbstractArray{Int32}} = nothing   # lattice
-    colatS::Union{Nothing, AbstractArray{Int32}} = nothing   # co-lattice (lattice of holes)
+    ghost::Union{Nothing, AbstractSpecies} = nothing
     head::Union{Nothing, Int32} = nothing
     ki::Union{Nothing, Int32} = nothing
     kj::Union{Nothing, Int32} = nothing
@@ -95,9 +120,9 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     initShape::Union{Nothing, String} = nothing
     initParams::Union{Nothing, Int32} = nothing
 
-    # lattice and co-lattice views
+    # lattice and ghost species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
-    colatS::Union{Nothing, AbstractArray{Int32}} = nothing   # co-lattice (lattice of holes)
+    ghost::Union{Nothing, AbstractSpecies} = nothing
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -146,9 +171,9 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     initShape::Union{Nothing, String} = nothing
     initParams::Union{Nothing, Int32} = nothing
 
-    # lattice and co-lattice views
+    # lattice and ghost species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
-    colatS::Union{Nothing, AbstractArray{Int32}} = nothing   # co-lattice (lattice of holes)
+    ghost::Union{Nothing, AbstractSpecies} = nothing
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing

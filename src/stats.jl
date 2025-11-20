@@ -133,8 +133,9 @@ end
 
 # depth-first search: takes a bead index bi and marks all beads
 # traversed starting from bi (adds their indices to the marked list)
+# WARNING: will break if called on Poly TODO: fix
 export dfs
-function dfs(s::AbstractBulk, bi::Int32, marked::Set{Int32})
+function dfs(s::AbstractSpecies, bi::Int32, marked::Set{Int32})
     if !(bi in marked)
         push!(marked, bi)
     end
@@ -155,8 +156,9 @@ end
 
 
 # connected components
+# WARNING: will break if called on Poly TODO: fix
 export cc
-function cc(s::AbstractBulk)
+function cc(s::AbstractSpecies)
 
     ccs = Vector{Set{Int32}}()
     marked = Set{Int32}(keys(s.pos))  # all keys

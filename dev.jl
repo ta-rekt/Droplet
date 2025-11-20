@@ -698,14 +698,14 @@ function dropletBbox(s::AbstractSpecies, droplet::Set{Int32})
 
     for (i, key) in enumerate(droplet)
         # compute lower bounds
-        xb[1] = pos[key][1] < xb[1] ? pos[key][1] : xb[1]
-        yb[1] = pos[key][2] < yb[1] ? pos[key][2] : yb[1]
-        zb[1] = pos[key][3] < zb[1] ? pos[key][3] : zb[1]
+        xb[1] = s.pos[key][1] < xb[1] ? s.pos[key][1] : xb[1]
+        yb[1] = s.pos[key][2] < yb[1] ? s.pos[key][2] : yb[1]
+        zb[1] = s.pos[key][3] < zb[1] ? s.pos[key][3] : zb[1]
 
         # compute upper bounds
-        xb[2] = pos[key][1] > xb[2] ? pos[key][1] : xb[2]
-        yb[2] = pos[key][2] > yb[2] ? pos[key][2] : yb[2]
-        zb[2] = pos[key][3] > zb[2] ? pos[key][3] : zb[2]
+        xb[2] = s.pos[key][1] > xb[2] ? s.pos[key][1] : xb[2]
+        yb[2] = s.pos[key][2] > yb[2] ? s.pos[key][2] : yb[2]
+        zb[2] = s.pos[key][3] > zb[2] ? s.pos[key][3] : zb[2]
     end
 
     # add 1 and clip to lattice bounds
@@ -720,14 +720,88 @@ function dropletBbox(s::AbstractSpecies, droplet::Set{Int32})
     return [xb, yb, zb]
 end
 
+# fills up a box around a droplet in the co-lattice
+function fillBbox!(s::AbstractSpecies, 
+                   droplet::Set{Int32},
+                   bbox::Vector{Vector{Int32}})
+
+    xl, xh = bbox[1]
+    yl, yh = bbox[2]
+    zl, zh = bbox[3]
+
+    # ghost species
+    gs = s.ghost
+    key = 1
+
+    # loop across the bbox, if site not part of the droplet, add it to the ghost lattice
+    for x in range(xl, xh)
+        for y in range(yl, yh)
+            for z in range(zl, zh)
+                if !(s.latS[x, y, z] in droplet)
+                    gs.latS[x, y, z] = key
+                    gs.pos[key] = [x, y, z, key - 1, key + 1]
+                    key += 1
+                end
+            end
+        end
+    end
+
+    gs.pos[1][4] = 0
+    gs.pos[key][5] = 0
+
+    return s
+end
+
+# clears a box around a droplet in the ghost lattice
+function clearBbox!(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
+
+    xl, xh = bbox[1]
+    yl, yh = bbox[2]
+    zl, zh = bbox[3]
+
+    # ghost species
+    gs = s.ghost
+
+    # loop across x,y,z in the bbox, if empty, add it to the co-lattice
+    for x in range(xl, xh)
+        for y in range(yl, yh)
+            for z in range(zl, zh)
+                gs.latS[x, y, z]  = 0
+            end
+        end
+    end
+
+    gs.pos = OrderedDict{Int32, Vector{Int32}}()
+
+    return s
+end
+
 # returns the exact volume of a droplet. BFS on the empty space
 # inside the bounding box, subtracts that from the volume of the box
-# WARNING: handle single particles inside the bbox
 function dropletVolume(s::AbstractSpecies, droplet::Set{Int32})
 
+    # bounding box around a droplet
     bbox = dropletBbox(s, droplet)
-    
+    xl, xh = bbox[1]
+    yl, yh = bbox[2]
+    zl, zh = bbox[3]
+    bbox_vol = abs(xh - xl + 1) * abs(yh - yl + 1) * abs(zh - zl + 1)
 
+    # fill up the bounding box in the ghost lattice
+    fillBox!(s, droplet, bbox)
+
+    # starting point for DFS
+    bi = s.ghost.latS[bbox[1][1], bbox[2][1], bbox[3][1]]  # key of one of bbox's corners
+    @assert bi != 0 "Starting from an empty site!" 
+    marked_bi = Set{Int32}()
+
+    # connected component in the bbox volume around a droplet
+    marked_bi = dfs(s.ghost, bi, marked_bi)
+
+    # cleans up sites in the ghost lattice
+    clearBbox!(s, bbox)
+
+    return bbox_vol - length(marked_bi)
 end
 
 function dropletDensitiesExact(s::AbstractSpecies, ccs::Vector{Set{Int32}})
@@ -769,9 +843,15 @@ end
     ccs = cc(b)
     # @show ccs
 
-    @show centerMass(b, pop!(ccs))
-    @show dropletDensity(b, ccs)
-    @show diluteDensity(b)
+    # @show centerMass(b, pop!(ccs))
+    # @show dropletDensity(b, ccs)
+    # @show diluteDensity(b)
+
+    gs = b.ghost
+
+    gs.pos[1] = [1,2,3,4,5]
+
+    @show b.ghost.pos[1]
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 

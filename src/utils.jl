@@ -45,11 +45,10 @@ export coords_equal
 end
 
 
-############# FastBulk utilities #############
-
 # Set of nearest neighbors of a given position
+# WARNING: will break if called on a Poly TODO: fix
 export nnIdxs!
-function nnIdxs!(b::AbstractBulk, pos::Union{SubArray{Int32}, Vector{Int32}})
+function nnIdxs!(b::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
     k = 1
 
     for i in range(1, 3)

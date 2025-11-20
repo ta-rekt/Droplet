@@ -93,6 +93,24 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
 end
 
 
+######## Species #######
+
+# initializes empty dict of bead locations and other containers
+export initSpecies!
+function initSpecies!(s::Species)
+    s.name = string("species", s.id)
+    s.pos = OrderedDict{Int32, Vector{Int32}}()
+
+    # head and tail beads
+    s.head = 1
+    s.tempVec = zeros(Int32, 3)
+    s.nnIdxs = zeros(Int32, 6)
+    s.freeNNs = Set{Int32}()
+
+    return s
+end
+
+
 ######## Polymer #######
 
 # initializes species configuration from a list of presets
@@ -247,12 +265,19 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
     l.lat = zeros((l.nspecies + 1, l.boxlength, l.boxlength, l.boxlength))
     l.speciesDir = Dict{Int, Int}()
 
-    # fill out lattice sites for each species
+    # initialize ghost species
+    gs = Species(;)
+    gs.latS = view(l.lat, 1, :, :, :)
+    gs.boxlength = l.boxlength
+
+    initSpecies!(gs)
+
+    # initialize each physical species
     for (i, s) in enumerate(slist)
         
-        # give species s a view on its lattice sites, and on the co-lattice
+        # give species s a view on its lattice sites, and on the ghost species
         s.latS = view(l.lat, i + 1, :, :, :)
-        s.colatS = view(l.lat, 1, :, :, :)
+        s.ghost = gs
 
         s.boxlength = l.boxlength
         initSpecies!(s)
