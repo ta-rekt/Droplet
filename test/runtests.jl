@@ -718,7 +718,7 @@ using Test
         init!(l, slist)
 
         keys_ = [[2,2,2],[2,2,3],[2,3,2],[2,3,3],
-             [3,2,2],[3,2,3],[3,3,2],[3,3,3],[1,1,1],[2,1,2]]
+             [3,2,2],[3,2,3],[3,3,2],[3,3,3],[1,1,1],[2,1,2]]  # poke a hole in it
         for key in keys_
             x, y, z = key
             key = b.latS[x,y,z]
@@ -745,7 +745,7 @@ using Test
         init!(l, slist)
 
         keys_ = [[2,2,2],[2,2,3],[2,3,2],[2,3,3],
-             [3,2,2],[3,2,3],[3,3,2],[3,3,3],[1,1,1]]
+             [3,2,2],[3,2,3],[3,3,2],[3,3,3],[1,1,1]]  # no hole: outer volume preserved
         for key in keys_
             x, y, z = key
             key = b.latS[x,y,z]

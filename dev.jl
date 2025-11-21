@@ -686,29 +686,13 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing density
 
-# exact density of each droplet in a list 
-function dropletDensities(s, droplets::Vector{Set{Int32}})
-    densities = Vector{Float64}(undef, 0)
-
-    for d in droplets
-        push!(densities, length(d) / dropletVolume(s, d))
-    end
-
-    return densities
-end
-
-# (number of particles - total droplet size) / (volume - total droplet volume)
-function diluteDensity(s, droplets::Vector{Set{Int32}})
-
-end
-
 
 # to test:
 # ~ splitDroplet
 # ~ dropletBbox
 # ~ fillBbox
 # ~ clearBbox
-# * dropletVolume
+# ~ dropletVolume
 # * dropletDensities
 
 # to implement
@@ -718,7 +702,6 @@ end
 # * fastPoly
 # * multi-component bulk
 # * bulk-poly interaction
-
 
 
 @time let
@@ -746,15 +729,6 @@ end
 
     # initialize lattice and species
     init!(l, slist)
-
-    # keys_ = [[2,2,2],[2,2,3],[2,3,2],[2,3,3],
-    #          [3,2,2],[3,2,3],[3,3,2],[3,3,3]]
-    # for key in keys_
-    #     x, y, z = key
-    #     key = b.latS[x,y,z]
-    #     b.latS[x,y,z] = 0
-    #     pop!(b.pos, key)
-    # end
 
     ccs = cc(b)
     droplet = ccs[1]

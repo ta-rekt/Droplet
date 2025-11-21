@@ -133,28 +133,6 @@ end
 
 ########### Bulk stats ###########
 
-# returns the exact volume of a droplet. Length of CCs in the empty space
-# inside the bounding box, subtracts that from the volume of the box
-export dropletVolume
-function dropletVolume(s::AbstractBulk, droplet::Set{Int32})
-
-    # bounding box around a droplet
-    bbox = dropletBbox(s, droplet)
-
-    # fill up the bounding box in the ghost lattice
-    fillBbox!(s, droplet, bbox)
-
-    # connected components adjacent to bbox walls around a droplet
-    ccs = cc(s.ghost)
-    length_ccs = sum(map(x -> onEdge(s.ghost, x, bbox) ? length(x) : 0, ccs))
-
-    # cleans up sites in the ghost lattice
-    clearBbox!(s, bbox)
-
-    return vol(bbox) - length_ccs
-end
-
-
 # depth-first search: takes a bead index bi and marks all beads
 # traversed starting from bi (adds their indices to the marked list)
 # WARNING: will break if called on Poly TODO: fix
@@ -206,4 +184,55 @@ function cc(s::AbstractSpecies)
     end
 
     return ccs
+end
+
+
+# returns the exact volume of a droplet. Length of CCs in the empty space
+# inside the bounding box, subtracts that from the volume of the box
+export dropletVolume
+function dropletVolume(s::AbstractBulk, droplet::Set{Int32})
+
+    # bounding box around a droplet
+    bbox = dropletBbox(s, droplet)
+
+    # fill up the bounding box in the ghost lattice
+    fillBbox!(s, droplet, bbox)
+
+    # connected components adjacent to bbox walls around a droplet
+    ccs = cc(s.ghost)
+    length_ccs = sum(map(x -> onEdge(s.ghost, x, bbox) ? length(x) : 0, ccs))
+
+    # cleans up sites in the ghost lattice
+    clearBbox!(s, bbox)
+
+    return vol(bbox) - length_ccs
+end
+
+
+# exact density of each droplet in a list 
+export dropletDensities
+function dropletDensities(s::AbstractBulk, droplets::Vector{Set{Int32}})
+    densities = Vector{Float64}(undef, 0)
+
+    for d in droplets
+        push!(densities, length(d) / dropletVolume(s, d))
+    end
+
+    return densities
+end
+
+
+# (number of particles - total droplet size) / (volume - total droplet volume)
+export diluteDensity
+function diluteDensity(s::AbstractBulk, droplets::Vector{Set{Int32}})
+    
+    n = s.length
+    ndrop = sum(map(x -> length(x), droplets))
+    voldrop = 0
+
+    for d in droplets
+        voldrop += dropletVolume(s, d)
+    end
+
+    return (n - ndrop) / (s.boxlength^3 - voldrop)
 end
