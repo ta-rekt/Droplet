@@ -687,7 +687,7 @@ end
 # Testing density
 
 # exact density of each droplet in a list 
-function dropletDensitiesExact(s::AbstractSpecies, droplets::Vector{Set{Int32}})
+function dropletDensities(s, droplets::Vector{Set{Int32}})
     densities = Vector{Float64}(undef, 0)
 
     for d in droplets
@@ -698,7 +698,7 @@ function dropletDensitiesExact(s::AbstractSpecies, droplets::Vector{Set{Int32}})
 end
 
 # (number of particles - total droplet size) / (volume - total droplet volume)
-function diluteDensityExact(s::AbstractSpecies, droplets::Vector{Set{Int32}})
+function diluteDensity(s, droplets::Vector{Set{Int32}})
 
 end
 
@@ -734,12 +734,12 @@ end
     )
 
     b = Bulk(;
-        length = 65,
+        length = 8,
         intPot = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [3,3,3]
+        initPos = [1,1,1]
     )
 
     slist = [b]
@@ -747,48 +747,8 @@ end
     # initialize lattice and species
     init!(l, slist)
 
-    keys_ = [[2,2,2],[2,2,3],[2,3,3],[3,3,3],[3,2,2],[1,1,1]]
-    for key in keys_
-        x, y, z = key
-        key = b.latS[x,y,z]
-        b.latS[x,y,z] = 0
-        pop!(b.pos, key)
-    end
-
-
-    ccs = cc(b)
-    bbox = dropletBbox(b, ccs[1])
-    @show bbox, vol(bbox)
-
-    @show dropletVolume(b, ccs[1])
-    @show length(collect(keys(b.pos)))
-
-    exportSpecies!(slist, string(outpath, "_frame$(1)"))
-
-end
-
-# nasty corner case for dropletVolume
-
-    # l = Lattice(;
-    #     boxlength = 16,
-    #     nspecies = 1
-    # )
-
-    # b = Bulk(;
-    #     length = 64,
-    #     intPot = -1,
-    #     chemPot = 1,
-    #     initShape = "box",
-    #     initParams = 1,
-    #     initPos = [3,3,3]
-    # )
-
-    # slist = [b]
-
-    # # initialize lattice and species
-    # init!(l, slist)
-
-    # keys_ = [[2,2,2],[2,2,3],[2,3,3],[3,3,3],[3,2,2],[1,1,1]]
+    # keys_ = [[2,2,2],[2,2,3],[2,3,2],[2,3,3],
+    #          [3,2,2],[3,2,3],[3,3,2],[3,3,3]]
     # for key in keys_
     #     x, y, z = key
     #     key = b.latS[x,y,z]
@@ -796,10 +756,25 @@ end
     #     pop!(b.pos, key)
     # end
 
-
-    # ccs = cc(b)
+    ccs = cc(b)
+    droplet = ccs[1]
     # bbox = dropletBbox(b, ccs[1])
     # @show bbox, vol(bbox)
 
-    # @show dropletVolume(b, ccs[1])
-    # @show length(collect(keys(b.pos)))
+    # bbox = dropletBbox(b, droplet)
+    # @show bbox
+
+    # fill up the bounding box in the ghost lattice
+    # fillBbox!(b, droplet, bbox)
+
+    # ccs_gs = cc(b.ghost)
+    # println(map(x -> onEdge(b.ghost, x, bbox) ? length(x) : 0, ccs_gs))
+
+    @show dropletVolume(b, droplet)
+    @show length(collect(keys(b.pos)))
+
+    # clearBbox!(b, bbox)
+
+    exportSpecies!(slist, string(outpath, "_frame$(1)"))
+
+end

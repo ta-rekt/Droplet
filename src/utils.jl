@@ -32,6 +32,30 @@ function vol(bbox::Vector{Vector{Int32}})
     return abs(xh - xl + 1) * abs(yh - yl + 1) * abs(zh - zl + 1)
 end
 
+# returns true if at least one element of x is adjacent to the bbox
+export onEdge
+function onEdge(s::AbstractSpecies, x::Set{Int32}, bbox::Vector{Vector{Int32}})
+
+    @assert length(bbox) == 3
+    @assert length(bbox[1]) == 2 && length(bbox[2]) == 2 && length(bbox[3]) == 2
+
+    xl, xh = bbox[1]
+    yl, yh = bbox[2]
+    zl, zh = bbox[3]
+    
+    for p in x
+        if (s.pos[p][1] == xl || s.pos[p][1] == xh
+            || s.pos[p][2] == yl || s.pos[p][2] == yh
+            || s.pos[p][3] == zl || s.pos[p][3] == zh)
+
+            return true
+        end
+    end
+
+    return false
+end
+
+
 # Number of nearest neighbors at a given position
 export nn
 function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})

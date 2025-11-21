@@ -144,9 +144,9 @@ function dropletVolume(s::AbstractBulk, droplet::Set{Int32})
     # fill up the bounding box in the ghost lattice
     fillBbox!(s, droplet, bbox)
 
-    # connected components in the bbox volume around a droplet
+    # connected components adjacent to bbox walls around a droplet
     ccs = cc(s.ghost)
-    length_ccs = sum(map(x -> length(x), ccs))
+    length_ccs = sum(map(x -> onEdge(s.ghost, x, bbox) ? length(x) : 0, ccs))
 
     # cleans up sites in the ghost lattice
     clearBbox!(s, bbox)
