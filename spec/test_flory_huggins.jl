@@ -1,13 +1,13 @@
 ### physical parameters
 
 l = Lattice(;
-    boxlength = 32,
+    boxlength = 64,
     nspecies = 1
 )
 
 # bulk species
 b = Bulk(;
-    length = 8^3,
+    length = 16^3,
     intPot = nothing,
     chemPot = nothing
 )
@@ -20,11 +20,11 @@ minsize = 5
 
 ### simulation parameters
 
-nframes = 10000
+nframes = 1000
 step = 1000
 
-vals = range(0.25, stop=2.25, step=0.25)   # parallelized parameters (int. pot.)
-alphas = zeros(9)
+vals = range(0.8, stop=1.1, step=0.02)   # parallelized parameters (int. pot.)
+alphas = zeros(16)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
@@ -68,8 +68,8 @@ function target!(res, args...)
     
     ndroplets[frame] = length(droplets)
     droplet_sizes[frame] = map(x -> length(x), droplets)
-    droplet_densities[frame] = dropletDensity(b, droplets)
-    dilute_density[frame] = diluteDensity(b)
+    droplet_densities[frame] = dropletDensities(b, droplets)
+    dilute_density[frame] = diluteDensity(b, droplets)
     hams[frame] = b.ham   # initial energy
     accs[frame] = 0
     
@@ -87,8 +87,8 @@ function target!(res, args...)
                 
                 ndroplets[frame] = length(droplets)
                 droplet_sizes[frame] = map(x -> length(x), droplets)
-                droplet_densities[frame] = dropletDensity(b, droplets)
-                dilute_density[frame] = diluteDensity(b)
+                droplet_densities[frame] = dropletDensities(b, droplets)
+                dilute_density[frame] = diluteDensity(b, droplets)
                 hams[frame] = hams[frame-1] + deltaH
                 accs[frame] = niter == 0 ? 0 : nmoves / niter
                 
