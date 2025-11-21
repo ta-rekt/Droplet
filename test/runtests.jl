@@ -508,4 +508,192 @@ using Test
         @test x == y
     end
 
+    @testset "Split droplet" begin
+
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        b = Bulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [1,1,2]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+    
+        ccs = cc(b)
+        dlist = splitDroplet!(b, ccs[1])
+        @test dlist == [Set([5, 6]), Set([4, 3]), Set([7, 8]), Set([2, 1])]
+
+        b = Bulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [1,1,1]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+    
+        ccs = cc(b)
+        dlist = splitDroplet!(b, ccs[1])
+        @test dlist == [Set([5]), Set([4]), Set([6]), Set([7]), 
+                      Set([2]), Set([8]), Set([3]), Set([1])]
+
+        b = Bulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [1,2,2]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+    
+        ccs = cc(b)
+        dlist = splitDroplet!(b, ccs[1])
+        
+        @test dlist == [Set([5, 6, 7, 8]), Set([4, 2, 3, 1])]
+
+        b = Bulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [2,2,2]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+    
+        ccs = cc(b)
+        dlist = splitDroplet!(b, ccs[1])
+
+        @test dlist == [Set([5, 4, 6, 7, 2, 8, 3, 1])]
+    end
+
+
+    @testset "Droplet bbox" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        b = Bulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [8,8,8]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        ccs = cc(b)
+        bbox = dropletBbox(b, ccs[1])
+
+        @test bbox == [[6, 9], [6, 9], [6, 9]]
+
+        b = Bulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [2,2,2]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        ccs = cc(b)
+        bbox = dropletBbox(b, ccs[1])
+
+        @test bbox == [[1,3],[1,3],[1,3]]
+
+        b = Bulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [3,2,2]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        ccs = cc(b)
+        bbox = dropletBbox(b, ccs[1])
+
+        @test bbox == [[1,4],[1,3],[1,3]]
+    end
+
+
+    @testset "Fill/clear bbox" begin
+
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        for i in range(1, 100)
+
+            b = Bulk(;
+                length = i,
+                intPot = -1,
+                chemPot = 1,
+                initShape = "box",
+                initParams = 1,
+                initPos = [3,3,3]
+            )
+
+            slist = [b]
+
+            # initialize lattice and species
+            init!(l, slist)
+
+            ccs = cc(b)
+            # @show ccs
+
+            bbox = dropletBbox(b, ccs[1])
+
+            fillBbox!(b, ccs[1], bbox)
+
+            @test length(collect(keys(b.ghost.pos))) == vol(bbox) - length(ccs[1])
+            @test sum(map(x -> x > 0, b.ghost.latS)) == vol(bbox) - length(ccs[1])
+
+            clearBbox!(b, bbox)
+
+            @test iszero(b.ghost.latS)
+            @test isempty(b.ghost.pos)
+        end
+    end
 end
