@@ -20,7 +20,7 @@ function extractCoords!(p::AbstractPoly, coords::Matrix)
     key = p.head           # initial bead
     k = 1
     
-    for k in 1:p.length
+    for k in collect(keys(p.pos))
         if key != 0
             coords[k, :] = p.pos[key][1:3] # next position
             key = p.pos[key][5]    # next bead
@@ -32,9 +32,9 @@ end
 
 # extracts the coordinates of a polymer's beads
 export extractCoords!
-function extractCoords!(b::AbstractBulk, coords::Matrix)
+function extractCoords!(b::AbstractSpecies, coords::Matrix)
 
-    for k in 1:b.length
+    for k in collect(keys(b.pos))
         coords[k, :] = b.pos[k][1:3] # next position
     end
 
@@ -58,7 +58,8 @@ function exportSpecies!(slist::Vector{<:AbstractSpecies}, filename::String)
             try
                 coords = Matrix{Int32}(undef, Int(si.length), 3)
                 extractCoords!(si, coords)
-            catch
+            catch e
+                println(e)
                 # leave coords empty on failure
                 coords = Array{Int32}(undef, 0, 3)
             end

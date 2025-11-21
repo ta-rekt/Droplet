@@ -70,64 +70,88 @@ function boxDensity(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     return count / vol
 end
 
-# TODO: refactor: find the bounding box of a droplet and prune it by removing empty sites
-# starting from the outer shell going inwards
-export dropletDensity
-function dropletDensity(s::AbstractSpecies, ccs::Vector{Set{Int32}})
+# # TODO: refactor: find the bounding box of a droplet and prune it by removing empty sites
+# # starting from the outer shell going inwards
+# export dropletDensity
+# function dropletDensity(s::AbstractSpecies, ccs::Vector{Set{Int32}})
     
-    dens = Vector{Float64}(undef, 0)
+#     dens = Vector{Float64}(undef, 0)
 
-    for (i, cc) in enumerate(ccs)
-        # center of mass of each droplet
-        cm = centerMass(s, cc)
+#     for (i, cc) in enumerate(ccs)
+#         # center of mass of each droplet
+#         cm = centerMass(s, cc)
 
-        # compute bbox given droplet size
-        b = 0.3 * (length(cc))^(1/3)
-        bbox = [[round(Int32, cm[1] - 0.49*b), round(Int32, cm[1] + 0.5*b)],
-                [round(Int32, cm[2] - 0.49*b), round(Int32, cm[2] + 0.5*b)],
-                [round(Int32, cm[3] - 0.49*b), round(Int32, cm[3] + 0.5*b)]]
+#         # compute bbox given droplet size
+#         b = 0.3 * (length(cc))^(1/3)
+#         bbox = [[round(Int32, cm[1] - 0.49*b), round(Int32, cm[1] + 0.5*b)],
+#                 [round(Int32, cm[2] - 0.49*b), round(Int32, cm[2] + 0.5*b)],
+#                 [round(Int32, cm[3] - 0.49*b), round(Int32, cm[3] + 0.5*b)]]
 
-        # droplet density
-        push!(dens, boxDensity(s, bbox))
-    end
+#         # droplet density
+#         push!(dens, boxDensity(s, bbox))
+#     end
 
-    return dens
-end
+#     return dens
+# end
 
 
-# density of dilute medium 
-# TODO: refactor: count particles not in any droplet of size >=3
-# divide by box volume - sum of droplet volumes
-export diluteDensity
-function diluteDensity(s::AbstractBulk)
+# # density of dilute medium 
+# # TODO: refactor: count particles not in any droplet of size >=3
+# # divide by box volume - sum of droplet volumes
+# export diluteDensity
+# function diluteDensity(s::AbstractBulk)
 
-    # 8 bounding boxes, one at each corner of the lattice
-    l = s.boxlength
-    b = div(l, 8)
-    bboxes = Vector{Vector{Vector{Int32}}}(undef, 8)
-    bboxes[1] = [[1, b],[1, b],[1, b]]
-    bboxes[2] = [[1, b],[1, b],[l - b + 1, l]]
-    bboxes[3] = [[1, b],[l - b + 1, l],[1, b]]
-    bboxes[4] = [[1, b],[l - b + 1, l],[l - b + 1, l]]
-    bboxes[5] = [[l - b + 1, l],[1, b],[1, b]]
-    bboxes[6] = [[l - b + 1, l],[1, b],[l - b + 1, l]]
-    bboxes[7] = [[l - b + 1, l],[l - b + 1, l],[1, b]]
-    bboxes[8] = [[l - b + 1, l],[l - b + 1, l],[l - b + 1, l]]
+#     # 8 bounding boxes, one at each corner of the lattice
+#     l = s.boxlength
+#     b = div(l, 8)
+#     bboxes = Vector{Vector{Vector{Int32}}}(undef, 8)
+#     bboxes[1] = [[1, b],[1, b],[1, b]]
+#     bboxes[2] = [[1, b],[1, b],[l - b + 1, l]]
+#     bboxes[3] = [[1, b],[l - b + 1, l],[1, b]]
+#     bboxes[4] = [[1, b],[l - b + 1, l],[l - b + 1, l]]
+#     bboxes[5] = [[l - b + 1, l],[1, b],[1, b]]
+#     bboxes[6] = [[l - b + 1, l],[1, b],[l - b + 1, l]]
+#     bboxes[7] = [[l - b + 1, l],[l - b + 1, l],[1, b]]
+#     bboxes[8] = [[l - b + 1, l],[l - b + 1, l],[l - b + 1, l]]
 
-    # return the densities inside each of the 8 bounding boxes
-    dens = Dict{Int32, Float64}()
+#     # return the densities inside each of the 8 bounding boxes
+#     dens = Dict{Int32, Float64}()
 
-    for i in range(1, 8)
-        push!(dens, (i => boxDensity(s, bboxes[i])))
-    end
+#     for i in range(1, 8)
+#         push!(dens, (i => boxDensity(s, bboxes[i])))
+#     end
 
-    # select 4 boxes with the lowest density
-    for i in range(1, 4)
-        pop!(dens, argmin(dens))
-    end
+#     # select 4 boxes with the lowest density
+#     for i in range(1, 4)
+#         pop!(dens, argmin(dens))
+#     end
 
-    # return average density of those 4 boxes
-    return sum(values(dens)) / length(dens)
+#     # return average density of those 4 boxes
+#     return sum(values(dens)) / length(dens)
+# end
+
+
+########### Bulk stats ###########
+
+# returns the exact volume of a droplet. Length of CCs in the empty space
+# inside the bounding box, subtracts that from the volume of the box
+export dropletVolume
+function dropletVolume(s::AbstractBulk, droplet::Set{Int32})
+
+    # bounding box around a droplet
+    bbox = dropletBbox(s, droplet)
+
+    # fill up the bounding box in the ghost lattice
+    fillBbox!(s, droplet, bbox)
+
+    # connected components in the bbox volume around a droplet
+    ccs = cc(s.ghost)
+    length_ccs = sum(map(x -> length(x), ccs))
+
+    # cleans up sites in the ghost lattice
+    clearBbox!(s, bbox)
+
+    return vol(bbox) - length_ccs
 end
 
 

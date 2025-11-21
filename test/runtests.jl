@@ -696,4 +696,95 @@ using Test
             @test isempty(b.ghost.pos)
         end
     end
+
+    @testset "Droplet volume" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        b = Bulk(;
+            length = 65,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [3,3,3]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        keys_ = [[2,2,2],[2,2,3],[2,3,3],[3,3,3],[3,2,2],[1,1,1]]
+        for key in keys_
+            x, y, z = key
+            key = b.latS[x,y,z]
+            b.latS[x,y,z] = 0
+            pop!(b.pos, key)
+        end
+
+        ccs = cc(b)
+
+        @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
+
+
+
+        b = Bulk(;
+            length = 24,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [1,1,1]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        ccs = cc(b)
+
+        @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
+
+
+        b = Bulk(;
+            length = 29,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [1,1,1]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        ccs = cc(b)
+
+        @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
+
+
+        b = Bulk(;
+            length = 2,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [1,1,1]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        ccs = cc(b)
+
+        @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
+    end
 end

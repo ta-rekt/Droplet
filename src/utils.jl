@@ -131,7 +131,7 @@ export dropletBbox
 function dropletBbox(s::AbstractBulk, droplet::Set{Int32})
 
     # start with position of an arbitrary particle in the droplet
-    key0 = pop!(droplet)
+    key0 = collect(droplet)[1]
     xb = [s.pos[key0][1], s.pos[key0][1]]
     yb = [s.pos[key0][2], s.pos[key0][2]]
     zb = [s.pos[key0][3], s.pos[key0][3]]

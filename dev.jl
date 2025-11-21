@@ -4,6 +4,7 @@ let
     using Distributions
     using Plots
     using Profile
+    using OrderedCollections
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
@@ -685,30 +686,6 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing density
 
-# returns the exact volume of a droplet. BFS on the empty space
-# inside the bounding box, subtracts that from the volume of the box
-function dropletVolume(s::AbstractSpecies, droplet::Set{Int32})
-
-    # bounding box around a droplet
-    bbox = dropletBbox(s, droplet)
-    
-
-    # fill up the bounding box in the ghost lattice
-    fillBox!(s, droplet, bbox)
-
-    # starting point for DFS
-    bi = s.ghost.latS[bbox[1][1], bbox[2][1], bbox[3][1]]  # key of one of bbox's corners
-    @assert bi != 0 "Starting from an empty site!"
-
-    # connected component in the bbox volume around a droplet
-    marked_bi = dfs(s.ghost, bi, Set{Int32}())
-
-    # cleans up sites in the ghost lattice
-    clearBbox!(s, bbox)
-
-    return vol(bbox) - length(marked_bi)
-end
-
 # exact density of each droplet in a list 
 function dropletDensitiesExact(s::AbstractSpecies, droplets::Vector{Set{Int32}})
     densities = Vector{Float64}(undef, 0)
@@ -741,7 +718,8 @@ end
 # * fastPoly
 # * multi-component bulk
 # * bulk-poly interaction
-using OrderedCollections
+
+
 
 @time let
     date = "20251119"
@@ -756,12 +734,12 @@ using OrderedCollections
     )
 
     b = Bulk(;
-        length = 100,
+        length = 65,
         intPot = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [3,8,8]
+        initPos = [3,3,3]
     )
 
     slist = [b]
@@ -769,21 +747,59 @@ using OrderedCollections
     # initialize lattice and species
     init!(l, slist)
 
+    keys_ = [[2,2,2],[2,2,3],[2,3,3],[3,3,3],[3,2,2],[1,1,1]]
+    for key in keys_
+        x, y, z = key
+        key = b.latS[x,y,z]
+        b.latS[x,y,z] = 0
+        pop!(b.pos, key)
+    end
+
+
     ccs = cc(b)
-    # @show ccs
-
     bbox = dropletBbox(b, ccs[1])
+    @show bbox, vol(bbox)
 
-    fillBbox!(b, ccs[1], bbox)
-
-    @assert length(collect(keys(b.ghost.pos))) == vol(bbox) - length(ccs[1])
-    @assert sum(map(x -> x > 0, b.ghost.latS)) == vol(bbox) - length(ccs[1])
-
-    clearBbox!(b, bbox)
-
-    @assert iszero(b.ghost.latS)
-    @assert isempty(b.ghost.pos)
+    @show dropletVolume(b, ccs[1])
+    @show length(collect(keys(b.pos)))
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
 end
+
+# nasty corner case for dropletVolume
+
+    # l = Lattice(;
+    #     boxlength = 16,
+    #     nspecies = 1
+    # )
+
+    # b = Bulk(;
+    #     length = 64,
+    #     intPot = -1,
+    #     chemPot = 1,
+    #     initShape = "box",
+    #     initParams = 1,
+    #     initPos = [3,3,3]
+    # )
+
+    # slist = [b]
+
+    # # initialize lattice and species
+    # init!(l, slist)
+
+    # keys_ = [[2,2,2],[2,2,3],[2,3,3],[3,3,3],[3,2,2],[1,1,1]]
+    # for key in keys_
+    #     x, y, z = key
+    #     key = b.latS[x,y,z]
+    #     b.latS[x,y,z] = 0
+    #     pop!(b.pos, key)
+    # end
+
+
+    # ccs = cc(b)
+    # bbox = dropletBbox(b, ccs[1])
+    # @show bbox, vol(bbox)
+
+    # @show dropletVolume(b, ccs[1])
+    # @show length(collect(keys(b.pos)))
