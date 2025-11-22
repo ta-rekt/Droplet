@@ -77,21 +77,21 @@ end
 # traversed starting from bi (adds their indices to the marked list)
 # WARNING: will break if called on Poly TODO: fix
 export dfs
-function dfs(s::AbstractSpecies, 
-             bi::Int32, 
-             marked::Set{Int32})
+function dfs(s::AbstractSpecies, bi::Int32)
+    marked = Set{Int32}()
+    stack_ = OrderedSet{Int32}()
 
-    if !(bi in marked)
-        push!(marked, bi)
-    end
+    push!(marked, bi)
+    push!(stack_, bi)
 
-    nnIdxs!(s, s.pos[bi][range(1,3)])
-    nnIdxs = deepcopy(s.nnIdxs)
+    while !isempty(stack_)
+        bi = pop!(stack_)
+        nnIdxs!(s, view(s.pos[bi], range(1,3)))
 
-    for bj in nnIdxs
-        if bj != 0
-            if !(bj in marked)
-                marked = dfs(s, bj, marked)
+        for bj in s.nnIdxs
+            if bj != 0 && !(bj in marked)
+                push!(stack_, bj)
+                push!(marked, bj)
             end
         end
     end
@@ -104,23 +104,20 @@ end
 # WARNING: will break if called on Poly TODO: fix
 export cc
 function cc(s::AbstractSpecies)
-
     ccs = Vector{Set{Int32}}()
-    marked = Set{Int32}(keys(s.pos))  # all keys
-    marked_bi = Set{Int32}()
+    unvisited = Set{Int32}(keys(s.pos))  # all keys
 
-    while !isempty(marked)
-        bi = pop!(marked)
-        marked_bi = dfs(s, bi, marked_bi)
+    while !isempty(unvisited)
+        bi = pop!(unvisited)
+        component = dfs(s, bi)
 
-        for bj in marked_bi
+        for bj in component
             if bi != bj
-                pop!(marked, bj)
+                pop!(unvisited, bj)
             end
         end
 
-        push!(ccs, marked_bi)
-        marked_bi = Set{Int32}()
+        push!(ccs, component)
     end
 
     return ccs

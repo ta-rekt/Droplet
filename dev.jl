@@ -693,10 +693,10 @@ end
 # ~ fillBbox
 # ~ clearBbox
 # ~ dropletVolume
-# * dropletDensities
+# ~ dropletDensities
+# ~ diluteDensity
 
 # to implement
-# * diluteDensity
 # * kink-only polymer moves
 # * fastBulk
 # * fastPoly
@@ -712,17 +712,17 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 16,
+        boxlength = 64,
         nspecies = 1
     )
 
     b = Bulk(;
-        length = 8,
+        length = 4096,
         intPot = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [1,1,1]
+        initPos = [32,32,32]
     )
 
     slist = [b]
@@ -730,24 +730,7 @@ end
     # initialize lattice and species
     init!(l, slist)
 
-    ccs = cc(b)
-    droplet = ccs[1]
-    # bbox = dropletBbox(b, ccs[1])
-    # @show bbox, vol(bbox)
-
-    # bbox = dropletBbox(b, droplet)
-    # @show bbox
-
-    # fill up the bounding box in the ghost lattice
-    # fillBbox!(b, droplet, bbox)
-
-    # ccs_gs = cc(b.ghost)
-    # println(map(x -> onEdge(b.ghost, x, bbox) ? length(x) : 0, ccs_gs))
-
-    @show dropletVolume(b, droplet)
-    @show length(collect(keys(b.pos)))
-
-    # clearBbox!(b, bbox)
+    dfs(b, Int32(1))
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
