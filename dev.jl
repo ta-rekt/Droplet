@@ -686,11 +686,11 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing density
 
-
 # to test:
+# * fastbulk: movableIdxs
+# * fastbulk: hastingsFactor
 
 # to implement
-# * fastBulk
 # * fastPoly
 # * kink-only polymer moves
 # * multi-component bulk
@@ -705,25 +705,23 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 64,
+        boxlength = 4,
         nspecies = 1
     )
 
-    b = Bulk(;
-        length = 4096,
+    b = FastBulk(;
+        length = 8,
         intPot = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [32,32,32]
+        initPos = [3,3,3]
     )
 
     slist = [b]
 
     # initialize lattice and species
     init!(l, slist)
-
-    dfs(b, Int32(1))
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 

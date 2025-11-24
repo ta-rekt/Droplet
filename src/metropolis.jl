@@ -117,7 +117,7 @@ end
 
 ############# FastBulk metropolis functions #############
 
-# TODO: hastings factor. two terms: 
+# hastings factor. two terms: 
 # 1. |S(x)| / |S(x')|, where S(x) is the movable set of current config. x
 # 2. |M(x)| / |M(x')|, where M(x) is the number of free nns around b.bi
 export hastingsFactor!
