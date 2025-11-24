@@ -117,6 +117,41 @@ end
 
 ############# FastBulk metropolis functions #############
 
+# TODO: hastings factor. two terms: 
+# 1. |S(x)| / |S(x')|, where S(x) is the movable set of current config. x
+# 2. |M(x)| / |M(x')|, where M(x) is the number of free nns around b.bi
+export hastingsFactor!
+function hastingsFactor!(b::FastBulk)
+
+    nmovable = length(b.movableIdxs)
+
+    # (nnIdxs(bi) with nn = 6) - (nnIdxs(newPos) with nn = 5)
+    nnIdxs!(b, b.bi)
+    nmovable_new = 0
+
+    for key in b.nnIdxs
+        if key != 0 && nn(b, b.pos[key]) == 6
+            nmovable_new += 1
+        end
+    end
+
+    nnIdxs!(b, b.newPos)
+
+    for key in b.nnIdxs
+        if key != 0 && nn(b, b.pos[key]) == 5
+            nmovable_new -= 1
+        end
+    end
+
+    nmoves = 6 - nn(b, b.bi)
+    nmoves_new = 6 - (nn(b, b.newPos) - 1)  # count out current position
+
+    b.hastingsFactor = nmovable * nmoves / (nmovable_new * nmoves_new)
+
+    return b
+end
+
+
 export proposeMove!
 function proposeMove!(b::FastBulk)
 
@@ -135,12 +170,10 @@ function proposeMove!(b::FastBulk)
 
     b.tempVec[axis] = b.pos[b.moveIdx][axis] + dir
 
-    # TODO: hastings factor. two terms: 
-    # 1. |S(x)| / |S(x')|, where S(x) is the size of the movable set of config. x
-    # 2. |M(x)| / |M(x')|, where M(x) is the number of free nearest neighbs around b.bi
-
     # clip to within bounding box
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+    
+    hastingsFactor!(b)
 
     return b
 end

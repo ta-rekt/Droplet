@@ -336,15 +336,6 @@ export identifyBond!
 function identifyBond!(b::FastBulk)
     b.bi = view(b.pos[b.moveIdx], range(1, 3))
 
-    # find current nns, add them to b.movableIdxs
-    nnIdxs!(b, b.bi)
-    
-    for nnIdx in b.nnIdxs
-        if nnIdx > 0
-            push!(b.movableIdxs, nnIdx)
-        end
-    end
-
     return b
 end
 
@@ -354,6 +345,17 @@ function makeMove!(b::FastBulk)
     
     # delete old lattice site
     b.latS[b.bi[1], b.bi[2], b.bi[3]] = 0
+
+    # find current nns, make them movable
+    nnIdxs!(b, b.bi)
+    
+    for nnIdx in b.nnIdxs
+        if nnIdx > 0
+            push!(b.movableIdxs, nnIdx)
+        end
+    end
+
+    # set new lattice site
     b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = b.moveIdx
 
     # find if new position's nns are no longer movable

@@ -688,18 +688,11 @@ end
 
 
 # to test:
-# ~ splitDroplet
-# ~ dropletBbox
-# ~ fillBbox
-# ~ clearBbox
-# ~ dropletVolume
-# ~ dropletDensities
-# ~ diluteDensity
 
 # to implement
-# * kink-only polymer moves
 # * fastBulk
 # * fastPoly
+# * kink-only polymer moves
 # * multi-component bulk
 # * bulk-poly interaction
 
