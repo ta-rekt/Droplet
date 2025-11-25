@@ -1,5 +1,11 @@
 ############# Generic utilities #############
 
+export coords_equal
+@inline function coords_equal(a, b)
+    return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
+end
+
+
 # ensures positions are periodic within the lattice's bounding box
 export boxmod!
 function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
@@ -19,9 +25,11 @@ function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}},
     return w
 end
 
+
 # volume of a bounding box
 export vol
 function vol(bbox::Vector{Vector{Int32}})
+
     @assert length(bbox) == 3
     @assert length(bbox[1]) == 2 && length(bbox[2]) == 2 && length(bbox[3]) == 2
 
@@ -31,6 +39,7 @@ function vol(bbox::Vector{Vector{Int32}})
     
     return abs(xh - xl + 1) * abs(yh - yl + 1) * abs(zh - zl + 1)
 end
+
 
 # returns true if at least one element of x is adjacent to the bbox
 export onEdge
@@ -56,7 +65,7 @@ function onEdge(s::AbstractSpecies, x::Set{Int32}, bbox::Vector{Vector{Int32}})
 end
 
 
-# Number of nearest neighbors at a given position
+# Number of same-species nearest neighbors at a given position
 export nn
 function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
@@ -76,9 +85,26 @@ function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
     return n
 end
 
-export coords_equal
-@inline function coords_equal(a, b)
-    return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
+
+# Number of cross-species nearest neighbors at a given position
+export nnp
+function nnp(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    p = s.partner
+
+    for i in range(1, 3)
+        pos[i] += 1
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += (p.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+
+        pos[i] -= 2
+        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
+        n += (p.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+
+        pos[i] += 1
+    end
+
+    return n
 end
 
 

@@ -684,17 +684,19 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing density
+# Multi-component interactions
 
 # to test:
+# * bulk-bulk interaction: hamiltonian
 # * fastbulk: movableIdxs
 # * fastbulk: hastingsFactor
 
 # to implement
+# * bulk: static species
+# * bulk: initialize surface
+# * bulk-poly interaction
 # * fastPoly
 # * kink-only polymer moves
-# * multi-component bulk
-# * bulk-poly interaction
 
 
 @time let

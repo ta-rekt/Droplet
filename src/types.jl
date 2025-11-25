@@ -61,9 +61,13 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     initShape::Union{Nothing, String} = nothing
     finalPos::Union{Nothing, Vector{Int32}} = nothing   # anchor position on the other side
 
-    # addBond!, removeBond!, identifyBond! variables
+    # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing   # lattice
     ghost::Union{Nothing, AbstractSpecies} = nothing
+    partner::Union{Nothing, AbstractSpecies} = nothing
+    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
+    
+    # addBond!, removeBond!, identifyBond! variables
     head::Union{Nothing, Int32} = nothing
     ki::Union{Nothing, Int32} = nothing
     kj::Union{Nothing, Int32} = nothing
@@ -120,9 +124,11 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     initShape::Union{Nothing, String} = nothing
     initParams::Union{Nothing, Int32} = nothing
 
-    # lattice and ghost species
+    # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
+    partner::Union{Nothing, AbstractSpecies} = nothing
+    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -171,9 +177,11 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     initShape::Union{Nothing, String} = nothing
     initParams::Union{Nothing, Int32} = nothing
 
-    # lattice and ghost species
+    # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
+    partner::Union{Nothing, AbstractSpecies} = nothing
+    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing

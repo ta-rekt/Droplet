@@ -74,13 +74,28 @@ function ham!(b::AbstractBulk)
     
     b.ham = 0
     nnn = 0    # number of nearest neighbors
+    nnnp = 0   # number of nearest neighbors with the partner species
 
     for i in 1:b.length
         pos = b.pos[i][range(1, 3)]
         nnn += nn(b, pos)
     end
 
-    b.ham = - b.chemPot * b.length + b.intPot * nnn
+    if isnothing(b.partner)
+        b.intPotP = 0
+    else
+        p = b.partner
+
+        @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
+        @assert !(b.intPotP == p.intPotP) "Non-reciprocal interaction!"
+
+        for i in 1:b.length
+            pos = b.pos[i][range(1, 3)]
+            nnnp += nnp(b, pos)
+        end
+    end
+
+    b.ham = - b.chemPot * b.length + b.intPot * nnn + b.intPotP * nnnp
 
     return b
 end
@@ -90,6 +105,15 @@ export deltaHam!
 function deltaHam!(b::AbstractBulk)
 
     b.deltaH = b.intPot * (2*(nn(b, b.newPos) - nn(b, b.bi)) - 2)
+
+    if !isnothing(b.partner)
+
+        @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
+        @assert !(b.intPotP == p.intPotP) "Non-reciprocal interaction!"
+
+        b.deltaH += b.intPotP * (2*(nnp(b, b.newPos) - nnp(b, b.bi)) - 2)
+    end
+
     b.ham += b.deltaH
 
     return b

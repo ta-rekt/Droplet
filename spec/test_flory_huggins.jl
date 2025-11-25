@@ -1,13 +1,13 @@
 ### physical parameters
 
 l = Lattice(;
-    boxlength = 64,
+    boxlength = 16,
     nspecies = 1
 )
 
 # bulk species
 b = Bulk(;
-    length = 16^3,
+    length = 512,
     intPot = nothing,
     chemPot = nothing
 )
@@ -32,7 +32,7 @@ for (i, v) in enumerate(vals)
 end
 
 # alphas = [1.0]   # temperatures
-betas = [1.0]    # (physical) chemical and interaction potentials
+betas = [-1.0]    # (physical) chemical and interaction potentials
 nparams = length(alphas)
 
 
@@ -45,7 +45,7 @@ function target!(res, args...)
     slist, temp, beta = args
 
     b = slist[1]
-    b.intPot = - beta / temp
+    b.intPot = beta / temp
     b.chemPot = beta / temp
 
     # initialize lattice and species
