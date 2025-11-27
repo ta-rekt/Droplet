@@ -405,111 +405,117 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing move
 @time let
-    date = "20251028"
+    date = "20251126"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "test"
     outpath = string(outdir, outfile)
 
-    global l = Lattice(;
+    l = Lattice(;
         boxlength = 6,
         nspecies = 2
     )
 
-    # polymer
-    global p = Poly(;
-        length = 6,
-        maxlength = 24,
-        intPot = 1,
-        chemPot = 1,
-        initPos = [0,4,4]
-    )
-
-    global b = Bulk(;
-        length = 215,
+    a = Bulk(;
+        length = 2,
         intPot = -1,
-        chemPot = 1
+        intPotP = -1,
+        chemPot = 1,
+        initShape = "box",
+        initParams = 1,
+        initPos = [3,3,3]
     )
 
-    slist = [p, b]
+    b = Bulk(;
+        length = 1,
+        intPot = -1,
+        intPotP = -1,
+        chemPot = 1,
+        initShape = "uniform"
+    )
+
+    b.partner = a
+    a.partner = b
+
+    slist = [a, b]
 
     # initialize lattice and species
     init!(l, slist)
 
-    # initial energy
-    hamInitial = b.ham
-
     #### iterating multiple moves
-    nmoves = 0
+    nmoves = [0,0]
     frame = 1
     nframes = 10
     step = 1
-    deltaH = 0
+    deltaH = [0,0]
     niter = 0
-    moveMade = false
+    moveMade = [false, false]
+
+    hams = zeros(nframes, 2)
+    accDeltaH = zeros(nframes, 2)
     
-    radii = zeros(nframes)
-    hams = zeros(nframes)
-    accDeltaH = zeros(nframes)
-    
-    # first frame
-    accDeltaH[frame] = hamInitial
-    
+    # first frame, initial energy
+    accDeltaH[frame, :] = [a.ham, b.ham]    
+    hams[frame, :] = [a.ham, b.ham]
+    ham!(a)
     ham!(b)
-    hams[frame] = hamInitial
+    a.deltaH = 0
+    b.deltaH = 0
 
     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
 
     while frame <= nframes - 1
+        frame += 1
 
-        for (i, s) in enumerate([b])
+        for (i, s) in enumerate(slist)
 
-            if moveMade
-                deltaH += s.deltaH
+            deltaH[i] += s.deltaH
 
-                if mod(nmoves, step) == 0
-                    frame += 1
+            if mod(frame, step) == 0
+                accDeltaH[frame, i] = accDeltaH[frame-1, i] + deltaH[i]
+                deltaH[i] = 0
+                
+                ham!(s)
+                hams[frame, i] = s.ham
 
-                    radii[frame] = radius(s)
-                    accDeltaH[frame] = accDeltaH[frame-1] + deltaH
-                    deltaH = 0
-                    
-                    ham!(s)
-                    hams[frame] = s.ham
-
-                    if hams[frame] != accDeltaH[frame]
-                        print("Frame: ", frame)
-                        exportSpecies!(slist, string(outpath, "_frame$(frame)"))
-                        @assert hams[frame] == accDeltaH[frame]
-                    end
-
-                    exportSpecies!(slist, string(outpath, "_frame$(frame)"))
-                end
+                # if hams[frame, i] != accDeltaH[frame, i]
+                #     print("Frame: ", frame)
+                #     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+                #     @assert hams[frame, i] == accDeltaH[frame, i]
+                # end
             end
             
-            moveMade = move!(s)
-            nmoves += moveMade
-            niter += 1
+            moveMade[i] = move!(s)
+            nmoves[i] += moveMade[i]
         end
+        
+        exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+
     end
 
     # gyration radii of a straight line and a sphere of volume 'length'
 
-    println("Acceptance rate: ", nmoves / niter)
+    println("A acceptance rate: ", nmoves[1] / nframes)
+    println("B acceptance rate: ", nmoves[2] / nframes)
 
-    p1 = plot(1:nframes, radii;
-        label = "radius of gyration",
-        xlabel = "frame",
-        ylabel = "Rg",
-        legend = :topright)
-
-    p2 = plot(1:nframes, hams;
-        label = "ham",
+    p1 = plot(1:nframes, hams[:, 1];
+        label = "ham A",
         xlabel = "frame",
         ylabel = "Energy",
         legend = :topright)
-    plot!(p2, 1:nframes, accDeltaH;
-        label = "accDeltaH",
+    
+    p2 = plot(1:nframes, hams[:, 2];
+        label = "ham B",
+        xlabel = "frame",
+        ylabel = "Energy",
+        legend = :topright)
+
+    plot!(p1, 1:nframes, accDeltaH[:, 1];
+        label = "accDeltaH A",
+        linestyle = :dash)
+
+    plot!(p2, 1:nframes, accDeltaH[:, 2];
+        label = "accDeltaH B",
         linestyle = :dash)
 
     plot(p1, p2; layout = (2, 1), size = (900, 600))
@@ -711,19 +717,33 @@ end
         nspecies = 1
     )
 
-    b = FastBulk(;
+    b = Bulk(;
         length = 8,
         intPot = -1,
+        intPotP = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
         initPos = [3,3,3]
     )
 
-    slist = [b]
+    c = Bulk(;
+        length = 8,
+        intPot = -1,
+        intPotP = -1,
+        chemPot = 1,
+        initShape = "uniform"
+    )
+
+    c.partner = b
+    b.partner = c
+
+    slist = [b, c]
 
     # initialize lattice and species
     init!(l, slist)
+
+    @show b.id, c.id
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 

@@ -294,7 +294,9 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = 1
             end
         end
+    end
 
+    for s in slist
         # requires s.latS to be set
         if hasproperty(s, :ham)
             initHam!(s)

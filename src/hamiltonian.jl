@@ -87,7 +87,7 @@ function ham!(b::AbstractBulk)
         p = b.partner
 
         @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
-        @assert !(b.intPotP == p.intPotP) "Non-reciprocal interaction!"
+        @assert b.intPotP == p.intPotP "Non-reciprocal interaction!"
 
         for i in 1:b.length
             pos = b.pos[i][range(1, 3)]
@@ -109,7 +109,7 @@ function deltaHam!(b::AbstractBulk)
     if !isnothing(b.partner)
 
         @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
-        @assert !(b.intPotP == p.intPotP) "Non-reciprocal interaction!"
+        @assert b.intPotP == b.partner.intPotP "Non-reciprocal interaction!"
 
         b.deltaH += b.intPotP * (2*(nnp(b, b.newPos) - nnp(b, b.bi)) - 2)
     end
