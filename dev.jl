@@ -444,53 +444,72 @@ end
 
     #### iterating multiple moves
     nmoves = [0,0]
-    frame = 1
+    frame = [1,1]
+    frame_joint = 1
     nframes = 10
     step = 1
     deltaH = [0,0]
     niter = 0
     moveMade = [false, false]
 
-    hams = zeros(nframes, 2)
-    accDeltaH = zeros(nframes, 2)
+    hamsA = Vector{Float64}(undef, 0)
+    hamsB = Vector{Float64}(undef, 0)
+    hams = [hamsA, hamsB]
+    accDeltaHA = Vector{Float64}(undef, 0)
+    accDeltaHB = Vector{Float64}(undef, 0)
+    accDeltaH = [accDeltaHA, accDeltaHB]
     
     # first frame, initial energy
-    accDeltaH[frame, :] = [a.ham, b.ham]    
-    hams[frame, :] = [a.ham, b.ham]
+    push!(hams[1], a.ham)
+    push!(hams[2], b.ham)
+    push!(accDeltaH[1], a.ham)
+    push!(accDeltaH[2], b.ham)
+
     ham!(a)
     ham!(b)
     a.deltaH = 0
     b.deltaH = 0
 
-    exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+    a.name = string(a.name, "_a")
+    b.name = string(b.name, "_b")
+    color = ["blue (A)", "orange (B)"]
 
-    while frame <= nframes - 1
-        frame += 1
+    exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
 
+    while frame_joint <= nframes - 2
+        
         for (i, s) in enumerate(slist)
-
-            deltaH[i] += s.deltaH
-
-            if mod(frame, step) == 0
-                accDeltaH[frame, i] = accDeltaH[frame-1, i] + deltaH[i]
-                deltaH[i] = 0
+            
+            if moveMade[i]
                 
-                ham!(s)
-                hams[frame, i] = s.ham
-
-                # if hams[frame, i] != accDeltaH[frame, i]
-                #     print("Frame: ", frame)
-                #     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
-                #     @assert hams[frame, i] == accDeltaH[frame, i]
-                # end
+                deltaH[i] += s.deltaH
+                
+                if mod(nmoves[i], step) == 0
+                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                    deltaH[i] = 0
+                    
+                    ham!(s)
+                    push!(hams[i], s.ham)
+                    
+                    # if hams[frame, i] != accDeltaH[frame, i]
+                    #     print("Frame: ", frame)
+                    #     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+                    #     @assert hams[frame, i] == accDeltaH[frame, i]
+                    # end
+                end
             end
             
             moveMade[i] = move!(s)
             nmoves[i] += moveMade[i]
-        end
-        
-        exportSpecies!(slist, string(outpath, "_frame$(frame)"))
+            
+            if moveMade[i]
+                frame[i] += 1
+                frame_joint += 1
 
+                println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
+                exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
+            end
+        end
     end
 
     # gyration radii of a straight line and a sphere of volume 'length'
@@ -498,24 +517,30 @@ end
     println("A acceptance rate: ", nmoves[1] / nframes)
     println("B acceptance rate: ", nmoves[2] / nframes)
 
-    p1 = plot(1:nframes, hams[:, 1];
+    @show hams[1], accDeltaH[1]
+
+    p1 = plot(eachindex(hams[1]), hams[1][:];
         label = "ham A",
         xlabel = "frame",
         ylabel = "Energy",
+        color = "blue",
         legend = :topright)
     
-    p2 = plot(1:nframes, hams[:, 2];
+    p2 = plot(eachindex(hams[2]), hams[2][:];
         label = "ham B",
         xlabel = "frame",
         ylabel = "Energy",
+        color = "orange",
         legend = :topright)
 
-    plot!(p1, 1:nframes, accDeltaH[:, 1];
+    plot!(p1, eachindex(accDeltaH[1]), accDeltaH[1][:];
         label = "accDeltaH A",
+        color = "blue",
         linestyle = :dash)
 
-    plot!(p2, 1:nframes, accDeltaH[:, 2];
+    plot!(p2, eachindex(accDeltaH[2]), accDeltaH[2][:];
         label = "accDeltaH B",
+        color = "orange",
         linestyle = :dash)
 
     plot(p1, p2; layout = (2, 1), size = (900, 600))

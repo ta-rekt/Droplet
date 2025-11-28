@@ -111,7 +111,7 @@ function deltaHam!(b::AbstractBulk)
         @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
         @assert b.intPotP == b.partner.intPotP "Non-reciprocal interaction!"
 
-        b.deltaH += b.intPotP * (2*(nnp(b, b.newPos) - nnp(b, b.bi)) - 2)
+        b.deltaH += b.intPotP * (2*(nnp(b, b.newPos) - nnp(b, b.bi)))
     end
 
     b.ham += b.deltaH
