@@ -79,6 +79,8 @@ function ham!(b::AbstractBulk)
     for i in 1:b.length
         pos = b.pos[i][range(1, 3)]
         nnn += nn(b, pos)
+
+        # println("self bead ", i, ", #self nns ", nn(b, pos))
     end
 
     if isnothing(b.partner)
@@ -92,10 +94,12 @@ function ham!(b::AbstractBulk)
         for i in 1:b.length
             pos = b.pos[i][range(1, 3)]
             nnnp += nnp(b, pos)
+            # println("self bead ", i, ", #partner nns ", nnp(b, pos))
         end
     end
 
-    b.ham = - b.chemPot * b.length + b.intPot * nnn + b.intPotP * nnnp
+    b.ham = - b.chemPot * b.length + b.intPot * nnn / 2 + b.intPotP * nnnp
+    # @show nnn, nnnp, b.ham
 
     return b
 end
@@ -104,14 +108,16 @@ end
 export deltaHam!
 function deltaHam!(b::AbstractBulk)
 
-    b.deltaH = b.intPot * (2*(nn(b, b.newPos) - nn(b, b.bi)) - 2)
+    # increment of energy from self-interactions
+    b.deltaH = b.intPot * ((nn(b, b.newPos) - nn(b, b.bi)) - 1)
 
     if !isnothing(b.partner)
-
         @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
         @assert b.intPotP == b.partner.intPotP "Non-reciprocal interaction!"
 
-        b.deltaH += b.intPotP * (2*(nnp(b, b.newPos) - nnp(b, b.bi)))
+        # increment of self and partner's energy as a result of cross-interactions
+        b.partner.deltaHP = b.intPotP * ((nnp(b, b.newPos) - nnp(b, b.bi)))
+        b.deltaH += b.partner.deltaHP
     end
 
     b.ham += b.deltaH

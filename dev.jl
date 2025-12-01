@@ -412,22 +412,22 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 6,
+        boxlength = 16,
         nspecies = 2
     )
 
     a = Bulk(;
-        length = 2,
+        length = 27,
         intPot = -1,
         intPotP = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [3,3,3]
+        initPos = [8,8,8]
     )
 
     b = Bulk(;
-        length = 1,
+        length = 32,
         intPot = -1,
         intPotP = -1,
         chemPot = 1,
@@ -446,7 +446,7 @@ end
     nmoves = [0,0]
     frame = [1,1]
     frame_joint = 1
-    nframes = 10
+    nframes = 10000
     step = 1
     deltaH = [0,0]
     niter = 0
@@ -474,50 +474,43 @@ end
     b.name = string(b.name, "_b")
     color = ["blue (A)", "orange (B)"]
 
+    # println("frame ", frame_joint, ", ", color[1], " init (", frame[1], ")")
+    # println("frame ", frame_joint, ", ", color[2], " init (", frame[2], ")")
     exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
 
     while frame_joint <= nframes - 2
-        
         for (i, s) in enumerate(slist)
-            
-            if moveMade[i]
-                
+            if move!(s)
+                nmoves[i] += 1
                 deltaH[i] += s.deltaH
+                ip = i == 1 ? 2 : 1
+
+                # update deltaH for the partner
+                deltaH[ip] += s.partner.deltaHP
                 
-                if mod(nmoves[i], step) == 0
-                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
-                    deltaH[i] = 0
-                    
-                    ham!(s)
-                    push!(hams[i], s.ham)
-                    
-                    # if hams[frame, i] != accDeltaH[frame, i]
-                    #     print("Frame: ", frame)
-                    #     exportSpecies!(slist, string(outpath, "_frame$(frame)"))
-                    #     @assert hams[frame, i] == accDeltaH[frame, i]
-                    # end
-                end
-            end
-            
-            moveMade[i] = move!(s)
-            nmoves[i] += moveMade[i]
-            
-            if moveMade[i]
+                push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                deltaH[i] = 0
+                
+                ham!(s)
+                push!(hams[i], s.ham)
+
                 frame[i] += 1
                 frame_joint += 1
 
-                println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
-                exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
+                # println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
+                # exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
             end
         end
     end
 
     # gyration radii of a straight line and a sphere of volume 'length'
+    exportSpecies!(slist, string(outpath, "_frame$(2)"))
 
     println("A acceptance rate: ", nmoves[1] / nframes)
     println("B acceptance rate: ", nmoves[2] / nframes)
 
-    @show hams[1], accDeltaH[1]
+    @assert hams[1] == accDeltaH[1]
+    @assert hams[2] == accDeltaH[2]
 
     p1 = plot(eachindex(hams[1]), hams[1][:];
         label = "ham A",

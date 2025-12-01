@@ -96,6 +96,7 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     # energy
     ham::Union{Nothing, Float64} = nothing       # Hamiltonian
     deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
+    deltaHP::Union{Nothing, Float64} = nothing   # Hamiltonian increment from partner move
 end
 
 
@@ -149,6 +150,7 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     # energy
     ham::Union{Nothing, Float64} = nothing       # Hamiltonian
     deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
+    deltaHP::Union{Nothing, Float64} = nothing   # Hamiltonian increment from partner move
 end
 
 
@@ -202,6 +204,7 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     # energy
     ham::Union{Nothing, Float64} = nothing       # Hamiltonian
     deltaH::Union{Nothing, Float64} = nothing    # Hamiltonian increment of a given move
+    deltaHP::Union{Nothing, Float64} = nothing   # Hamiltonian increment from partner move
 end
 
 
