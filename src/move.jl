@@ -267,7 +267,7 @@ end
 ############# Bulk move functions #############
 
 export overlap
-function overlap(b::Bulk)
+function overlap(b::AbstractBulk)
     return b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] > 0
 end
 
@@ -386,7 +386,7 @@ function move!(b::FastBulk)
 
     # sample a particle at random among movable particles
     b.moveIdx = rand(b.movableIdxs)
-    @show b.moveIdx
+    @show b.movableIdxs, b.moveIdx
 
     # find coordinates and keys of selected bond
     identifyBond!(b)
@@ -395,11 +395,11 @@ function move!(b::FastBulk)
     # sample a move uniformly in each direction
     proposeMove!(b)
 
-    if !overlap(b)
-        if acceptMove(b)
-            makeMove!(b)
-            return true
-        end
+    @assert !overlap(b)
+
+    if acceptMove(b)
+        makeMove!(b)
+        return true
     end
 
     return false

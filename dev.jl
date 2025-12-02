@@ -712,7 +712,7 @@ end
 
 # to test:
 # ~ bulk-bulk interaction: hamiltonian
-# * fastbulk: movableIdxs
+# ~ fastbulk: movableIdxs
 # * fastbulk: hastingsFactor
 
 # to implement
@@ -730,29 +730,7 @@ end
     outfile = "test"
     outpath = string(outdir, outfile)
 
-    l = Lattice(;
-        boxlength = 4,
-        nspecies = 1
-    )
 
-    b = FastBulk(;
-        length = 8,
-        intPot = -1,
-        # intPotP = -1,
-        chemPot = 1,
-        initShape = "box",
-        initParams = 1,
-        initPos = [3,3,3]
-    )
 
-    slist = [b]
-
-    # initialize lattice and species
-    init!(l, slist)
-
-    # move!(b)
-    # @show b
-
-    exportSpecies!(slist, string(outpath, "_frame$(1)"))
-
+    exportSpecies!(slist, string(outpath, "_frame$(2)"))
 end

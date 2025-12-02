@@ -92,6 +92,18 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
     end
 end
 
+# populate the set of movable particles of a species
+export initMovableSet!
+function initMovableSet!(s::AbstractSpecies)
+    for i in keys(s.pos)
+        nns = nn(s, s.pos[i][range(1,3)])
+        if nns < 6
+            push!(s.movableIdxs, i)
+        end
+    end
+
+    return s
+end
 
 ######## Species #######
 
@@ -245,12 +257,6 @@ function initSpecies!(b::FastBulk)
     b.tempVec = zeros(Int32, 3)
     b.nnIdxs = zeros(Int32, 6)
 
-    for i in 1:b.length
-        if nn(b, b.pos[i][range(1,3)]) < 6
-            push!(b.movableIdxs, i)
-        end
-    end
-
     return b
 end
 
@@ -293,6 +299,10 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
             for j in 1:s.length
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = 1
             end
+        end
+
+        if typeof(s) == FastBulk
+            initMovableSet!(s)
         end
     end
 

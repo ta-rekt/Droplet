@@ -130,7 +130,7 @@ function hastingsFactor!(b::FastBulk)
     nmovable_new = 0
 
     for key in b.nnIdxs
-        if key != 0 && nn(b, b.pos[key]) == 6
+        if key != 0 && nn(b, b.pos[key][range(1,3)]) == 6
             nmovable_new += 1
         end
     end
@@ -138,7 +138,7 @@ function hastingsFactor!(b::FastBulk)
     nnIdxs!(b, b.newPos)
 
     for key in b.nnIdxs
-        if key != 0 && nn(b, b.pos[key]) == 5
+        if key != 0 && nn(b, b.pos[key][range(1,3)]) == 5
             nmovable_new -= 1
         end
     end
@@ -155,26 +155,29 @@ end
 export proposeMove!
 function proposeMove!(b::FastBulk)
 
-    for i in range(1, 3)
-        b.tempVec[i] = b.pos[b.moveIdx][i]
-    end
-
     nnIdxs!(b, b.bi)
     @show b.nnIdxs, b.freeNNs
 
-    @assert isempty(b.freeNNs) begin
+    @assert !isempty(b.freeNNs) begin
         "No free nearest neighbor sites: proposing an impossible move"
+    end
+
+    for i in range(1, 3)
+        b.tempVec[i] = b.pos[b.moveIdx][i]
     end
 
     # propose a move uniformly among the free sites
     b.moveType = rand(b.freeNNs)
     axis = div(b.moveType + 1, 2)
-    dir = mod(b.moveType + 1, 2) * 2 - 1
+    dir = - mod(b.moveType + 1, 2) * 2 + 1
+    @show b.moveType, axis, dir
+    @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
+    b.tempVec[axis] += dir
 
-    b.tempVec[axis] = b.pos[b.moveIdx][axis] + dir
-
+    @show b.tempVec
     # clip to within bounding box
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+    @show b.newPos
     
     hastingsFactor!(b)
 

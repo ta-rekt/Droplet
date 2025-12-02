@@ -771,7 +771,6 @@ using Test
             init!(l, slist)
 
             ccs = cc(b)
-            # @show ccs
 
             bbox = dropletBbox(b, ccs[1])
 
@@ -948,5 +947,178 @@ using Test
         ccs = cc(b)
 
         @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
+    end
+
+    @testset "Movable indices" begin
+        l = Lattice(;
+            boxlength = 5,
+            nspecies = 1
+        )
+
+        b = FastBulk(;
+            length = 27,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [3,3,3]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        for i in range(1, 27)
+            if i == 14
+                @test !(i in b.movableIdxs)
+            else
+                @test i in b.movableIdxs
+            end
+        end
+
+        # exportSpecies!(slist, string(outpath, "_frame$(1)"))
+
+        ########### corner ###########
+
+        b.moveIdx = 1
+
+        # find coordinates and keys of selected bond
+        identifyBond!(b)
+        @test b.bi == [2,2,2]
+
+        nnIdxs!(b, b.bi)
+        @test b.freeNNs == Set([2,4,6])
+
+        for i in range(1, 3)
+            b.tempVec[i] = b.pos[b.moveIdx][i]
+        end
+        
+        # test each move direction
+        b.moveType = 2
+        axis = div(b.moveType + 1, 2)
+        dir = - mod(b.moveType + 1, 2) * 2 + 1
+        
+        b.tempVec[axis] += dir
+        @test b.tempVec == [1,2,2]
+
+        # clip to within bounding box
+        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+        @test !overlap(b)
+
+        makeMove!(b)
+        @test b.bi == [1,2,2]
+
+
+        ########### edge ###########
+
+        b = FastBulk(;
+            length = 27,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [3,3,3]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        b.moveIdx = 2
+
+        # find coordinates and keys of selected bond
+        identifyBond!(b)
+        @test b.bi == [2,2,3]
+
+        nnIdxs!(b, b.bi)
+        @test b.freeNNs == Set([2,4])
+
+        for i in range(1, 3)
+            b.tempVec[i] = b.pos[b.moveIdx][i]
+        end
+        
+        # test each move direction
+        b.moveType = 4
+        axis = div(b.moveType + 1, 2)
+        dir = - mod(b.moveType + 1, 2) * 2 + 1
+        
+        b.tempVec[axis] += dir
+        @test b.tempVec == [2,1,3]
+
+        # clip to within bounding box
+        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+        @test !overlap(b)
+
+        makeMove!(b)
+        @test b.bi == [2,1,3]
+
+
+        ########### center ###########
+
+        b = FastBulk(;
+            length = 27,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [3,3,3]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        b.moveIdx = 14
+
+        # find coordinates and keys of selected bond
+        identifyBond!(b)
+        @test b.bi == [3,3,3]
+
+        nnIdxs!(b, b.bi)
+        @test isempty(b.freeNNs)
+
+
+        ########### across boundary ###########
+
+        b = FastBulk(;
+            length = 8,
+            intPot = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [1,1,1]
+        )
+
+        slist = [b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        b.moveIdx = 8
+
+        # find coordinates and keys of selected bond
+        identifyBond!(b)
+        @test b.bi == [1,1,1]
+
+        nnIdxs!(b, b.bi)
+        @test b.freeNNs == Set([1,3,5])
+
+        for i in range(1, 3)
+            b.tempVec[i] = b.pos[b.moveIdx][i]
+        end
+        
+        # test each move direction
+        b.moveType = 2
+        axis = div(b.moveType + 1, 2)
+        dir = - mod(b.moveType + 1, 2) * 2 + 1
+        
+        b.tempVec[axis] += dir
+
+        # clip to within bounding box
+        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+        @test overlap(b)
     end
 end
