@@ -282,6 +282,96 @@ using Test
         end
     end
 
+    @testset "Hamiltonian (multi-component bulk)" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 2
+        )
+
+        a = Bulk(;
+            length = 27,
+            intPot = -1,
+            intPotP = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [8,8,8]
+        )
+
+        b = Bulk(;
+            length = 32,
+            intPot = -1,
+            intPotP = -1,
+            chemPot = 1,
+            initShape = "uniform"
+        )
+
+        b.partner = a
+        a.partner = b
+
+        slist = [a, b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        #### iterating multiple moves
+        nmoves = [0,0]
+        frame = [1,1]
+        frame_joint = 1
+        nframes = 10000
+        step = 1
+        deltaH = [0,0]
+        niter = 0
+        moveMade = [false, false]
+
+        hamsA = Vector{Float64}(undef, 0)
+        hamsB = Vector{Float64}(undef, 0)
+        hams = [hamsA, hamsB]
+        accDeltaHA = Vector{Float64}(undef, 0)
+        accDeltaHB = Vector{Float64}(undef, 0)
+        accDeltaH = [accDeltaHA, accDeltaHB]
+        
+        # first frame, initial energy
+        push!(hams[1], a.ham)
+        push!(hams[2], b.ham)
+        push!(accDeltaH[1], a.ham)
+        push!(accDeltaH[2], b.ham)
+
+        ham!(a)
+        ham!(b)
+        a.deltaH = 0
+        b.deltaH = 0
+
+        a.name = string(a.name, "_a")
+        b.name = string(b.name, "_b")
+        color = ["blue (A)", "orange (B)"]
+
+        while frame_joint <= nframes - 2
+            for (i, s) in enumerate(slist)
+                if move!(s)
+                    nmoves[i] += 1
+                    deltaH[i] += s.deltaH
+                    ip = i == 1 ? 2 : 1
+
+                    # update deltaH for the partner
+                    deltaH[ip] += s.partner.deltaHP
+                    
+                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                    deltaH[i] = 0
+                    
+                    ham!(s)
+                    push!(hams[i], s.ham)
+
+                    frame[i] += 1
+                    frame_joint += 1
+                end
+            end
+        end
+
+        @test hams[1] == accDeltaH[1]
+        @test hams[2] == accDeltaH[2]
+    end
+
     @testset "Connected components (multiple)" begin
 
         l = Lattice(;
