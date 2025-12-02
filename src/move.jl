@@ -231,8 +231,6 @@ end
 # moveType (add, remove or kink) sampled according to the metropolis algorithm
 export move!
 function move!(p::Poly)
-    
-    moveExecuted = false
 
     # sample a bond at random along the chain
     p.moveIdx = rand(1:p.length)
@@ -257,12 +255,12 @@ function move!(p::Poly)
                 
                 makeMove!(p)
                 p.length = length(keys(p.pos))   # TODO: refactor for speed
-                moveExecuted = true
+                return true
             end
         end
     end
 
-    return moveExecuted
+    return false
 end
 
 
@@ -305,8 +303,6 @@ end
 # Executes a move on a species of bulk monomers diluted in the box
 export move!
 function move!(b::Bulk)
-    
-    moveExecuted = false
 
     # sample a particle at random
     b.moveIdx = rand(1:b.length)
@@ -318,15 +314,13 @@ function move!(b::Bulk)
     proposeMove!(b)
 
     if !overlap(b)
-
         if acceptMove(b)
-
             makeMove!(b)
-            moveExecuted = true
+            return true
         end
     end
 
-    return moveExecuted
+    return false
 end
 
 
@@ -369,7 +363,7 @@ function makeMove!(b::FastBulk)
         end
     end
 
-    # add new site to movableIdxs
+    # add new site to movableIdxs (most be movable to preserve ergodicity)
     push!(b.movableIdxs, b.moveIdx)
     
     # update current position and new lattice site
@@ -389,26 +383,24 @@ end
 # Executes a move on a species of bulk monomers diluted in the box
 export move!
 function move!(b::FastBulk)
-    
-    moveExecuted = false
 
     # sample a particle at random among movable particles
     b.moveIdx = rand(b.movableIdxs)
+    @show b.moveIdx
 
     # find coordinates and keys of selected bond
     identifyBond!(b)
+    @show b.bi
     
     # sample a move uniformly in each direction
     proposeMove!(b)
 
     if !overlap(b)
-
         if acceptMove(b)
-
             makeMove!(b)
-            moveExecuted = true
+            return true
         end
     end
 
-    return moveExecuted
+    return false
 end

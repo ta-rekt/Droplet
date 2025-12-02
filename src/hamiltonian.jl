@@ -79,8 +79,6 @@ function ham!(b::AbstractBulk)
     for i in 1:b.length
         pos = b.pos[i][range(1, 3)]
         nnn += nn(b, pos)
-
-        # println("self bead ", i, ", #self nns ", nn(b, pos))
     end
 
     if isnothing(b.partner)
@@ -94,12 +92,10 @@ function ham!(b::AbstractBulk)
         for i in 1:b.length
             pos = b.pos[i][range(1, 3)]
             nnnp += nnp(b, pos)
-            # println("self bead ", i, ", #partner nns ", nnp(b, pos))
         end
     end
 
     b.ham = - b.chemPot * b.length + b.intPot * nnn / 2 + b.intPotP * nnnp
-    # @show nnn, nnnp, b.ham
 
     return b
 end

@@ -35,7 +35,8 @@ export extractCoords!
 function extractCoords!(b::AbstractSpecies, coords::Matrix)
 
     for k in collect(keys(b.pos))
-        coords[k, :] = b.pos[k][1:3] # next position
+        coords[k, 1:3] = b.pos[k][1:3]         # next position
+        coords[k, 4] = b.latS[b.pos[k][1], b.pos[k][2], b.pos[k][3]]   # bead index
     end
 
     return coords
@@ -56,12 +57,12 @@ function exportSpecies!(slist::Vector{<:AbstractSpecies}, filename::String)
         coords = Array{Int32}(undef, 0, 3)
         if hasproperty(si, :length) && hasproperty(si, :pos)
             try
-                coords = Matrix{Int32}(undef, Int(si.length), 3)
+                coords = Matrix{Int32}(undef, Int(si.length), 4)
                 extractCoords!(si, coords)
             catch e
                 println(e)
                 # leave coords empty on failure
-                coords = Array{Int32}(undef, 0, 3)
+                coords = Array{Int32}(undef, 0, 4)
             end
         end
         data[i]["coords"] = coords

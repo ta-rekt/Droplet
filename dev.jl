@@ -711,7 +711,7 @@ end
 # Multi-component interactions
 
 # to test:
-# * bulk-bulk interaction: hamiltonian
+# ~ bulk-bulk interaction: hamiltonian
 # * fastbulk: movableIdxs
 # * fastbulk: hastingsFactor
 
@@ -724,7 +724,7 @@ end
 
 
 @time let
-    date = "20251119"
+    date = "20251202"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "test"
@@ -735,33 +735,23 @@ end
         nspecies = 1
     )
 
-    b = Bulk(;
+    b = FastBulk(;
         length = 8,
         intPot = -1,
-        intPotP = -1,
+        # intPotP = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
         initPos = [3,3,3]
     )
 
-    c = Bulk(;
-        length = 8,
-        intPot = -1,
-        intPotP = -1,
-        chemPot = 1,
-        initShape = "uniform"
-    )
-
-    c.partner = b
-    b.partner = c
-
-    slist = [b, c]
+    slist = [b]
 
     # initialize lattice and species
     init!(l, slist)
 
-    @show b.id, c.id
+    # move!(b)
+    # @show b
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 

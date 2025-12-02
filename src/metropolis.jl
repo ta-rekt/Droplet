@@ -159,6 +159,9 @@ function proposeMove!(b::FastBulk)
         b.tempVec[i] = b.pos[b.moveIdx][i]
     end
 
+    nnIdxs!(b, b.bi)
+    @show b.nnIdxs, b.freeNNs
+
     @assert isempty(b.freeNNs) begin
         "No free nearest neighbor sites: proposing an impossible move"
     end
