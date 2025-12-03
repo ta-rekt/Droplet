@@ -403,7 +403,7 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing move
+# Testing Hamiltonian and its increment
 @time let
     date = "20251202"
     outdir = "data/$(date)/"
@@ -539,83 +539,6 @@ end
     plot(p1, p2; layout = (2, 1), size = (900, 600))
 end
 
-## 1010011111110000100000101010111100010100001100101110000
-# Testing hamiltonian functions
-let
-    date = "20250924"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "testpoly"
-    outpath = string(outdir, outfile)
-
-    global l = Lattice(;
-        boxlength = 16,
-        nspecies = 1
-    )
-
-    # polymer
-    global p = Species(;
-        length = 16,
-        maxlength = 32,
-        boxlength = l.boxlength,
-        intPot = 1.0,
-        chemPot = 1.0
-    )
-
-    # initializing lattice and species
-    initPoly!(p)
-    initLattice!(l, [p])
-
-    # initialize hamiltonians
-    initHamPoly!(p)
-    hamInitial = p.ham
-    @show hamInitial
-    @show p.chemPot, p.intPot
-
-    ### ### ### Adding a bond
-    
-    p.moveIdx = 5
-    identifyBond!(p)
-    p.moveType = 1  # bond addition
-    p.moveVec = [0,0,1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    
-    deltaHamPoly!(p)
-    @show p.deltaH
-    @show hamInitial + p.deltaH
-    
-    makeMove!(p)
-    p.length = length(keys(p.pos))
-
-    hamPoly!(p)
-    @show p.ham
-    @assert p.ham == hamInitial + p.deltaH
-
-    # ### ### ### Removing a bond
-
-    hamInitial = p.ham
-
-    p.moveIdx = 17
-    identifyBond!(p)
-    p.moveType = 3  # bond addition
-    p.moveVec = [0,0,-1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-
-    deltaHamPoly!(p)
-    @show p.deltaH
-    @show hamInitial + p.deltaH
-
-    makeMove!(p)
-    p.length = length(keys(p.pos))
-
-    hamPoly!(p)
-    @show p.ham
-    @assert p.ham == hamInitial + p.deltaH
-
-    export!(l, outpath)
-end
 
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing center of mass
@@ -721,14 +644,71 @@ end
 # * bulk-poly interaction
 # * fastPoly
 # * kink-only polymer moves
+# * variable interaction potential on polymer beads
 
 
 @time let
-    date = "20251202"
+    date = "20251203"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "test"
     outpath = string(outdir, outfile)
 
+    l = Lattice(;
+        boxlength = 4,
+        nspecies = 2
+    )
+
+    b = FastBulk(;
+        length = 64,
+        intPot = -1,
+        chemPot = 1,
+        initShape = "box",
+        initParams = 1,
+        initPos = [4,4,4]
+    )
+
+    slist = [b]
+
+    # initialize lattice and species
+    init!(l, slist)
+
+    
+    @show b.movableIdxs
+    
+    # surgically remove one bead
+    removedKey = 17
+    b.latS[b.pos[removedKey][1], b.pos[removedKey][2], b.pos[removedKey][3]] = 0
+    delete!(b.pos, removedKey)
+
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
+
+    # re-initialize movable set
+    initMovableSet!(b)
+    @show b.movableIdxs
+
+    b.moveIdx = rand(b.movableIdxs)
+    @show b.moveIdx
+
+    # find coordinates and keys of selected bond
+    identifyBond!(b)
+    @show b.bi
+
+    # sample a move uniformly in each direction
+    proposeMove!(b)
+    @show b.hastingsFactor
+
+    @assert !overlap(b)
+
+    deltaHam!(b)
+    @show b.deltaH
+
+    if acceptMove(b)
+        makeMove!(b)
+        println("moved!")
+    end
+
+    @show b.movableIdxs
+
+    exportSpecies!(slist, string(outpath, "_frame$(2)"))
 end

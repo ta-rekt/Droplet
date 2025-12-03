@@ -384,6 +384,10 @@ end
 export move!
 function move!(b::FastBulk)
 
+    if isempty(b.movableIdxs)
+        return false
+    end
+
     # sample a particle at random among movable particles
     b.moveIdx = rand(b.movableIdxs)
 

@@ -117,46 +117,11 @@ end
 
 ############# FastBulk metropolis functions #############
 
-# hastings factor. two terms: 
-# 1. |S(x)| / |S(x')|, where S(x) is the movable set of current config. x
-# 2. |M(x)| / |M(x')|, where M(x) is the number of free nns around b.bi
-export hastingsFactor!
-function hastingsFactor!(b::FastBulk)
-
-    nmovable = length(b.movableIdxs)
-
-    # (nnIdxs(bi) with nn = 6) - (nnIdxs(newPos) with nn = 5)
-    nnIdxs!(b, b.bi)
-    nmovable_new = 0
-
-    for key in b.nnIdxs
-        if key != 0 && nn(b, b.pos[key][range(1,3)]) == 6
-            nmovable_new += 1
-        end
-    end
-
-    nnIdxs!(b, b.newPos)
-
-    for key in b.nnIdxs
-        if key != 0 && nn(b, b.pos[key][range(1,3)]) == 5
-            nmovable_new -= 1
-        end
-    end
-
-    nmoves = 6 - nn(b, b.bi)
-    nmoves_new = 6 - (nn(b, b.newPos) - 1)  # count out current position
-
-    b.hastingsFactor = nmovable * nmoves / (nmovable_new * nmoves_new)
-
-    return b
-end
-
-
 export proposeMove!
 function proposeMove!(b::FastBulk)
 
     nnIdxs!(b, b.bi)
-    # @show b.nnIdxs, b.freeNNs
+    @show b.nnIdxs, b.freeNNs
 
     @assert !isempty(b.freeNNs) begin
         "No free nearest neighbor sites: proposing an impossible move"
@@ -172,15 +137,56 @@ function proposeMove!(b::FastBulk)
     dir = - mod(b.moveType + 1, 2) * 2 + 1
     b.tempVec[axis] += dir
 
-    # @show b.moveType, axis, dir
-    # @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
-    # @show b.tempVec
-    
+    @show b.moveType, axis, dir
+    @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
+    @show b.tempVec
+
     # clip to within bounding box
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-    # @show b.newPos
+    @show b.newPos
     
     hastingsFactor!(b)
+
+    return b
+end
+
+# hastings factor. two terms: 
+# 1. |S(x)| / |S(x')|, where S(x) is the movable set of current config. x
+# 2. |M(x)| / |M(x')|, where M(x) is the number of free nns around b.bi
+export hastingsFactor!
+function hastingsFactor!(b::FastBulk)
+
+    nmovable = length(b.movableIdxs)
+    @assert nmovable > 0 "No movable beads"
+    @show nmovable
+
+    # (number of nnIdxs(bi) with nn = 6) - (number of nnIdxs(newPos) with nn = 5)
+    # nnIdxs!(b, b.bi)
+    nmovable_new = nmovable
+    @show b.nnIdxs
+
+    for key in b.nnIdxs
+        if key != 0 && nn(b, b.pos[key][range(1,3)]) == 6
+            nmovable_new += 1
+        end
+    end
+    @show nmovable_new
+
+    nnIdxs!(b, b.newPos)
+    @show b.nnIdxs
+
+    for key in b.nnIdxs
+        if key != 0 && key != b.moveIdx && nn(b, b.pos[key][range(1,3)]) == 5
+            nmovable_new -= 1
+        end
+    end
+    @show nmovable_new
+
+    nmoves = 6 - nn(b, b.bi)
+    nmoves_new = 6 - (nn(b, b.newPos) - 1)  # count out current position
+    @assert nmoves > 0 "Selected bead is not movable"
+
+    b.hastingsFactor = nmovable * nmoves / (nmovable_new * nmoves_new)
 
     return b
 end

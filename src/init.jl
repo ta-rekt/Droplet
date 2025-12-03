@@ -95,7 +95,7 @@ end
 # populate the set of movable particles of a species
 export initMovableSet!
 function initMovableSet!(s::AbstractSpecies)
-    for i in keys(s.pos)
+    for i in collect(keys(s.pos))
         nns = nn(s, s.pos[i][range(1,3)])
         if nns < 6
             push!(s.movableIdxs, i)
