@@ -405,7 +405,7 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing move
 @time let
-    date = "20251126"
+    date = "20251202"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "test"
@@ -416,18 +416,18 @@ end
         nspecies = 2
     )
 
-    a = Bulk(;
-        length = 27,
+    a = FastBulk(;
+        length = 128,
         intPot = -1,
         intPotP = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [8,8,8]
+        initPos = [4,4,4]
     )
 
-    b = Bulk(;
-        length = 32,
+    b = FastBulk(;
+        length = 128,
         intPot = -1,
         intPotP = -1,
         chemPot = 1,
@@ -446,7 +446,7 @@ end
     nmoves = [0,0]
     frame = [1,1]
     frame_joint = 1
-    nframes = 10000
+    nframes = 1000
     step = 1
     deltaH = [0,0]
     niter = 0
@@ -730,7 +730,5 @@ end
     outfile = "test"
     outpath = string(outdir, outfile)
 
-
-
-    exportSpecies!(slist, string(outpath, "_frame$(2)"))
+    exportSpecies!(slist, string(outpath, "_frame$(1)"))
 end

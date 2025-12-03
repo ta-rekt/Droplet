@@ -301,7 +301,7 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
             end
         end
 
-        if typeof(s) == FastBulk
+        if typeof(s) <: FastBulk
             initMovableSet!(s)
         end
     end

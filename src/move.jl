@@ -386,11 +386,9 @@ function move!(b::FastBulk)
 
     # sample a particle at random among movable particles
     b.moveIdx = rand(b.movableIdxs)
-    @show b.movableIdxs, b.moveIdx
 
     # find coordinates and keys of selected bond
     identifyBond!(b)
-    @show b.bi
     
     # sample a move uniformly in each direction
     proposeMove!(b)

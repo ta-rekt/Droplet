@@ -156,7 +156,7 @@ export proposeMove!
 function proposeMove!(b::FastBulk)
 
     nnIdxs!(b, b.bi)
-    @show b.nnIdxs, b.freeNNs
+    # @show b.nnIdxs, b.freeNNs
 
     @assert !isempty(b.freeNNs) begin
         "No free nearest neighbor sites: proposing an impossible move"
@@ -170,14 +170,15 @@ function proposeMove!(b::FastBulk)
     b.moveType = rand(b.freeNNs)
     axis = div(b.moveType + 1, 2)
     dir = - mod(b.moveType + 1, 2) * 2 + 1
-    @show b.moveType, axis, dir
-    @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
     b.tempVec[axis] += dir
 
-    @show b.tempVec
+    # @show b.moveType, axis, dir
+    # @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
+    # @show b.tempVec
+    
     # clip to within bounding box
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-    @show b.newPos
+    # @show b.newPos
     
     hastingsFactor!(b)
 

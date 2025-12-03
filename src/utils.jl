@@ -82,6 +82,9 @@ function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
         pos[i] += 1
     end
 
+    # clear temporary containers
+    clamp!(s.tempVec, 0, 0)
+
     return n
 end
 
@@ -104,6 +107,9 @@ function nnp(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
         pos[i] += 1
     end
 
+    # clear temporary containers
+    clamp!(s.tempVec, 0, 0)
+
     return n
 end
 
@@ -114,6 +120,11 @@ export nnIdxs!
 function nnIdxs!(b::AbstractSpecies, 
                  pos::Union{SubArray{Int32}, Vector{Int32}})
     k = 1
+
+    # clear working containers
+    clamp!(b.tempVec, 0, 0)
+    clamp!(b.nnIdxs, 0, 0)
+    empty!(b.freeNNs)
 
     for i in range(1, 3)
         pos[i] += 1
@@ -136,6 +147,9 @@ function nnIdxs!(b::AbstractSpecies,
 
         pos[i] += 1
     end
+
+    # clear temporary containers
+    clamp!(b.tempVec, 0, 0)
 
     return b
 end
