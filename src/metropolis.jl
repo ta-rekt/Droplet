@@ -121,7 +121,7 @@ export proposeMove!
 function proposeMove!(b::FastBulk)
 
     nnIdxs!(b, b.bi)
-    @show b.nnIdxs, b.freeNNs
+    # @show b.nnIdxs, b.freeNNs
 
     @assert !isempty(b.freeNNs) begin
         "No free nearest neighbor sites: proposing an impossible move"
@@ -137,13 +137,13 @@ function proposeMove!(b::FastBulk)
     dir = - mod(b.moveType + 1, 2) * 2 + 1
     b.tempVec[axis] += dir
 
-    @show b.moveType, axis, dir
-    @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
-    @show b.tempVec
+    # @show b.moveType, axis, dir
+    # @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
+    # @show b.tempVec
 
     # clip to within bounding box
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-    @show b.newPos
+    # @show b.newPos
     
     hastingsFactor!(b)
 
@@ -158,29 +158,28 @@ function hastingsFactor!(b::FastBulk)
 
     nmovable = length(b.movableIdxs)
     @assert nmovable > 0 "No movable beads"
-    @show nmovable
+    # @show nmovable
 
     # (number of nnIdxs(bi) with nn = 6) - (number of nnIdxs(newPos) with nn = 5)
-    # nnIdxs!(b, b.bi)
     nmovable_new = nmovable
-    @show b.nnIdxs
+    # @show b.nnIdxs
 
     for key in b.nnIdxs
         if key != 0 && nn(b, b.pos[key][range(1,3)]) == 6
             nmovable_new += 1
         end
     end
-    @show nmovable_new
+    # @show nmovable_new
 
     nnIdxs!(b, b.newPos)
-    @show b.nnIdxs
+    # @show b.nnIdxs
 
     for key in b.nnIdxs
         if key != 0 && key != b.moveIdx && nn(b, b.pos[key][range(1,3)]) == 5
             nmovable_new -= 1
         end
     end
-    @show nmovable_new
+    # @show nmovable_new
 
     nmoves = 6 - nn(b, b.bi)
     nmoves_new = 6 - (nn(b, b.newPos) - 1)  # count out current position

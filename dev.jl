@@ -654,61 +654,65 @@ end
     outfile = "test"
     outpath = string(outdir, outfile)
 
+    ############ droplet boundary ############
+
     l = Lattice(;
         boxlength = 4,
         nspecies = 2
     )
 
     b = FastBulk(;
-        length = 64,
+        length = 7,
         intPot = -1,
         chemPot = 1,
         initShape = "box",
         initParams = 1,
-        initPos = [4,4,4]
+        initPos = [3,3,3]
     )
 
     slist = [b]
 
     # initialize lattice and species
     init!(l, slist)
-
     
-    @show b.movableIdxs
-    
-    # surgically remove one bead
-    removedKey = 17
-    b.latS[b.pos[removedKey][1], b.pos[removedKey][2], b.pos[removedKey][3]] = 0
-    delete!(b.pos, removedKey)
+    @assert b.movableIdxs == Set(range(1, 7))
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
-    # re-initialize movable set
-    initMovableSet!(b)
-    @show b.movableIdxs
-
-    b.moveIdx = rand(b.movableIdxs)
-    @show b.moveIdx
+    b.moveIdx = 6
 
     # find coordinates and keys of selected bond
     identifyBond!(b)
-    @show b.bi
+    @assert b.bi == [3,2,3]
 
     # sample a move uniformly in each direction
-    proposeMove!(b)
-    @show b.hastingsFactor
+    nnIdxs!(b, b.bi)
+    @assert b.nnIdxs == [0,2,0,0,0,5]
+    @assert b.freeNNs == Set([1,3,4,5])
 
-    @assert !overlap(b)
-
-    deltaHam!(b)
-    @show b.deltaH
-
-    if acceptMove(b)
-        makeMove!(b)
-        println("moved!")
+    for i in range(1, 3)
+        b.tempVec[i] = b.pos[b.moveIdx][i]
     end
 
-    @show b.movableIdxs
+    # propose a move uniformly among the free sites
+    b.moveType = 4
+    axis = div(b.moveType + 1, 2)
+    dir = - mod(b.moveType + 1, 2) * 2 + 1
+    b.tempVec[axis] += dir
 
-    exportSpecies!(slist, string(outpath, "_frame$(2)"))
+    @assert b.tempVec == [3,1,3]
+
+    # clip to within bounding box
+    boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+
+    hastingsFactor!(b)
+    # @show b.hastingsFactor
+    @assert b.hastingsFactor == 2/3
+
+    deltaHam!(b)
+    @assert b.deltaH == 2.0
+
+    makeMove!(b)
+
+    @assert b.movableIdxs == Set(range(1, 7))
 end
