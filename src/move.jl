@@ -1,5 +1,6 @@
 
 ############# Polymer move functions #############
+# MARK: -Poly
 
 export overlap
 function overlap(p::Poly)
@@ -157,52 +158,6 @@ function identifyBond!(p::Poly)
     return p
 end
 
-# Computes all possible move types for the selected bond
-# Warning: needs p.bondVec to be set
-export moveTypes!
-function moveTypes!(p::Poly)
-
-    # dimensions along which to move
-    dims = findall(iszero, p.bondVec)
-
-    @assert length(dims) == 2 begin
-        "bondVec must be aligned with x, y, or z axis"
-    end
-
-    # build all possible moves each bond can make
-    for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
-        
-        for i in range(1, 3)
-            p.moveVec[i] = 0
-        end
-
-        # flip direction along each dimension in the orthogonal plane
-        p.moveVec[dims[idx]] = sign
-
-        # Compute bi + moveVec
-        for j in range(1, 3)
-            p.tempVec[j] = p.bi[j] + p.moveVec[j]
-        end
-        boxmod!(p.tempVec, p.newPosi, Int32(1), p.boxlength)
-        
-        # Compute bj + moveVec
-        for j in range(1, 3)
-            p.tempVec[j] = p.bj[j] + p.moveVec[j]
-        end
-        boxmod!(p.tempVec, p.newPosj, Int32(1), p.boxlength)
-        
-        
-        # 1 -> bond addition, 2 -> kink, 3 -> bond removal
-        p.moveTypes[i] = Int32(p.newPosi == p.bprev) + Int32(p.newPosj == p.bnext) + 1
-    end
-
-    for i in range(1, 3)
-        p.moveVec[i] = 0
-    end
-
-    return p
-end
-
 # Calls the appropriate operation (add, kink or remove) to execute a move
 export makeMove!
 function makeMove!(p::Poly)
@@ -241,9 +196,6 @@ function move!(p::Poly)
     # don't move if last bead was selected
     if p.kj != 0
         
-        # compute the possible move types around a bond
-        moveTypes!(p)
-        
         # sample a move according to proposition probabilities
         proposeMove!(p)
         
@@ -265,6 +217,7 @@ end
 
 
 ############# Bulk move functions #############
+# MARK: -Bulk
 
 export overlap
 function overlap(b::AbstractBulk)
@@ -325,6 +278,7 @@ end
 
 
 ############# FastBulk move functions #############
+# MARK: -FastBulk
 
 export identifyBond!
 function identifyBond!(b::FastBulk)

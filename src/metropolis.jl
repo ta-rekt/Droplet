@@ -1,4 +1,5 @@
 ############# Generic metropolis functions #############
+# MARK: -Generic
 
 # accepts or rejects according to the metropolis criterion
 export acceptMove
@@ -18,16 +19,62 @@ end
 
 
 ############# Polymer metropolis functions #############
+# MARK: -Poly
+
+# Computes all possible move types for the selected bond
+# Warning: needs p.bondVec to be set
+export moveTypes!
+function moveTypes!(p::Poly)
+
+    # dimensions along which to move
+    dims = findall(iszero, p.bondVec)
+
+    @assert length(dims) == 2 begin
+        "bondVec must be aligned with x, y, or z axis"
+    end
+
+    # build all possible moves each bond can make
+    for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
+        
+        for i in range(1, 3)
+            p.moveVec[i] = 0
+        end
+
+        # flip direction along each dimension in the orthogonal plane
+        p.moveVec[dims[idx]] = sign
+
+        # Compute bi + moveVec
+        for j in range(1, 3)
+            p.tempVec[j] = p.bi[j] + p.moveVec[j]
+        end
+        boxmod!(p.tempVec, p.newPosi, Int32(1), p.boxlength)
+        
+        # Compute bj + moveVec
+        for j in range(1, 3)
+            p.tempVec[j] = p.bj[j] + p.moveVec[j]
+        end
+        boxmod!(p.tempVec, p.newPosj, Int32(1), p.boxlength)
+        
+        
+        # 1 -> bond addition, 2 -> kink, 3 -> bond removal
+        p.moveTypes[i] = (Int32(p.newPosi == p.bprev) 
+                        + Int32(p.newPosj == p.bnext) + 1)
+    end
+
+    for i in range(1, 3)
+        p.moveVec[i] = 0
+    end
+
+    return p
+end
 
 # samples moves according to probabilities set by detailed balance
 # writes the sampled direction vector in p.moveVec
-# CONTEXT: needs p.moveTypes to be set
 export proposeMove!
 function proposeMove!(p::Poly)
     
-    @assert !isnothing(p.moveTypes) begin
-        "moveTypes! has not been called yet"
-    end
+    # compute the possible move types around a bond
+    moveTypes!(p)
 
     # compute how many of each move type there are
     for j in range(1, 3)
@@ -79,13 +126,12 @@ function proposeMove!(p::Poly)
         "Move is not orthogonal to bond direction"
     end
 
-    # translated position of selected bond (no allocation)
+    # new position is old position translated in proposed direction
     for j in range(1, 3)
         p.tempVec[j] = p.bi[j] + p.moveVec[j]
     end
     boxmod!(p.tempVec, p.newPosi, Int32(1), p.boxlength)
     
-    # translated position of selected bond (no allocation)
     for j in range(1, 3)
         p.tempVec[j] = p.bj[j] + p.moveVec[j]
     end
@@ -96,6 +142,7 @@ end
 
 
 ############# Bulk metropolis functions #############
+# MARK: -Bulk
 
 export proposeMove!
 function proposeMove!(b::Bulk)
@@ -116,12 +163,12 @@ end
 
 
 ############# FastBulk metropolis functions #############
+# MARK: -FastBulk
 
 export proposeMove!
 function proposeMove!(b::FastBulk)
 
     nnIdxs!(b, b.bi)
-    # @show b.nnIdxs, b.freeNNs
 
     @assert !isempty(b.freeNNs) begin
         "No free nearest neighbor sites: proposing an impossible move"
@@ -137,13 +184,8 @@ function proposeMove!(b::FastBulk)
     dir = - mod(b.moveType + 1, 2) * 2 + 1
     b.tempVec[axis] += dir
 
-    # @show b.moveType, axis, dir
-    # @show b.tempVec, b.pos[b.moveIdx][range(1,3)]
-    # @show b.tempVec
-
     # clip to within bounding box
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-    # @show b.newPos
     
     hastingsFactor!(b)
 
@@ -158,28 +200,23 @@ function hastingsFactor!(b::FastBulk)
 
     nmovable = length(b.movableIdxs)
     @assert nmovable > 0 "No movable beads"
-    # @show nmovable
 
-    # (number of nnIdxs(bi) with nn = 6) - (number of nnIdxs(newPos) with nn = 5)
+    # (# of nnIdxs(bi) with nn = 6) - (# of nnIdxs(newPos) with nn = 5)
     nmovable_new = nmovable
-    # @show b.nnIdxs
 
     for key in b.nnIdxs
         if key != 0 && nn(b, b.pos[key][range(1,3)]) == 6
             nmovable_new += 1
         end
     end
-    # @show nmovable_new
 
     nnIdxs!(b, b.newPos)
-    # @show b.nnIdxs
 
     for key in b.nnIdxs
         if key != 0 && key != b.moveIdx && nn(b, b.pos[key][range(1,3)]) == 5
             nmovable_new -= 1
         end
     end
-    # @show nmovable_new
 
     nmoves = 6 - nn(b, b.bi)
     nmoves_new = 6 - (nn(b, b.newPos) - 1)  # count out current position

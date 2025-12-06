@@ -8,401 +8,6 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Saving and loading
-let 
-    date = "20250718"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "test"
-    outpath = string(outdir, outfile)
-
-    l = Lattice(;
-        boxlength = 16,
-        nspecies = 1
-    )
-
-    initLatticeRandom!(l)
-    export!(l, outpath)
-    save!(l, outpath)
-
-    l0 = Lattice(;
-        boxlength = 16,
-        nspecies = 2
-    )
-
-    load!(l0, outpath)
-    # @assert l.lat == l0.lat
-
-end
-
-## 1010011111110000100000101010111100010100001100101110000
-# Adding species to a lattice, initializing
-let 
-    date = "20250724"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "testpoly"
-    outpath = string(outdir, outfile)
-
-    global l = Lattice(;
-        boxlength = 16,
-        nspecies = 2
-    )
-
-    # polymer
-    global p = Species(;
-        length = 16,
-        maxlength = 20,
-        boxlength = l.boxlength
-    )
-
-    # Bulk monomers
-    global b = Species(;
-        length = 256,
-        maxlength = 256,
-        boxlength = l.boxlength
-    )
-
-    # initializing lattice and species
-    initPoly!(p)
-    initBulk!(b)
-    initLattice!(l, [p, b])
-    
-    for i in 1:16
-        @assert p.latS[i,8,8] == 1
-        @assert l.lat[1,i,8,8] == 1
-    end
-
-    @assert p.pos[1][4] == 0
-    @assert p.pos[5][4] == 4
-    @assert p.pos[5][5] == 6
-    @assert p.pos[16][5] == 0
-
-    # getting information about a bond in prep for a move
-    p.moveIdx = 5
-
-    identifyBond!(p)
-
-    @assert p.ki == 5
-    @assert p.kj == 6
-    @assert p.kprev == 4
-    @assert p.knext == 7
-    @assert p.bi == [5,8,8]
-    @assert p.bj == [6,8,8]
-    @assert p.bprev == [4,8,8]
-    @assert p.bnext == [7,8,8]
-
-    p.moveIdx = 1
-
-    identifyBond!(p)
-
-    @assert p.ki == 1
-    @assert p.kj == 2
-    @assert p.kprev == 0
-
-    p.moveIdx = 15
-
-    identifyBond!(p)
-
-    @assert p.ki == 15
-    @assert p.kj == 16
-    @assert p.knext == 0
-
-    export!(l, outpath)
-end
-
-## 1010011111110000100000101010111100010100001100101110000
-# Moving bonds
-let
-    date = "20250724"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "testpoly"
-    outpath = string(outdir, outfile)
-
-    global l = Lattice(;
-        boxlength = 16,
-        nspecies = 2
-    )
-
-    # polymer
-    global p = Species(;
-        length = 16,
-        maxlength = 20,
-        boxlength = l.boxlength
-    )
-
-    # Bulk monomers
-    global b = Species(;
-        length = 256,
-        maxlength = 256,
-        boxlength = l.boxlength
-    )
-
-    # initializing lattice and species
-    initPoly!(p)
-    initBulk!(b)
-    initLattice!(l, [p, b])
-
-    ### ### ### Adding a bond
-
-    p.moveIdx = 5
-    identifyBond!(p)
-    p.moveType = 1  # bond addition
-    p.moveVec = [0,0,1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    
-    # Original length
-    origLength = p.length
-    
-    makeMove!(p)
-    
-    # Tests
-    @assert p.length == origLength + 2  # Length increased by 2
-    @assert haskey(p.pos, 17)  # New positions exist
-    @assert haskey(p.pos, 18)
-    @assert p.pos[5][5] == 17  # Check connections were updated
-    @assert p.pos[17][5] == 18
-    @assert p.pos[18][5] == 6
-    @assert p.pos[18][4] == 17
-    @assert p.pos[17][4] == 5
-    @assert p.pos[5][4] == 4
-    @assert p.latS[5,8,9] == 1  # New lattice sites are occupied
-    @assert p.latS[6,8,9] == 1
-
-    ### ### ### Kinking a bond
-
-    p.moveIdx = 4
-    identifyBond!(p)
-    p.moveType = 2  # kinks
-    p.moveVec = [0,0,1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    
-    # Original length
-    origLength = p.length
-    
-    makeMove!(p)
-    
-    # Tests
-    @assert p.length == origLength  # Length unchanged
-    @assert p.pos[5][5] == 17  # Check connections remain the same
-    @assert p.pos[17][5] == 18
-    @assert p.pos[18][5] == 6
-    @assert p.pos[18][4] == 17
-    @assert p.pos[17][4] == 5
-    @assert p.pos[5][4] == 4
-    @assert p.latS[4,8,9] == 1  # New lattice site is occupied
-    @assert p.latS[5,8,8] == 0  # Old lattice site is zero
-
-    p.moveIdx = 17
-    identifyBond!(p)
-    p.moveType = 2  # kinks
-    p.moveVec = [0,0,-1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    
-    # Original length
-    origLength = p.length
-    
-    makeMove!(p)
-    
-    # Tests
-    @assert p.length == origLength  # Length unchanged
-    @assert p.pos[5][5] == 17  # Check connections remain the same
-    @assert p.pos[17][5] == 18
-    @assert p.pos[18][5] == 6
-    @assert p.pos[18][4] == 17
-    @assert p.pos[17][4] == 5
-    @assert p.pos[5][4] == 4
-    @assert p.latS[6,8,9] == 0  # New lattice site is occupied
-    @assert p.latS[6,8,8] == 1  # Old lattice site is zero
-
-    ### ### ### Removing a bond
-
-    p.moveIdx = 5
-    identifyBond!(p)
-    p.moveType = 3  # remove
-    p.moveVec = [0,0,-1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    
-    # Original length
-    origLength = p.length
-    
-    makeMove!(p)
-    
-    # Tests
-    @assert p.length == origLength - 2  # Length reduced by 2
-    @assert p.pos[4][5] == 18  # Check connections updated
-    @assert p.pos[18][5] == 6
-    @assert p.pos[6][4] == 18
-    @assert p.pos[18][4] == 4
-    @assert p.latS[5,8,9] == 0  
-    @assert p.latS[5,8,8] == 1
-
-    # v = view(p.pos[18], 1:3)
-    # p.latS[v...] = 0
-
-    export!(l, outpath)
-
-end
-
-## 1010011111110000100000101010111100010100001100101110000
-# Testing moveTypes!
-let
-    date = "20250724"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "testpoly"
-    outpath = string(outdir, outfile)
-
-    global l = Lattice(;
-        boxlength = 16,
-        nspecies = 2
-    )
-
-    # polymer
-    global p = Species(;
-        length = 16,
-        maxlength = 20,
-        boxlength = l.boxlength
-    )
-
-    # Bulk monomers
-    global b = Species(;
-        length = 256,
-        maxlength = 256,
-        boxlength = l.boxlength
-    )
-
-    # initializing lattice and species
-    initPoly!(p)
-    initBulk!(b)
-    initLattice!(l, [p, b])
-
-    ### ### ### Adding a bond
-
-    p.moveIdx = 5
-    identifyBond!(p)
-    p.moveType = 1  # bond addition
-    p.moveVec = [0,0,1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    
-    # Original length
-    origLength = p.length
-    
-    makeMove!(p)
-
-    p.moveIdx = 3
-    identifyBond!(p)
-    moveTypes!(p)
-
-    @assert p.moveTypes == [1,1,1,1]
-
-    p.moveIdx = 4
-    identifyBond!(p)
-    moveTypes!(p)
-
-    @assert p.moveTypes == [1,1,2,1]
-
-    p.moveIdx = 5
-    identifyBond!(p)
-    moveTypes!(p)
-
-    @assert p.moveTypes == [2,2,1,1]
-
-    p.moveIdx = 17
-    identifyBond!(p)
-    moveTypes!(p)
-
-    @assert p.moveTypes == [1,1,1,3]
-
-    p.moveIdx = 18
-    identifyBond!(p)
-    moveTypes!(p)
-
-    @assert p.moveTypes == [2,2,1,1]
-
-    
-    p.moveIdx = 18
-    identifyBond!(p)
-    p.moveType = 1  # bond addition
-    p.moveVec = [0,1,0]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    makeMove!(p)
-
-    p.moveIdx = 18
-    identifyBond!(p)
-    moveTypes!(p)
-
-    @assert p.moveTypes == [1,2,1,2]
-
-    export!(l, outpath)
-end
-
-## 1010011111110000100000101010111100010100001100101110000
-# Testing proposeMove!
-let
-    date = "20250724"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "testpoly"
-    outpath = string(outdir, outfile)
-
-    global l = Lattice(;
-        boxlength = 16,
-        nspecies = 2
-    )
-
-    # polymer
-    global p = Species(;
-        length = 16,
-        maxlength = 20,
-        boxlength = l.boxlength
-    )
-
-    # Bulk monomers
-    global b = Species(;
-        length = 256,
-        maxlength = 256,
-        boxlength = l.boxlength
-    )
-
-    # initializing lattice and species
-    initPoly!(p)
-    initBulk!(b)
-    initLattice!(l, [p, b])
-
-    ### ### ### Adding a bond
-
-    p.moveIdx = 5
-    identifyBond!(p)
-    p.moveType = 1  # bond addition
-    p.moveVec = [0,0,1]
-    p.newPosi = p.bi .+ p.moveVec
-    p.newPosj = p.bj .+ p.moveVec
-    
-    makeMove!(p);
-
-    p.moveIdx = 17
-    identifyBond!(p)
-    moveTypes!(p)
-
-    @show p.moveTypes
-
-    proposeMove!(p)
-
-    @show p.moveType
-
-    println("")
-
-end
-
-## 1010011111110000100000101010111100010100001100101110000
 # Testing Hamiltonian and its increment
 @time let
     date = "20251202"
@@ -417,19 +22,19 @@ end
     )
 
     a = FastBulk(;
-        length = 128,
+        length = 16,
         intPot = -1,
-        intPotP = -1,
+        intPotP = -2,
         chemPot = 1,
-        initShape = "box",
+        initShape = "line",
         initParams = 1,
-        initPos = [4,4,4]
+        initPos = [1,8,8]
     )
 
     b = FastBulk(;
         length = 128,
         intPot = -1,
-        intPotP = -1,
+        intPotP = a.intPotP,
         chemPot = 1,
         initShape = "uniform"
     )
@@ -479,27 +84,27 @@ end
     exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
 
     while frame_joint <= nframes - 2
-        for (i, s) in enumerate(slist)
-            if move!(s)
-                nmoves[i] += 1
-                deltaH[i] += s.deltaH
-                ip = i == 1 ? 2 : 1
+        s = b
+        i = 2
+        if move!(s)
+            nmoves[i] += 1
+            deltaH[i] += s.deltaH
+            ip = i == 1 ? 2 : 1
 
-                # update deltaH for the partner
-                deltaH[ip] += s.partner.deltaHP
-                
-                push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
-                deltaH[i] = 0
-                
-                ham!(s)
-                push!(hams[i], s.ham)
+            # update deltaH for the partner
+            deltaH[ip] += s.partner.deltaHP
+            
+            push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+            deltaH[i] = 0
+            
+            ham!(s)
+            push!(hams[i], s.ham)
 
-                frame[i] += 1
-                frame_joint += 1
+            frame[i] += 1
+            frame_joint += 1
 
-                # println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
-                # exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
-            end
+            # println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
+            # exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
         end
     end
 
@@ -539,53 +144,8 @@ end
     plot(p1, p2; layout = (2, 1), size = (900, 600))
 end
 
-
 ## 1010011111110000100000101010111100010100001100101110000
-# Testing center of mass
-
-let 
-    date = "20250916"
-    outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
-    outfile = "testpoly"
-    outpath = string(outdir, outfile)
-
-    global l = Lattice(;
-        boxlength = 32,
-        nspecies = 2
-    )
-
-    # polymer
-    global p = Species(;
-        length = 32,
-        maxlength = 300,
-        boxlength = l.boxlength,
-        intPot = -2,
-        chemPot = 5
-    )
-
-    # Bulk monomers
-    global b = Species(;
-        length = 256,
-        maxlength = 256,
-        boxlength = l.boxlength,
-        intPot = 0.0,
-        chemPot = 0.0
-    )
-
-    # initializing lattice and species
-    initPoly!(p)
-    initBulk!(b)
-    initLattice!(l, [p, b])
-
-    @show centerMass(p) 
-
-    export!(l, outpath)
-
-end
-
-## 1010011111110000100000101010111100010100001100101110000
-# Multiple method definitions for a function
+# Function dispatch
 
 let 
     abstract type Person end
@@ -634,18 +194,40 @@ end
 # Multi-component interactions
 
 # to test:
-# ~ bulk-bulk interaction: hamiltonian
-# ~ fastbulk: movableIdxs
-# * fastbulk: hastingsFactor
 
 # to implement
-# * bulk: static species
-# * bulk: initialize surface
-# * bulk-poly interaction
-# * fastPoly
-# * kink-only polymer moves
-# * variable interaction potential on polymer beads
 
+# * bulk: bead-dependent interaction (vector intPot)
+# * multicomponent phase separation, try mean-field (insurance)
+# * prewetting experiments with rigid rods (insurance)
+# * nucleation sites prevent Ostwald ripening (insurance)
+# * fastbulk speed test (insurance)
+# * fastbulk droplet density (insurance)
+# monday 08/12
+# * poly: length-preserving moves
+#   * adapt the proposal probabilities
+#   * run a burn-in with ADD and REMOVE, then equilibrate 
+#     with KINK only once length = lmax. rebuild the pos dict with
+#     keys in 1:lmax
+# * fastpoly
+#   * store bead indices at lattice sites
+#   * kink-only mode: movableIdxs: a bead can be kinked if 
+#       - 1. it isn't on a corner
+#       - 2. if it is one bond away from a corner
+#       - 3. it has no nn in the direction of the corner
+#     after a kink:
+#       - kinked bead no longer movable
+#       - its 4 new nns are no longer movable
+#       - its neighbor along the chain becomes movable
+#       - its neighbors' old nns become movable if they were stuck bcs of #3
+#   * hastings factor
+# * bulk-poly interaction
+# * poly: bead-dependent interaction (vector intPot)
+# monday 15/12
+# * 3-species interaction
+# * reproduce Mason's results
+# thursday 18/12
+# * 2D slice statistics
 
 @time let
     date = "20251203"
@@ -657,62 +239,53 @@ end
     ############ droplet boundary ############
 
     l = Lattice(;
-        boxlength = 4,
-        nspecies = 2
+        boxlength = 16,
+        nspecies = 3
+    )
+
+    c = FastBulk(;
+        length = 7,
+        intPot = -1,
+        intPotP = -1,
+        chemPot = 1,
+        initShape = "uniform"
+    )
+
+    a = FastBulk(;
+        length = 16,
+        intPot = -1,
+        intPotP = c.intPotP,
+        chemPot = 1,
+        initShape = "line",
+        initParams = 1,
+        initPos = [1,5,8]
     )
 
     b = FastBulk(;
-        length = 7,
+        length = 16,
         intPot = -1,
+        intPotP = c.intPotP,
         chemPot = 1,
-        initShape = "box",
+        initShape = "line",
         initParams = 1,
-        initPos = [3,3,3]
+        initPos = [1,12,8]
     )
 
-    slist = [b]
+    a.partner = c
+    b.partner = c
 
+    c.partner = a
+    c.partner = b
+
+    slist = [a, b, c]
+    
     # initialize lattice and species
     init!(l, slist)
-    
-    @assert b.movableIdxs == Set(range(1, 7))
+
+    a.name = string(a.name, "_a")
+    b.name = string(b.name, "_b")
+    c.name = string(c.name, "_c")
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
-    b.moveIdx = 6
-
-    # find coordinates and keys of selected bond
-    identifyBond!(b)
-    @assert b.bi == [3,2,3]
-
-    # sample a move uniformly in each direction
-    nnIdxs!(b, b.bi)
-    @assert b.nnIdxs == [0,2,0,0,0,5]
-    @assert b.freeNNs == Set([1,3,4,5])
-
-    for i in range(1, 3)
-        b.tempVec[i] = b.pos[b.moveIdx][i]
-    end
-
-    # propose a move uniformly among the free sites
-    b.moveType = 4
-    axis = div(b.moveType + 1, 2)
-    dir = - mod(b.moveType + 1, 2) * 2 + 1
-    b.tempVec[axis] += dir
-
-    @assert b.tempVec == [3,1,3]
-
-    # clip to within bounding box
-    boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-
-    hastingsFactor!(b)
-    # @show b.hastingsFactor
-    @assert b.hastingsFactor == 2/3
-
-    deltaHam!(b)
-    @assert b.deltaH == 2.0
-
-    makeMove!(b)
-
-    @assert b.movableIdxs == Set(range(1, 7))
 end

@@ -1,6 +1,7 @@
 ############# Species initialization functions #############
 
 ######## Generic #######
+# MARK: -Generic
 
 # initialize hamiltonian
 export initHam!
@@ -106,6 +107,7 @@ function initMovableSet!(s::AbstractSpecies)
 end
 
 ######## Species #######
+# MARK: -Species
 
 # initializes empty dict of bead locations and other containers
 export initSpecies!
@@ -124,6 +126,7 @@ end
 
 
 ######## Polymer #######
+# MARK: -Poly
 
 # initializes species configuration from a list of presets
 export initShape!
@@ -170,6 +173,7 @@ end
 
 
 ######## Bulk #######
+# MARK: -Bulk
 
 # initializes species configuration from a list of presets
 export initShape!
@@ -236,6 +240,7 @@ end
 
 
 ######## FastBulk #######
+# MARK: -FastBulk
 
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
 export initSpecies!
@@ -262,6 +267,7 @@ end
 
 
 ############# System initialization functions #############
+# MARK: -System
 
 # initializes lattice sites of each species from their bead locations
 export init!

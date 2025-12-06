@@ -1,6 +1,7 @@
 using Droplet
 using Test
 
+# MARK: -Droplet
 @testset "Droplet.jl" begin
     @testset "Init, identify" begin
         l = Lattice(;
@@ -65,6 +66,7 @@ using Test
         @test p.knext == 0
     end
 
+# MARK: -Droplet
     @testset "Movetypes" begin
         l = Lattice(;
             boxlength = 16,
@@ -151,6 +153,7 @@ using Test
         @test p.moveTypes == [1,2,1,2]
     end
 
+# MARK: -Ham poly
     @testset "Hamiltonian (poly)" begin
 
         l = Lattice(;
@@ -217,7 +220,7 @@ using Test
         end
     end
 
-
+# MARK: -Ham bulk
     @testset "Hamiltonian (bulk)" begin
 
         l = Lattice(;
@@ -282,6 +285,7 @@ using Test
         end
     end
 
+# MARK: -Ham multi
     @testset "Hamiltonian (multi-component bulk)" begin
         l = Lattice(;
             boxlength = 16,
@@ -372,8 +376,8 @@ using Test
         @test hams[2] == accDeltaH[2]
     end
 
-
-        @testset "Hamiltonian (multi-component fast bulk)" begin
+# MARK: -Ham multi
+    @testset "Hamiltonian (multi-component fast bulk)" begin
         l = Lattice(;
             boxlength = 16,
             nspecies = 2
@@ -463,7 +467,7 @@ using Test
         @test hams[2] == accDeltaH[2]
     end
 
-    
+# MARK: -CC multi
     @testset "Connected components (multiple)" begin
 
         l = Lattice(;
@@ -493,6 +497,7 @@ using Test
         @test cc(fb) == Vector([Set([4,3]), Set([2,1])])
     end
 
+# MARK: -CC single
     @testset "Connected components (single)" begin
 
         l = Lattice(;
@@ -533,6 +538,7 @@ using Test
         @test x == y
     end
 
+# MARK: -CC line
     @testset "Connected components (line)" begin
 
         l = Lattice(;
@@ -571,6 +577,7 @@ using Test
         @test fx == fy
     end
 
+# MARK: -Density uniform
     @testset "Box density (uniform)" begin
         l = Lattice(;
             boxlength = 16,
@@ -595,6 +602,7 @@ using Test
                             [Int32(1), b.boxlength]]) == b.length / b.boxlength ^ 3
     end
 
+# MARK: -Density full
     @testset "Box density (full box)" begin
         l = Lattice(;
             boxlength = 16,
@@ -690,6 +698,7 @@ using Test
         @test x == y
     end
 
+# MARK: -Split droplet
     @testset "Split droplet" begin
 
         l = Lattice(;
@@ -773,7 +782,7 @@ using Test
         @test dlist == [Set([5, 4, 6, 7, 2, 8, 3, 1])]
     end
 
-
+# MARK: -Droplet bbox
     @testset "Droplet bbox" begin
         l = Lattice(;
             boxlength = 16,
@@ -838,7 +847,7 @@ using Test
         @test bbox == [[1,4],[1,3],[1,3]]
     end
 
-
+# MARK: -Fill/clear
     @testset "Fill/clear bbox" begin
 
         l = Lattice(;
@@ -877,7 +886,7 @@ using Test
             @test isempty(b.ghost.pos)
         end
     end
-
+# MARK: -Droplet volume
     @testset "Droplet volume" begin
         l = Lattice(;
             boxlength = 16,
@@ -1040,7 +1049,7 @@ using Test
 
         @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
     end
-
+# MARK: -Movable indices
     @testset "Movable indices" begin
         l = Lattice(;
             boxlength = 5,
@@ -1213,7 +1222,7 @@ using Test
         boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
         @test overlap(b)
     end
-
+# MARK: -Hastings factor
     @testset "Hastings factor" begin
         ############ full box ############
 

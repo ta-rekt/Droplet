@@ -1,4 +1,5 @@
 ############# Polymer Energy functions #############
+# MARK: -Poly
 
 # Hamiltonian of a polymer
 export ham!
@@ -41,7 +42,7 @@ function deltaHam!(p::Poly)
     # bond addition
     if p.moveType == 1
         p.deltaH = (- 2 * (p.chemPot + p.intPot) 
-                    + p.intPot * (2*(nn(p, p.newPosi) + nn(p, p.newPosj)) + 2))
+                + p.intPot * (2*(nn(p, p.newPosi) + nn(p, p.newPosj)) + 2))
 
     # kink
     elseif p.moveType == 2
@@ -67,6 +68,7 @@ end
 
 
 ############# Bulk energy functions #############
+# MARK: -Fast/Bulk
 
 # Hamiltonian of a dilute species in the bulk
 export ham!
@@ -111,7 +113,7 @@ function deltaHam!(b::AbstractBulk)
         @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
         @assert b.intPotP == b.partner.intPotP "Non-reciprocal interaction!"
 
-        # increment of self and partner's energy as a result of cross-interactions
+        # increment of self and partner energy bcs of cross-interactions
         b.partner.deltaHP = b.intPotP * ((nnp(b, b.newPos) - nnp(b, b.bi)))
         b.deltaH += b.partner.deltaHP
     end

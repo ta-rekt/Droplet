@@ -1,3 +1,6 @@
+############### Generic #############
+# MARK: -Generic
+
 # returns the center of mass of all (or a subset of) particles of a species
 export centerMass
 function centerMass(s::AbstractSpecies, 
@@ -72,6 +75,7 @@ end
 
 
 ########### Bulk stats ###########
+# MARK: -Fast/Bulk
 
 # depth-first search: takes a bead index bi and marks all beads
 # traversed starting from bi (adds their indices to the marked list)

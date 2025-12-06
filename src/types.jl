@@ -12,6 +12,7 @@ abstract type AbstractFastBulk <: AbstractBulk end
 
 
 ######## Generic species #######
+# MARK: -Generic
 
 export Species
 Base.@kwdef mutable struct Species <: AbstractSpecies
@@ -36,6 +37,7 @@ Base.@kwdef mutable struct Species <: AbstractSpecies
 end
 
 ######## Polymer #######
+# MARK: -Poly
 
 export Poly
 Base.@kwdef mutable struct Poly <: AbstractPoly
@@ -101,6 +103,7 @@ end
 
 
 ######## Bulk #######
+# MARK: -Bulk
 
 export Bulk
 Base.@kwdef mutable struct Bulk <: AbstractBulk
@@ -155,6 +158,7 @@ end
 
 
 ######## FastBulk #######
+# MARK: -FastBulk
 
 export FastBulk
 Base.@kwdef mutable struct FastBulk <: AbstractFastBulk

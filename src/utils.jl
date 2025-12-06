@@ -1,4 +1,5 @@
 ############# Generic utilities #############
+# MARK: -Generic
 
 export coords_equal
 @inline function coords_equal(a, b)
@@ -156,6 +157,7 @@ end
 
 
 ############# Bulk utilities #############
+# MARK: -Fast/Bulk
 
 # splits droplets that sit across a lattice boundary
 # WARNING: assumes droplet max diameter < boxlength / 2, 
