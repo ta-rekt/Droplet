@@ -4,6 +4,7 @@ const COORD_MOVES = [1,1,2,2]
 const MOVE_ORIENTATIONS = [+1,-1,+1,-1]
 const SPECIES_ID_COUNTER = Ref(1)
 const PKINK = 0.8
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
 abstract type AbstractSpecies end
 abstract type AbstractPoly <: AbstractSpecies end
@@ -117,8 +118,9 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
 
     # required fields
     length::Int32        # number of beads
-    chemPot::Union{Nothing,Float64}   # monomer chemical potential
-    intPot::Union{Nothing,Float64}    # monomer interaction potential
+
+    chemPot::Union{Nothing,Float64} = nothing   # monomer chemical potential
+    intPot::Union{Nothing,Float64} = nothing   # monomer interaction potential
 
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing
@@ -133,6 +135,11 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     ghost::Union{Nothing, AbstractSpecies} = nothing
     partner::Union{Nothing, AbstractSpecies} = nothing
     intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
+
+    # multi-species interaction fields
+    intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs
+    intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
+    intIdx::Union{Nothing, Int} = nothing  # this species' canonical index in intMat
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -172,8 +179,9 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
 
     # required fields
     length::Int32        # number of beads
-    chemPot::Union{Nothing,Float64}   # monomer chemical potential
-    intPot::Union{Nothing,Float64}    # monomer interaction potential
+
+    chemPot::Union{Nothing,Float64} = nothing   # monomer chemical potential
+    intPot::Union{Nothing,Float64} = nothing   # monomer interaction potential
 
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing
@@ -188,6 +196,11 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     ghost::Union{Nothing, AbstractSpecies} = nothing
     partner::Union{Nothing, AbstractSpecies} = nothing
     intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
+
+    # multi-species interaction fields
+    intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs
+    intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
+    intIdx::Union{Nothing, Int} = nothing  # this species' canonical index in intMat
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing

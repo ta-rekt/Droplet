@@ -106,14 +106,14 @@ end
 export deltaHam!
 function deltaHam!(b::AbstractBulk)
 
-    # increment of energy from self-interactions
+    # energy increment from self-interactions
     b.deltaH = b.intPot * ((nn(b, b.newPos) - nn(b, b.bi)) - 1)
 
     if !isnothing(b.partner)
         @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
         @assert b.intPotP == b.partner.intPotP "Non-reciprocal interaction!"
 
-        # increment of self and partner energy bcs of cross-interactions
+        # energy increment from cross-interactions with partner 
         b.partner.deltaHP = b.intPotP * ((nnp(b, b.newPos) - nnp(b, b.bi)))
         b.deltaH += b.partner.deltaHP
     end

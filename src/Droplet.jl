@@ -10,6 +10,7 @@ module Droplet
     using TimerOutputs
 
     include("types.jl")
+    include("interactions.jl")
     include("hamiltonian.jl")
     include("metropolis.jl")
     include("move.jl")

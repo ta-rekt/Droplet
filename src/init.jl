@@ -235,6 +235,9 @@ function initSpecies!(b::Bulk)
     b.tempVec = zeros(Int32, 3)
     b.nnIdxs = zeros(Int32, 6)
 
+    if b.chemPot === nothing b.chemPot = 0.0 end
+    if b.intPot === nothing b.intPot = 0.0 end
+
     return b
 end
 
@@ -262,6 +265,9 @@ function initSpecies!(b::FastBulk)
     b.tempVec = zeros(Int32, 3)
     b.nnIdxs = zeros(Int32, 6)
 
+    if b.chemPot === nothing b.chemPot = 0.0 end
+    if b.intPot === nothing b.intPot = 0.0 end
+
     return b
 end
 
@@ -272,6 +278,8 @@ end
 # initializes lattice sites of each species from their bead locations
 export init!
 function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
+
+    @assert length(slist) <= 26 "Too many species"
 
     l.nspecies = length(slist)   # update number of species
     l.lat = zeros((l.nspecies + 1, l.boxlength, l.boxlength, l.boxlength))
@@ -293,6 +301,9 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
         s.boxlength = l.boxlength
         initSpecies!(s)
+
+        # give each species a unique letter suffix
+        s.name = string(s.name, "_", ALPHABET[i])
 
         l.speciesDir[s.id] = i
 

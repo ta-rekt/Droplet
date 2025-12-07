@@ -194,12 +194,17 @@ end
 # Multi-component interactions
 
 # to test:
+# * intPot! function
 
 # to implement
 
-# * bulk: bead-dependent interaction (vector intPot)
-# * multicomponent phase separation, try mean-field (insurance)
+# * k-way species interactions
+#   ~ give init a list of interacting species, int. matrix (symmetric)
+#   ~ each species is given a copy of the matrix, partner species and idxs
+#   ~ partner intPots are taken from the matrix
+#   * update hamiltonian functions
 # * prewetting experiments with rigid rods (insurance)
+# * multicomponent phase separation, try mean-field (insurance)
 # * nucleation sites prevent Ostwald ripening (insurance)
 # * fastbulk speed test (insurance)
 # * fastbulk droplet density (insurance)
@@ -221,13 +226,16 @@ end
 #       - its neighbor along the chain becomes movable
 #       - its neighbors' old nns become movable if they were stuck bcs of #3
 #   * hastings factor
-# * bulk-poly interaction
-# * poly: bead-dependent interaction (vector intPot)
+# * bulk-poly interaction (uniform)
+# * multi-species poly
+#   * new type: subspecies, without p.pos and move-related containers
+#   * keep a p.nspecies-vector of subspecies and a p.length-vector of types 
+#   * access the subspecies at bead i in deltaHam when you need intPotP 
+#   * other species use poly subspecies as partners
 # monday 15/12
-# * 3-species interaction
 # * reproduce Mason's results
 # thursday 18/12
-# * 2D slice statistics
+
 
 @time let
     date = "20251203"
@@ -245,17 +253,11 @@ end
 
     c = FastBulk(;
         length = 7,
-        intPot = -1,
-        intPotP = -1,
-        chemPot = 1,
         initShape = "uniform"
     )
 
     a = FastBulk(;
         length = 16,
-        intPot = -1,
-        intPotP = c.intPotP,
-        chemPot = 1,
         initShape = "line",
         initParams = 1,
         initPos = [1,5,8]
@@ -263,28 +265,22 @@ end
 
     b = FastBulk(;
         length = 16,
-        intPot = -1,
-        intPotP = c.intPotP,
-        chemPot = 1,
         initShape = "line",
         initParams = 1,
         initPos = [1,12,8]
     )
 
-    a.partner = c
-    b.partner = c
+    intPot!(a, -1.0)
 
-    c.partner = a
-    c.partner = b
+    # Set up multi-species interactions using the new intPot! function
+    intPot!(a, c, -3.0)  # a-c interaction
+    intPot!(b, c, -2.0)  # b-c interaction  
+    intPot!(a, b, -0.5)  # a-b interaction (optional)
 
     slist = [a, b, c]
     
     # initialize lattice and species
     init!(l, slist)
-
-    a.name = string(a.name, "_a")
-    b.name = string(b.name, "_b")
-    c.name = string(c.name, "_c")
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
