@@ -74,30 +74,21 @@ end
 export ham!
 function ham!(b::AbstractBulk)
     
-    b.ham = 0
-    nnn = 0    # number of nearest neighbors
-    nnnp = 0   # number of nearest neighbors with the partner species
+    # chemical potential
+    b.ham = - b.chemPot * b.length
 
-    for i in 1:b.length
-        pos = b.pos[i][range(1, 3)]
-        nnn += nn(b, pos)
-    end
-
-    if isnothing(b.partner)
-        b.intPotP = 0
-    else
-        p = b.partner
-
-        @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
-        @assert b.intPotP == p.intPotP "Non-reciprocal interaction!"
+    # interaction potentials (including self)
+    for (sp, idx) in b.intSpecies
+        nnp_ = 0.0   # number of nearest partners
+        selfFactor = b.intIdx == idx ? 0.5 : 1.0
 
         for i in 1:b.length
             pos = b.pos[i][range(1, 3)]
-            nnnp += nnp(b, pos)
+            nnp_ += nnp(b, sp, pos)
         end
+        
+        b.ham += b.intMat[b.intIdx,idx] * nnp_ * selfFactor
     end
-
-    b.ham = - b.chemPot * b.length + b.intPot * nnn / 2 + b.intPotP * nnnp
 
     return b
 end
@@ -107,15 +98,17 @@ export deltaHam!
 function deltaHam!(b::AbstractBulk)
 
     # energy increment from self-interactions
-    b.deltaH = b.intPot * ((nn(b, b.newPos) - nn(b, b.bi)) - 1)
+    # b.deltaH = b.intPot * ((nn(b, b.newPos) - nn(b, b.bi)) - 1)
+    b.deltaH = 0.0
 
-    if !isnothing(b.partner)
-        @assert !isnothing(b.intPotP) "No inter-partner interaction potential!"
-        @assert b.intPotP == b.partner.intPotP "Non-reciprocal interaction!"
-
-        # energy increment from cross-interactions with partner 
-        b.partner.deltaHP = b.intPotP * ((nnp(b, b.newPos) - nnp(b, b.bi)))
-        b.deltaH += b.partner.deltaHP
+    # energy increment from cross-interactions with each partner
+    if !isnothing(b.intMat)
+        for (sp, idx) in b.intSpecies
+            sp.deltaHP = (b.intMat[b.intIdx,idx] 
+                       * ((nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))
+                       - Int(b.intIdx == idx))) # subtract 1 in self-interaction
+            b.deltaH += sp.deltaHP
+        end
     end
 
     b.ham += b.deltaH

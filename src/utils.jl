@@ -90,11 +90,11 @@ function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
 end
 
 
-# Number of cross-species nearest neighbors at a given position
+# Number of nearest neighbors between species s and p at a given position
 export nnp
-function nnp(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
+function nnp(s::AbstractSpecies, p::AbstractSpecies, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
-    p = s.partner
 
     for i in range(1, 3)
         pos[i] += 1

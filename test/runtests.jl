@@ -19,13 +19,14 @@ using Test
 
         # dilute monomers
         b = Bulk(;
-            length = 256,
-            intPot = 1.0,
-            chemPot = 1.0
+            length = 256
         )
+        
+        # Set interaction potential after init
+        intPot!(b, 1.0)
 
         init!(l, [p, b])
-        
+
         for i in 1:16
             @test p.latS[i,8,8] == 1
             @test l.lat[2,i,8,8] == 1
@@ -83,10 +84,11 @@ using Test
 
         # dilute monomers
         b = Bulk(;
-            length = 256,
-            intPot = 1.0,
-            chemPot = 1.0
+            length = 256
         )
+
+        # Set interaction potential
+        intPot!(b, 1.0)
 
         # initialize the system
         init!(l, [p, b])
@@ -228,14 +230,15 @@ using Test
             nspecies = 1
         )
 
-        # polymer
+        # bulk species
         p = Bulk(;
-            length = 1000,
-            intPot = -1,
-            chemPot = 1
+            length = 1000
         )
 
         slist = [p]
+
+        # Set interaction potential after init
+        intPot!(p, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -286,186 +289,188 @@ using Test
     end
 
 # MARK: -Ham multi
-    # @testset "Hamiltonian (multi-component bulk)" begin
-    #     l = Lattice(;
-    #         boxlength = 16,
-    #         nspecies = 2
-    #     )
+    @testset "Hamiltonian (multi-component bulk)" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 2
+        )
 
-    #     a = Bulk(;
-    #         length = 128,
-    #         intPot = -1,
-    #         intPotP = -1,
-    #         chemPot = 1,
-    #         initShape = "box",
-    #         initParams = 1,
-    #         initPos = [8,8,8]
-    #     )
+        a = Bulk(;
+            length = 128,
+            initShape = "box",
+            initParams = 1,
+            initPos = [8,8,8]
+        )
 
-    #     b = Bulk(;
-    #         length = 128,
-    #         intPot = -1,
-    #         intPotP = -1,
-    #         chemPot = 1,
-    #         initShape = "uniform"
-    #     )
+        b = Bulk(;
+            length = 128,
+            initShape = "uniform"
+        )
 
-    #     b.partner = a
-    #     a.partner = b
+        # self and interaction potentials
+        intPot!(a, -1.0)
+        intPot!(b, -1.0)
+        intPot!(a, b, -1.0)
 
-    #     slist = [a, b]
+        slist = [a, b]
 
-    #     # initialize lattice and species
-    #     init!(l, slist)
+        # initialize lattice and species
+        init!(l, slist)
 
-    #     #### iterating multiple moves
-    #     nmoves = [0,0]
-    #     frame = [1,1]
-    #     frame_joint = 1
-    #     nframes = 10000
-    #     step = 1
-    #     deltaH = [0,0]
-    #     niter = 0
-    #     moveMade = [false, false]
+        #### iterating multiple moves
+        nmoves = [0,0]
+        frame = [1,1]
+        frame_joint = 1
+        nframes = 10000
+        step = 1
+        deltaH = [0,0]
+        niter = 0
+        moveMade = [false, false]
 
-    #     hamsA = Vector{Float64}(undef, 0)
-    #     hamsB = Vector{Float64}(undef, 0)
-    #     hams = [hamsA, hamsB]
-    #     accDeltaHA = Vector{Float64}(undef, 0)
-    #     accDeltaHB = Vector{Float64}(undef, 0)
-    #     accDeltaH = [accDeltaHA, accDeltaHB]
+        hamsA = Vector{Float64}(undef, 0)
+        hamsB = Vector{Float64}(undef, 0)
+        hams = [hamsA, hamsB]
+        accDeltaHA = Vector{Float64}(undef, 0)
+        accDeltaHB = Vector{Float64}(undef, 0)
+        accDeltaH = [accDeltaHA, accDeltaHB]
         
-    #     # first frame, initial energy
-    #     push!(hams[1], a.ham)
-    #     push!(hams[2], b.ham)
-    #     push!(accDeltaH[1], a.ham)
-    #     push!(accDeltaH[2], b.ham)
+        # first frame, initial energy
+        push!(hams[1], a.ham)
+        push!(hams[2], b.ham)
+        push!(accDeltaH[1], a.ham)
+        push!(accDeltaH[2], b.ham)
 
-    #     ham!(a)
-    #     ham!(b)
-    #     a.deltaH = 0
-    #     b.deltaH = 0
+        ham!(a)
+        ham!(b)
+        a.deltaH = 0
+        b.deltaH = 0
 
-    #     a.name = string(a.name, "_a")
-    #     b.name = string(b.name, "_b")
-    #     color = ["blue (A)", "orange (B)"]
+        a.name = string(a.name, "_a")
+        b.name = string(b.name, "_b")
+        color = ["blue (A)", "orange (B)"]
 
-    #     while frame_joint <= nframes - 2
-    #         for (i, s) in enumerate(slist)
-    #             if move!(s)
-    #                 nmoves[i] += 1
-    #                 deltaH[i] += s.deltaH
-    #                 ip = i == 1 ? 2 : 1
+        while frame_joint <= nframes - 2
+            for (i, s) in enumerate(slist)
+                if move!(s)
+                    nmoves[i] += 1
+                    deltaH[i] += s.deltaH
 
-    #                 # update deltaH for the partner
-    #                 deltaH[ip] += s.partner.deltaHP
+                    # update deltaH for the partners
+                    for (sp, idx) in s.intSpecies
+                        if idx != s.intIdx
+                            deltaH[idx] += sp.deltaHP
+                        end
+                    end
+
+                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                    deltaH[i] = 0
                     
-    #                 push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
-    #                 deltaH[i] = 0
-                    
-    #                 ham!(s)
-    #                 push!(hams[i], s.ham)
+                    ham!(s)
+                    push!(hams[i], s.ham)
 
-    #                 frame[i] += 1
-    #                 frame_joint += 1
-    #             end
-    #         end
-    #     end
+                    frame[i] += 1
+                    frame_joint += 1
+                end
+            end
+        end
 
-    #     @test hams[1] == accDeltaH[1]
-    #     @test hams[2] == accDeltaH[2]
-    # end
+        @test hams[1] == accDeltaH[1]
+        @test hams[2] == accDeltaH[2]
+    end
 
 # MARK: -Ham multi
-    # @testset "Hamiltonian (multi-component fast bulk)" begin
-    #     l = Lattice(;
-    #         boxlength = 16,
-    #         nspecies = 2
-    #     )
+    @testset "Hamiltonian (multi-component fast bulk)" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 2
+        )
 
-    #     a = FastBulk(;
-    #         length = 128,
-    #         intPot = -1,
-    #         intPotP = -1,
-    #         chemPot = 1,
-    #         initShape = "box",
-    #         initParams = 1,
-    #         initPos = [8,8,8]
-    #     )
+        a = FastBulk(;
+            length = 128,
+            intPot = -1,
+            intPotP = -1,
+            chemPot = 1,
+            initShape = "box",
+            initParams = 1,
+            initPos = [8,8,8]
+        )
 
-    #     b = FastBulk(;
-    #         length = 128,
-    #         intPot = -1,
-    #         intPotP = -1,
-    #         chemPot = 1,
-    #         initShape = "uniform"
-    #     )
+        b = FastBulk(;
+            length = 128,
+            intPot = -1,
+            intPotP = -1,
+            chemPot = 1,
+            initShape = "uniform"
+        )
 
-    #     b.partner = a
-    #     a.partner = b
+        b.partner = a
+        a.partner = b
 
-    #     slist = [a, b]
+        slist = [a, b]
 
-    #     # initialize lattice and species
-    #     init!(l, slist)
+        # initialize lattice and species
+        init!(l, slist)
 
-    #     #### iterating multiple moves
-    #     nmoves = [0,0]
-    #     frame = [1,1]
-    #     frame_joint = 1
-    #     nframes = 10000
-    #     step = 1
-    #     deltaH = [0,0]
-    #     niter = 0
-    #     moveMade = [false, false]
+        #### iterating multiple moves
+        nmoves = [0,0]
+        frame = [1,1]
+        frame_joint = 1
+        nframes = 10000
+        step = 1
+        deltaH = [0,0]
+        niter = 0
+        moveMade = [false, false]
 
-    #     hamsA = Vector{Float64}(undef, 0)
-    #     hamsB = Vector{Float64}(undef, 0)
-    #     hams = [hamsA, hamsB]
-    #     accDeltaHA = Vector{Float64}(undef, 0)
-    #     accDeltaHB = Vector{Float64}(undef, 0)
-    #     accDeltaH = [accDeltaHA, accDeltaHB]
+        hamsA = Vector{Float64}(undef, 0)
+        hamsB = Vector{Float64}(undef, 0)
+        hams = [hamsA, hamsB]
+        accDeltaHA = Vector{Float64}(undef, 0)
+        accDeltaHB = Vector{Float64}(undef, 0)
+        accDeltaH = [accDeltaHA, accDeltaHB]
         
-    #     # first frame, initial energy
-    #     push!(hams[1], a.ham)
-    #     push!(hams[2], b.ham)
-    #     push!(accDeltaH[1], a.ham)
-    #     push!(accDeltaH[2], b.ham)
+        # first frame, initial energy
+        push!(hams[1], a.ham)
+        push!(hams[2], b.ham)
+        push!(accDeltaH[1], a.ham)
+        push!(accDeltaH[2], b.ham)
 
-    #     ham!(a)
-    #     ham!(b)
-    #     a.deltaH = 0
-    #     b.deltaH = 0
+        ham!(a)
+        ham!(b)
+        a.deltaH = 0
+        b.deltaH = 0
 
-    #     a.name = string(a.name, "_a")
-    #     b.name = string(b.name, "_b")
-    #     color = ["blue (A)", "orange (B)"]
+        a.name = string(a.name, "_a")
+        b.name = string(b.name, "_b")
+        color = ["blue (A)", "orange (B)"]
 
-    #     while frame_joint <= nframes - 2
-    #         for (i, s) in enumerate(slist)
-    #             if move!(s)
-    #                 nmoves[i] += 1
-    #                 deltaH[i] += s.deltaH
-    #                 ip = i == 1 ? 2 : 1
-
-    #                 # update deltaH for the partner
-    #                 deltaH[ip] += s.partner.deltaHP
+        while frame_joint <= nframes - 2
+            for (i, s) in enumerate(slist)
+                if move!(s)
+                    nmoves[i] += 1
+                    deltaH[i] += s.deltaH
                     
-    #                 push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
-    #                 deltaH[i] = 0
+                    # update deltaH for the partners
+                    for (sp, idx) in s.intSpecies
+                        if idx != s.intIdx
+                            deltaH[idx] += sp.deltaHP
+                        end
+                    end
                     
-    #                 ham!(s)
-    #                 push!(hams[i], s.ham)
+                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                    deltaH[i] = 0
+                    
+                    ham!(s)
+                    push!(hams[i], s.ham)
 
-    #                 frame[i] += 1
-    #                 frame_joint += 1
-    #             end
-    #         end
-    #     end
+                    frame[i] += 1
+                    frame_joint += 1
+                end
+            end
+        end
 
-    #     @test hams[1] == accDeltaH[1]
-    #     @test hams[2] == accDeltaH[2]
-    # end
+        @test hams[1] == accDeltaH[1]
+        @test hams[2] == accDeltaH[2]
+    end
 
 # MARK: -CC multi
     @testset "Connected components (multiple)" begin
@@ -477,19 +482,19 @@ using Test
 
         b = Bulk(;
             length = 2,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 2
         )
 
         fb = FastBulk(;
             length = 2,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 2
         )
+
+        # Set interaction potentials after init
+        intPot!(b, -1.0)
+        intPot!(fb, -1.0)
 
         init!(l, [b, fb])
 
@@ -507,19 +512,19 @@ using Test
 
         b = Bulk(;
             length = 20,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1
         )
 
         fb = FastBulk(;
             length = 20,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1
         )
+
+        # Set interaction potentials after init
+        intPot!(b, -1.0)
+        intPot!(fb, -1.0)
 
         init!(l, [b, fb])
 
@@ -548,17 +553,17 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "line"
         )
 
         fb = FastBulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "line"
         )
+
+        # Set interaction potentials 
+        intPot!(b, -1.0)
+        intPot!(fb, -1.0)
 
         init!(l, [b, fb])
 
@@ -586,13 +591,14 @@ using Test
 
         b = Bulk(;
             length = 256,
-            intPot = -1,
-            chemPot = 1,
             initShape = "uniform",
             initParams = 2
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -611,14 +617,15 @@ using Test
 
         b = Bulk(;
             length = 27,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [2,2,2]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -631,14 +638,15 @@ using Test
 
         b = Bulk(;
             length = 26,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [2,2,2]
         )
 
         slist = [b]
+
+        # Set interaction potential
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -673,14 +681,15 @@ using Test
 
         b = Bulk(;
             length = 27,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [2,2,1]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -708,14 +717,15 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,1,2]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -726,8 +736,6 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,1,1]
@@ -735,6 +743,9 @@ using Test
 
         slist = [b]
 
+        # Set interaction potential 
+        intPot!(b, -1.0)
+    
         # initialize lattice and species
         init!(l, slist)
     
@@ -745,14 +756,15 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,2,2]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -764,14 +776,15 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [2,2,2]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -791,14 +804,15 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [8,8,8]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -810,14 +824,15 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [2,2,2]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -829,14 +844,15 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,2,2]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -859,14 +875,15 @@ using Test
 
             b = Bulk(;
                 length = i,
-                intPot = -1,
-                chemPot = 1,
                 initShape = "box",
                 initParams = 1,
                 initPos = [3,3,3]
             )
 
             slist = [b]
+
+            # Set interaction potential 
+            intPot!(b, -1.0)
 
             # initialize lattice and species
             init!(l, slist)
@@ -895,14 +912,15 @@ using Test
 
         b = Bulk(;
             length = 64,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -922,14 +940,15 @@ using Test
 
         b = Bulk(;
             length = 64,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -950,14 +969,15 @@ using Test
 
         b = Bulk(;
             length = 64,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -977,14 +997,15 @@ using Test
 
         b = Bulk(;
             length = 24,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,1,1]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -996,14 +1017,15 @@ using Test
 
         b = Bulk(;
             length = 29,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,1,1]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -1015,14 +1037,15 @@ using Test
 
         b = Bulk(;
             length = 2,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,1,1]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -1033,14 +1056,15 @@ using Test
 
         b = Bulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,1,1]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -1058,14 +1082,15 @@ using Test
 
         b = FastBulk(;
             length = 27,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -1077,8 +1102,6 @@ using Test
                 @test i in b.movableIdxs
             end
         end
-
-        # exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
         ########### corner ###########
 
@@ -1115,8 +1138,6 @@ using Test
 
         b = FastBulk(;
             length = 27,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
@@ -1160,8 +1181,6 @@ using Test
 
         b = FastBulk(;
             length = 27,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
@@ -1186,8 +1205,6 @@ using Test
 
         b = FastBulk(;
             length = 8,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [1,1,1]
@@ -1233,8 +1250,6 @@ using Test
 
         b = FastBulk(;
             length = 64,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [4,4,4]
@@ -1242,15 +1257,18 @@ using Test
 
         slist = [b]
 
+        # Set interaction potential 
+        intPot!(b, -1.0)
+
         # initialize lattice and species
         init!(l, slist)
         
         @test isempty(b.movableIdxs)
         
         # surgically remove one bead
-        removedKey = 17
-        b.latS[b.pos[removedKey][1], b.pos[removedKey][2], b.pos[removedKey][3]] = 0
-        delete!(b.pos, removedKey)
+        remKey = 17
+        b.latS[b.pos[remKey][1], b.pos[remKey][2], b.pos[remKey][3]] = 0
+        delete!(b.pos, remKey)
 
         # re-initialize movable set
         initMovableSet!(b)
@@ -1287,14 +1305,15 @@ using Test
 
         b = FastBulk(;
             length = 7,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -1347,14 +1366,15 @@ using Test
 
         b = FastBulk(;
             length = 7,
-            intPot = -1,
-            chemPot = 1,
             initShape = "box",
             initParams = 1,
             initPos = [3,3,3]
         )
 
         slist = [b]
+
+        # Set interaction potential 
+        intPot!(b, -1.0)
 
         # initialize lattice and species
         init!(l, slist)
@@ -1388,7 +1408,6 @@ using Test
         boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
 
         hastingsFactor!(b)
-        # @show b.hastingsFactor
         @test b.hastingsFactor == 2/3
 
         deltaHam!(b)
@@ -1413,10 +1432,10 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a])
-
         # Test setting self interaction potential
         intPot!(a, -2.0)
+
+        init!(l, [a])
         @test a.intPot == -2.0
 
         # Test with Bulk type as well
@@ -1431,6 +1450,10 @@ using Test
         
         intPot!(b, -4.0)
         @test b.intPot == -4.0
+
+        intIdxs = map(x -> x[2], b.intSpecies)
+
+        @test b.intIdx in intIdxs
     end
 
 # MARK: -intPot two species
@@ -1454,10 +1477,10 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a, b])
-
         # Set cross-interaction potential
         intPot!(a, b, -3.0)
+
+        init!(l, [a, b])
 
         # Both species should have interaction structures
         @test a.intSpecies !== nothing
@@ -1466,6 +1489,13 @@ using Test
         @test b.intMat !== nothing
         @test a.intIdx !== nothing
         @test b.intIdx !== nothing
+
+        intIdxsA = map(x -> x[2], a.intSpecies)
+        intIdxsB = map(x -> x[2], b.intSpecies)
+
+        # each species' interaction list contains its own index
+        @test a.intIdx in intIdxsA
+        @test b.intIdx in intIdxsB
 
         # They should share the same matrix
         @test a.intMat === b.intMat
@@ -1510,12 +1540,12 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a, b, c])
-
         # Set pairwise interactions
         intPot!(a, b, -4.0)
         intPot!(a, c, -5.0)
         intPot!(b, c, -6.0)
+
+        init!(l, [a, b, c])
 
         # All three should share the same matrix
         @test a.intMat === b.intMat
@@ -1536,6 +1566,13 @@ using Test
         @test a.intMat[a.intIdx, a.intIdx] == a.intPot
         @test a.intMat[b.intIdx, b.intIdx] == b.intPot
         @test a.intMat[c.intIdx, c.intIdx] == c.intPot
+
+        intIdxsA = map(x -> x[2], a.intSpecies)
+        intIdxsB = map(x -> x[2], b.intSpecies)
+
+        # each species' interaction list contains its own index
+        @test a.intIdx in intIdxsA
+        @test b.intIdx in intIdxsB
     end
 
 # MARK: -intPot update
@@ -1559,10 +1596,11 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a, b])
-
         # Set initial interaction
         intPot!(a, b, -3.0)
+
+        init!(l, [a, b])
+
         @test a.intMat[a.intIdx, b.intIdx] == -3.0
 
         # Update interaction - should overwrite
@@ -1597,10 +1635,10 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a, b])
-
         # Set pairwise interaction first
         intPot!(a, b, -3.0)
+
+        init!(l, [a, b])
 
         # Now update self interaction - should update diagonal
         intPot!(a, -10.0)
@@ -1639,15 +1677,15 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a, b, c])
-
         # Before setting interactions, getIntPot should return nothing
         @test getIntPot(a, b) === nothing
-
+        
         # Set interactions
         intPot!(a, b, -4.0)
         intPot!(a, c, -5.0)
         intPot!(b, c, -6.0)
+        
+        init!(l, [a, b, c])
 
         # Now getIntPot should return correct values
         @test getIntPot(a, b) == -4.0
@@ -1699,11 +1737,11 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a, b, c, d])
-
         # Create two separate networks: (a,b) and (c,d)
         intPot!(a, b, -10.0)
         intPot!(c, d, -20.0)
+        
+        init!(l, [a, b, c, d])
 
         # Verify separate networks
         @test a.intMat === b.intMat
@@ -1731,6 +1769,17 @@ using Test
         @test a.intMat[b.intIdx, b.intIdx] == -2.0
         @test a.intMat[c.intIdx, c.intIdx] == -3.0
         @test a.intMat[d.intIdx, d.intIdx] == -4.0
+
+        intIdxsA = map(x -> x[2], a.intSpecies)
+        intIdxsB = map(x -> x[2], b.intSpecies)
+        intIdxsC = map(x -> x[2], c.intSpecies)
+        intIdxsD = map(x -> x[2], d.intSpecies)
+
+        # each species' interaction list contains its own index
+        @test a.intIdx in intIdxsA
+        @test b.intIdx in intIdxsB
+        @test c.intIdx in intIdxsC
+        @test d.intIdx in intIdxsD
     end
 
 # MARK: -intPot with Bulk
@@ -1754,10 +1803,10 @@ using Test
             initShape = "uniform"
         )
 
-        init!(l, [a, b])
-
         # Set cross-interaction between Bulk and FastBulk
         intPot!(a, b, -5.0)
+        
+        init!(l, [a, b])
 
         # Both should have interaction structures
         @test a.intMat !== nothing
@@ -1795,11 +1844,11 @@ using Test
         # Set partners before init
         a.partner = b
         b.partner = a
-
-        init!(l, [a, b])
-
+        
         # Set interaction - should also update intPotP for partners
         intPot!(a, b, -5.0)
+
+        init!(l, [a, b])
 
         @test a.intPotP == -5.0
         @test b.intPotP == -5.0
@@ -1818,18 +1867,15 @@ using Test
             chemPot = 1.0,
             initShape = "uniform"
         )
-
-        init!(l, [a])
-
+        
         # Set interaction with itself
         intPot!(a, a, -5.0)
+
+        init!(l, [a])
 
         # Should update diagonal
         @test a.intMat !== nothing
         @test size(a.intMat) == (1, 1)
         @test a.intMat[1, 1] == -5.0
-
-        # intPot should also be updated? 
-        # (depends on implementation - diagonal represents self-interaction)
     end
 end

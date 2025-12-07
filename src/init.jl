@@ -226,6 +226,8 @@ function initSpecies!(b::Bulk)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
     
     initShape!(b)
+
+    _ensureIntStructures!(b)
     
     b.freeNNs = Set{Int32}()
     b.hastingsFactor = 1.0
@@ -253,6 +255,8 @@ function initSpecies!(b::FastBulk)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
 
     initShape!(b)
+
+    _ensureIntStructures!(b)
 
     # build set of movable particles
     b.movableIdxs = Set{Int32}()

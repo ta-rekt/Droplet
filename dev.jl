@@ -282,6 +282,8 @@ end
     # initialize lattice and species
     init!(l, slist)
 
+    println(map(x -> x[2], a.intSpecies))
+
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
 end

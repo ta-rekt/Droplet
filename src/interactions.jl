@@ -3,12 +3,12 @@
 # sets the self interaction potential of a species
 export intPot!
 function intPot!(b::AbstractBulk, pot::Float64)
+    _ensureIntStructures!(b)
+    
     b.intPot = pot
 
-    # if interaction matrix exists, update the diagonal entry
-    if b.intMat !== nothing && b.intIdx !== nothing
-        b.intMat[b.intIdx, b.intIdx] = pot
-    end
+    # update the interaction matrix's diagonal entry
+    b.intMat[b.intIdx, b.intIdx] = pot
 
     return b
 end
