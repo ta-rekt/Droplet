@@ -194,15 +194,15 @@ end
 # Multi-component interactions
 
 # to test:
-# * intPot! function
-
-# to implement
-
-# * k-way species interactions
+# ~ intPot! function
 #   ~ give init a list of interacting species, int. matrix (symmetric)
 #   ~ each species is given a copy of the matrix, partner species and idxs
 #   ~ partner intPots are taken from the matrix
-#   * update hamiltonian functions
+#   ~ update hamiltonian functions
+# ~ k-way species interactions
+
+# to implement
+
 # * prewetting experiments with rigid rods (insurance)
 # * multicomponent phase separation, try mean-field (insurance)
 # * nucleation sites prevent Ostwald ripening (insurance)

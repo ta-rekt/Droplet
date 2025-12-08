@@ -307,58 +307,74 @@ using Test
             initShape = "uniform"
         )
 
+        c = Bulk(;
+            length = 128,
+            initShape = "uniform"
+        )
+
         # self and interaction potentials
         intPot!(a, -1.0)
-        intPot!(b, -1.0)
-        intPot!(a, b, -1.0)
+        intPot!(b, -2.0)
+        intPot!(c, -3.0)
+        intPot!(a, b, -1.5)
+        intPot!(a, c, -0.5)
 
-        slist = [a, b]
+        slist = [a, b, c]
 
         # initialize lattice and species
         init!(l, slist)
 
         #### iterating multiple moves
-        nmoves = [0,0]
-        frame = [1,1]
+        nmoves = [0,0,0]
+        frame = [1,1,1]
         frame_joint = 1
         nframes = 10000
         step = 1
-        deltaH = [0,0]
+        deltaH = [0.0,0.0,0.0]
         niter = 0
-        moveMade = [false, false]
+        moveMade = [false, false, false]
 
         hamsA = Vector{Float64}(undef, 0)
         hamsB = Vector{Float64}(undef, 0)
-        hams = [hamsA, hamsB]
+        hamsC = Vector{Float64}(undef, 0)
+        hams_ = [hamsA, hamsB, hamsC]
+        hams = []
         accDeltaHA = Vector{Float64}(undef, 0)
         accDeltaHB = Vector{Float64}(undef, 0)
-        accDeltaH = [accDeltaHA, accDeltaHB]
+        accDeltaHC = Vector{Float64}(undef, 0)
+        accDeltaH_ = [accDeltaHA, accDeltaHB, accDeltaHC]
+        accDeltaH = []
         
         # first frame, initial energy
-        push!(hams[1], a.ham)
-        push!(hams[2], b.ham)
-        push!(accDeltaH[1], a.ham)
-        push!(accDeltaH[2], b.ham)
+        push!(hams_[1], a.ham)
+        push!(hams_[2], b.ham)
+        push!(hams_[3], c.ham)
+        push!(accDeltaH_[1], a.ham)
+        push!(accDeltaH_[2], b.ham)
+        push!(accDeltaH_[3], c.ham)
+
+        for (sp, idx) in a.intSpecies
+            push!(hams, hams_[idx])
+            push!(accDeltaH, accDeltaH_[idx])
+        end
 
         ham!(a)
         ham!(b)
-        a.deltaH = 0
-        b.deltaH = 0
-
-        a.name = string(a.name, "_a")
-        b.name = string(b.name, "_b")
-        color = ["blue (A)", "orange (B)"]
+        ham!(c)
+        a.deltaH = 0.0
+        b.deltaH = 0.0
+        c.deltaH = 0.0
 
         while frame_joint <= nframes - 2
-            for (i, s) in enumerate(slist)
+            for (s, i) in a.intSpecies
                 if move!(s)
                     nmoves[i] += 1
                     deltaH[i] += s.deltaH
 
                     # update deltaH for the partners
-                    for (sp, idx) in s.intSpecies
-                        if idx != s.intIdx
-                            deltaH[idx] += sp.deltaHP
+                    for (p, j) in s.intSpecies
+                        if j != s.intIdx
+                            deltaH[j] += p.deltaHP
                         end
                     end
 
@@ -376,6 +392,7 @@ using Test
 
         @test hams[1] == accDeltaH[1]
         @test hams[2] == accDeltaH[2]
+        @test hams[3] == accDeltaH[3]
     end
 
 # MARK: -Ham multi
@@ -448,7 +465,7 @@ using Test
                 if move!(s)
                     nmoves[i] += 1
                     deltaH[i] += s.deltaH
-                    
+
                     # update deltaH for the partners
                     for (sp, idx) in s.intSpecies
                         if idx != s.intIdx
