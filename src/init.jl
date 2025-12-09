@@ -236,6 +236,8 @@ function initSpecies!(b::Bulk)
     b.newPos = zeros(Int32, 3)
     b.tempVec = zeros(Int32, 3)
     b.nnIdxs = zeros(Int32, 6)
+    b.deltaH = 0.0
+    b.deltaHP = 0.0
 
     if b.chemPot === nothing b.chemPot = 0.0 end
     if b.intPot === nothing b.intPot = 0.0 end
@@ -268,6 +270,8 @@ function initSpecies!(b::FastBulk)
     b.newPos = zeros(Int32, 3)
     b.tempVec = zeros(Int32, 3)
     b.nnIdxs = zeros(Int32, 6)
+    b.deltaH = 0.0
+    b.deltaHP = 0.0
 
     if b.chemPot === nothing b.chemPot = 0.0 end
     if b.intPot === nothing b.intPot = 0.0 end

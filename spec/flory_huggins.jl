@@ -6,24 +6,22 @@ l = Lattice(;
 )
 
 # bulk species
-b = Bulk(;
-    length = 512,
-    intPot = nothing,
-    chemPot = nothing
+b = FastBulk(;
+    length = 512
 )
 
 # list containing all species
 slist = [b]
 
 # minimum size of a droplet for detection
-minsize = 5
+minsize = 50
 
 ### simulation parameters
 
-nframes = 1000
+nframes = 10000
 step = 1000
 
-vals = range(0.8, stop=1.1, step=0.02)   # parallelized parameters (int. pot.)
+vals = range(1.5, stop=3.0, step=0.1)   # parallelized parameters (int. pot.)
 alphas = zeros(16)
 nrepeats = 1
 
@@ -32,7 +30,7 @@ for (i, v) in enumerate(vals)
 end
 
 # alphas = [1.0]   # temperatures
-betas = [-1.0]    # (physical) chemical and interaction potentials
+betas = [0.0]    # (physical) chemical and interaction potentials
 nparams = length(alphas)
 
 
@@ -45,8 +43,7 @@ function target!(res, args...)
     slist, temp, beta = args
 
     b = slist[1]
-    b.intPot = beta / temp
-    b.chemPot = beta / temp
+    intPot!(b, - 1.0 / temp)
 
     # initialize lattice and species
     init!(l, [b])
@@ -65,7 +62,6 @@ function target!(res, args...)
     moveMade = false
 
     droplets = filter(x -> length(x) >= minsize, cc(b))
-    
     ndroplets[frame] = length(droplets)
     droplet_sizes[frame] = map(x -> length(x), droplets)
     droplet_densities[frame] = dropletDensities(b, droplets)
@@ -102,7 +98,7 @@ function target!(res, args...)
     end
 
     # collect results
-    coords = Matrix{Int32}(undef, b.length, 3)
+    coords = Matrix{Int32}(undef, b.length, 4)
 
     res["species_name"] = b.name
     res["nframes"] = nframes

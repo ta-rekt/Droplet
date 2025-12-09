@@ -10,7 +10,7 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing Hamiltonian and its increment
 @time let
-    date = "20251202"
+    date = "20251208"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "test"
@@ -21,90 +21,97 @@ end
         nspecies = 2
     )
 
-    a = FastBulk(;
-        length = 16,
-        intPot = -1,
-        intPotP = -2,
-        chemPot = 1,
-        initShape = "line",
-        initParams = 1,
-        initPos = [1,8,8]
-    )
-
-    b = FastBulk(;
-        length = 128,
-        intPot = -1,
-        intPotP = a.intPotP,
-        chemPot = 1,
+    c = FastBulk(;
+        length = 256,
         initShape = "uniform"
     )
 
-    b.partner = a
-    a.partner = b
+    a1 = FastBulk(;
+        length = 5,
+        initShape = "line",
+        initParams = 1,
+        initPos = [1,5,8]
+    )
 
-    slist = [a, b]
+    a2 = FastBulk(;
+        length = 5,
+        initShape = "line",
+        initParams = 1,
+        initPos = [12,5,8]
+    )
+
+    b = FastBulk(;
+        length = 6,
+        initShape = "line",
+        initParams = 1,
+        initPos = [6,5,8]
+    )
+
+    # self-interaction
+    intPot!(a1, -1.0)
+    intPot!(a2, -1.0)
+    intPot!(b, -1.0)
+    intPot!(c, -1.0)
+
+    # inter-species interaction
+    intPot!(c, a1, -0.5)  # a-c interaction
+    intPot!(c, a2, -0.5)  # b-c interaction  
+    intPot!(c, b, -2.0)  # a-b interaction (optional)
+
+    slist = [a1, a2, b, c]
 
     # initialize lattice and species
     init!(l, slist)
 
     #### iterating multiple moves
-    nmoves = [0,0]
-    frame = [1,1]
+    nmoves = zeros(Int32, 4)
+    frame = ones(Int, 4)
     frame_joint = 1
     nframes = 1000
     step = 1
-    deltaH = [0,0]
+    deltaH = zeros(Float64, 4)
     niter = 0
-    moveMade = [false, false]
+    moveMade = falses(4)
 
-    hamsA = Vector{Float64}(undef, 0)
-    hamsB = Vector{Float64}(undef, 0)
-    hams = [hamsA, hamsB]
-    accDeltaHA = Vector{Float64}(undef, 0)
-    accDeltaHB = Vector{Float64}(undef, 0)
-    accDeltaH = [accDeltaHA, accDeltaHB]
-    
-    # first frame, initial energy
-    push!(hams[1], a.ham)
-    push!(hams[2], b.ham)
-    push!(accDeltaH[1], a.ham)
-    push!(accDeltaH[2], b.ham)
+    hams = []
+    accDeltaH = []
 
-    ham!(a)
-    ham!(b)
-    a.deltaH = 0
-    b.deltaH = 0
+    for (sp, idx) in a1.intSpecies
+        hams_sp = Vector{Float64}(undef, 0)
+        accDeltaH_sp = Vector{Float64}(undef, 0)
 
-    a.name = string(a.name, "_a")
-    b.name = string(b.name, "_b")
-    color = ["blue (A)", "orange (B)"]
+        push!(hams_sp, sp.ham)
+        push!(accDeltaH_sp, sp.ham)
 
-    # println("frame ", frame_joint, ", ", color[1], " init (", frame[1], ")")
-    # println("frame ", frame_joint, ", ", color[2], " init (", frame[2], ")")
-    exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
+        push!(hams, hams_sp)
+        push!(accDeltaH, accDeltaH_sp)
+
+        ham!(sp)
+        sp.deltaH = 0.0
+    end
 
     while frame_joint <= nframes - 2
-        s = b
-        i = 2
-        if move!(s)
-            nmoves[i] += 1
-            deltaH[i] += s.deltaH
-            ip = i == 1 ? 2 : 1
+        for (s, i) in a1.intSpecies
+            if s.intIdx == c.intIdx && move!(s)
+                nmoves[i] += 1
+                deltaH[i] += s.deltaH
 
-            # update deltaH for the partner
-            deltaH[ip] += s.partner.deltaHP
-            
-            push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
-            deltaH[i] = 0
-            
-            ham!(s)
-            push!(hams[i], s.ham)
+                # update deltaH for the partners
+                for (p, j) in s.intSpecies
+                    if j != s.intIdx
+                        deltaH[j] += p.deltaHP
+                    end
+                end
 
-            frame[i] += 1
-            frame_joint += 1
+                push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                deltaH[i] = 0
+                
+                ham!(s)
+                push!(hams[i], s.ham)
 
-            # println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
-            # exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
+                frame[i] += 1
+                frame_joint += 1
+            end
         end
     end
 
@@ -117,31 +124,26 @@ end
     @assert hams[1] == accDeltaH[1]
     @assert hams[2] == accDeltaH[2]
 
-    p1 = plot(eachindex(hams[1]), hams[1][:];
-        label = "ham A",
+    plots = []
+    colors = ["blue", "red", "orange", "green"]
+
+    for i in eachindex(hams)
+        pl = plot(eachindex(hams[i]), hams[i][:];
+        label = "ham",
         xlabel = "frame",
         ylabel = "Energy",
-        color = "blue",
-        legend = :topright)
-    
-    p2 = plot(eachindex(hams[2]), hams[2][:];
-        label = "ham B",
-        xlabel = "frame",
-        ylabel = "Energy",
-        color = "orange",
+        color = colors[i],
         legend = :topright)
 
-    plot!(p1, eachindex(accDeltaH[1]), accDeltaH[1][:];
-        label = "accDeltaH A",
-        color = "blue",
+        plot!(pl, eachindex(accDeltaH[i]), accDeltaH[i][:];
+        label = "accDeltaH",
+        color = colors[i],
         linestyle = :dash)
 
-    plot!(p2, eachindex(accDeltaH[2]), accDeltaH[2][:];
-        label = "accDeltaH B",
-        color = "orange",
-        linestyle = :dash)
+        push!(plots, pl)
+    end
 
-    plot(p1, p2; layout = (2, 1), size = (900, 600))
+    plot(plots[1]; layout = (1, 1), size = (300, 600))
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
@@ -199,15 +201,14 @@ end
 #   ~ each species is given a copy of the matrix, partner species and idxs
 #   ~ partner intPots are taken from the matrix
 #   ~ update hamiltonian functions
-# ~ k-way species interactions
+# ~ multi-species interactions
+# * fastbulk flory huggins (insurance)
 
 # to implement
 
-# * prewetting experiments with rigid rods (insurance)
-# * multicomponent phase separation, try mean-field (insurance)
+# * filament prewetting (insurance)
+# * effective force between two prewet enhancers (insurance)
 # * nucleation sites prevent Ostwald ripening (insurance)
-# * fastbulk speed test (insurance)
-# * fastbulk droplet density (insurance)
 # monday 08/12
 # * poly: length-preserving moves
 #   * adapt the proposal probabilities
@@ -238,7 +239,7 @@ end
 
 
 @time let
-    date = "20251203"
+    date = "20251208"
     outdir = "data/$(date)/"
     Base.Filesystem.mkpath(outdir)
     outfile = "test"
@@ -252,37 +253,47 @@ end
     )
 
     c = FastBulk(;
-        length = 7,
+        length = 128,
         initShape = "uniform"
     )
 
-    a = FastBulk(;
-        length = 16,
+    a1 = FastBulk(;
+        length = 5,
         initShape = "line",
         initParams = 1,
         initPos = [1,5,8]
     )
 
-    b = FastBulk(;
-        length = 16,
+    a2 = FastBulk(;
+        length = 5,
         initShape = "line",
         initParams = 1,
-        initPos = [1,12,8]
+        initPos = [12,5,8]
     )
 
-    intPot!(a, -1.0)
+    b = FastBulk(;
+        length = 6,
+        initShape = "line",
+        initParams = 1,
+        initPos = [6,5,8]
+    )
+
+    intPot!(a1, -1.0)
+    intPot!(a2, -1.0)
+    intPot!(b, -1.0)
+    intPot!(c, -1.0)
 
     # Set up multi-species interactions using the new intPot! function
-    intPot!(a, c, -3.0)  # a-c interaction
-    intPot!(b, c, -2.0)  # b-c interaction  
-    intPot!(a, b, -0.5)  # a-b interaction (optional)
+    intPot!(c, a1, -0.5)  # a-c interaction
+    intPot!(c, a2, -0.5)  # b-c interaction  
+    intPot!(c, b, -2.0)  # a-b interaction (optional)
 
-    slist = [a, b, c]
+    slist = [a1, a2, b, c]
     
     # initialize lattice and species
     init!(l, slist)
 
-    println(map(x -> x[2], a.intSpecies))
+    println(map(x -> x[2], a1.intSpecies))
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 

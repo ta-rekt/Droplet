@@ -87,7 +87,7 @@ function ham!(b::AbstractBulk)
             nnp_ += nnp(b, sp, pos)
         end
         
-        b.ham += b.intMat[b.intIdx,idx] * nnp_ * selfFactor
+        b.ham += b.intMat[b.intIdx, idx] * nnp_ * selfFactor
     end
 
     return b
@@ -104,7 +104,7 @@ function deltaHam!(b::AbstractBulk)
     # energy increment from cross-interactions with each partner
     if !isnothing(b.intMat)
         for (sp, idx) in b.intSpecies
-            sp.deltaHP = (b.intMat[b.intIdx,idx] 
+            sp.deltaHP = (b.intMat[b.intIdx, idx] 
                        * ((nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))
                        - Int(b.intIdx == idx))) # subtract 1 in self-interaction
             b.deltaH += sp.deltaHP
