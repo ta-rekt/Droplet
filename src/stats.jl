@@ -1,6 +1,18 @@
 ############### Generic #############
 # MARK: -Generic
 
+# extracts the coordinates of a polymer's beads
+export extractCoords!
+function extractCoords!(b::AbstractSpecies, coords::Matrix)
+
+    for k in collect(keys(b.pos))
+        coords[k, 1:3] = b.pos[k][1:3]         # next position
+        coords[k, 4] = b.latS[b.pos[k][1], b.pos[k][2], b.pos[k][3]]   # bead index
+    end
+
+    return coords
+end
+
 # returns the center of mass of all (or a subset of) particles of a species
 export centerMass
 function centerMass(s::AbstractSpecies, 
@@ -73,6 +85,38 @@ function boxDensity(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     return count / vol
 end
 
+# axial density along a parallelepiped with a given thickness
+export axialDensity 
+function axialDensity(s::AbstractSpecies, axis::String, 
+                      pos::Vector{Int32}, thick::Int32)
+
+end
+
+# radial density along a disk with given thickness 
+export radialDensity
+function radialDensity(s::AbstractSpecies, axis::String, 
+                      pos::Vector{Int32}, thick::Int32)
+
+end
+
+########### Poly stats ###########
+# MARK: -Poly
+
+# extracts the coordinates of a polymer's beads
+export extractCoords!
+function extractCoords!(p::AbstractPoly, coords::Matrix)
+    key = p.head           # initial bead
+    k = 1
+    
+    for k in collect(keys(p.pos))
+        if key != 0
+            coords[k, :] = p.pos[key][1:3] # next position
+            key = p.pos[key][5]    # next bead
+        end
+    end
+
+    return coords
+end
 
 ########### Bulk stats ###########
 # MARK: -Fast/Bulk

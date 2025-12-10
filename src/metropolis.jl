@@ -6,15 +6,9 @@ export acceptMove
 function acceptMove(s::AbstractSpecies)
 
     deltaHam!(s)
-    
     prob = min(1, s.hastingsFactor * exp(-s.deltaH))
-    r = rand(Uniform(0,1))
 
-    if r < prob
-        return true
-    else
-        return false
-    end
+    return rand(Uniform(0,1)) < prob
 end
 
 

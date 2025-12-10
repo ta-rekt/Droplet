@@ -67,7 +67,7 @@ end
     nmoves = zeros(Int32, 4)
     frame = ones(Int, 4)
     frame_joint = 1
-    nframes = 1000
+    nframes = 10
     step = 1
     deltaH = zeros(Float64, 4)
     niter = 0
@@ -196,18 +196,17 @@ end
 # Multi-component interactions
 
 # to test:
-# ~ intPot! function
-#   ~ give init a list of interacting species, int. matrix (symmetric)
-#   ~ each species is given a copy of the matrix, partner species and idxs
-#   ~ partner intPots are taken from the matrix
-#   ~ update hamiltonian functions
-# ~ multi-species interactions
 # * fastbulk flory huggins (insurance)
+# * filament prewetting (insurance)
+#   * vary concentration and look at axial density
+#   * make a control simulation where intpot on filament is lower than inter-particle
+#   * site occupation time-series and mean -> BP estimate of concentration
 
 # to implement
-
-# * filament prewetting (insurance)
-# * effective force between two prewet enhancers (insurance)
+# * axial and radial density
+# * prewet enhancers (insurance)
+#   * look at radial density
+#   * radial densities of two nearby enhancers
 # * nucleation sites prevent Ostwald ripening (insurance)
 # monday 08/12
 # * poly: length-preserving moves
@@ -248,39 +247,36 @@ end
     ############ droplet boundary ############
 
     l = Lattice(;
-        boxlength = 16,
+        boxlength = 32,
         nspecies = 3
     )
 
     c = FastBulk(;
-        length = 128,
+        length = 1024,
         initShape = "uniform"
     )
 
     a1 = FastBulk(;
-        length = 5,
+        length = 11,
         initShape = "line",
         initParams = 1,
-        initPos = [1,5,8]
-    )
-
-    a2 = FastBulk(;
-        length = 5,
-        initShape = "line",
-        initParams = 1,
-        initPos = [12,5,8]
+        initPos = [1,16,16]
     )
 
     b = FastBulk(;
-        length = 6,
+        length = 10,
         initShape = "line",
         initParams = 1,
-        initPos = [6,5,8]
+        initPos = [12,16,16]
     )
 
-    intPot!(a1, -1.0)
-    intPot!(a2, -1.0)
-    intPot!(b, -1.0)
+    a2 = FastBulk(;
+        length = 11,
+        initShape = "line",
+        initParams = 1,
+        initPos = [22,16,16]
+    )
+
     intPot!(c, -1.0)
 
     # Set up multi-species interactions using the new intPot! function
@@ -298,3 +294,35 @@ end
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
 end
+
+
+# l = Lattice(;
+#     boxlength = 16,
+#     nspecies = 3
+# )
+
+# c = FastBulk(;
+#     length = 1,
+#     initShape = "uniform"
+# )
+
+# a1 = FastBulk(;
+#     length = 5,
+#     initShape = "line",
+#     initParams = 1,
+#     initPos = [1,8,8]
+# )
+
+# b = FastBulk(;
+#     length = 6,
+#     initShape = "line",
+#     initParams = 1,
+#     initPos = [6,8,8]
+# )
+
+# a2 = FastBulk(;
+#     length = 5,
+#     initShape = "line",
+#     initParams = 1,
+#     initPos = [12,8,8]
+# )

@@ -1,14 +1,13 @@
 ### physical parameters
+# MARK: -Phys. params
 
 l = Lattice(;
     boxlength = 16,
     nspecies = 3
 )
 
-## species initial configuration
-
 c = FastBulk(;
-    length = 128,
+    length = 1,
     initShape = "uniform"
 )
 
@@ -16,29 +15,31 @@ a1 = FastBulk(;
     length = 5,
     initShape = "line",
     initParams = 1,
-    initPos = [1,5,8]
-)
-
-a2 = FastBulk(;
-    length = 5,
-    initShape = "line",
-    initParams = 1,
-    initPos = [12,5,8]
+    initPos = [1,8,8]
 )
 
 b = FastBulk(;
     length = 6,
     initShape = "line",
     initParams = 1,
-    initPos = [6,5,8]
+    initPos = [6,8,8]
+)
+
+a2 = FastBulk(;
+    length = 5,
+    initShape = "line",
+    initParams = 1,
+    initPos = [12,8,8]
 )
 
 slist = [a1, a2, b, c]
 
 ### simulation parameters
+# MARK: -Sim. params
 
 nframes = 1000
 step = 1000
+burn_in = 500
 
 # minimum size of a droplet for detection
 minsize = 5
@@ -58,6 +59,7 @@ nspecies = 4
 nmoving = 1
 
 ### functions
+# MARK: -Functions
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
@@ -70,9 +72,6 @@ function target!(res, args...)
     c.length = alpha
 
     # self-interactions
-    intPot!(a1, -1.0)
-    intPot!(a2, -1.0)
-    intPot!(b, -1.0)
     intPot!(c, -1.0)
 
     # multi-species interactions
@@ -88,8 +87,7 @@ function target!(res, args...)
 
     #### iterating multiple moves
     nmoves = 0
-    frame = ones(Int, nmoving)
-    frame_joint = 1
+    frame = 1
     deltaH = zeros(Float64, nspecies)
 
     ndroplets = []
@@ -98,6 +96,8 @@ function target!(res, args...)
     dilute_density = []
     hams = []
     accs = []
+    density_lat = zeros(Float64, (l.boxlength, l.boxlength, l.boxlength))
+    total = 0.0
 
     niter = 0
     moveMade = falses(nmoving)
@@ -108,11 +108,12 @@ function target!(res, args...)
         sp.deltaH = 0.0
     end
 
-    while frame_joint <= nframes - 2
+    while frame <= nframes
         for (s, i) in movingsps
             if  move!(s)
                 nmoves += 1
 
+                # record data
                 if mod(nmoves, step) == 0
                     deltaH[i] += s.deltaH
 
@@ -128,20 +129,29 @@ function target!(res, args...)
                     
                     push!(ndroplets, length(droplets))
                     push!(droplet_sizes, map(x -> length(x), droplets))
-                    push!(droplet_densities, dropletDensities(s, droplets))
                     push!(dilute_density, diluteDensity(s, droplets))
                     push!(accs, niter == 0 ? 0 : nmoves / niter)
                     push!(hams, hams[end] + deltaH[i])
 
                     deltaH[i] = 0
-                    frame[i] += 1
-                    frame_joint += 1
+                    frame += 1
+
+                    if frame >= burn_in
+                        for (_, val) in s.pos
+                            density_lat[val[1], val[2], val[3]] += 1.0
+                            total += 1.0
+                        end
+                    end
                 end
             end
         end
     end
 
+    # MARK: -Export
+
     # collect results
+    density_lat = density_lat ./ total
+
     coords_a1 = Matrix{Int32}(undef, a1.length, 4)
     coords_a2 = Matrix{Int32}(undef, a2.length, 4)
     coords_b = Matrix{Int32}(undef, b.length, 4)
@@ -156,8 +166,8 @@ function target!(res, args...)
     res["length"] = c.length
     res["ndroplets"] = ndroplets
     res["droplet_sizes"] = droplet_sizes
-    res["droplet_densities"] = droplet_densities
     res["dilute_density"] = dilute_density
+    res["density_lattice"] = density_lat
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
     res["final_coordinates"] = extractCoords!(c, coords_c)

@@ -14,34 +14,6 @@ function load!(l::Lattice, filename::String)
     return l
 end
 
-# extracts the coordinates of a polymer's beads
-export extractCoords!
-function extractCoords!(p::AbstractPoly, coords::Matrix)
-    key = p.head           # initial bead
-    k = 1
-    
-    for k in collect(keys(p.pos))
-        if key != 0
-            coords[k, :] = p.pos[key][1:3] # next position
-            key = p.pos[key][5]    # next bead
-        end
-    end
-
-    return coords
-end
-
-# extracts the coordinates of a polymer's beads
-export extractCoords!
-function extractCoords!(b::AbstractSpecies, coords::Matrix)
-
-    for k in collect(keys(b.pos))
-        coords[k, 1:3] = b.pos[k][1:3]         # next position
-        coords[k, 4] = b.latS[b.pos[k][1], b.pos[k][2], b.pos[k][3]]   # bead index
-    end
-
-    return coords
-end
-
 # exports a list of species to JSON for python compatibility
 # slist is a list of species s, export the bead coordinates s.pos in a 
 # (s.length x 3)-shaped vector and associated metadata
