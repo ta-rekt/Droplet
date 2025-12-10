@@ -198,17 +198,17 @@ end
 # to test:
 # * fastbulk flory huggins (insurance)
 # * filament prewetting (insurance)
-#   * vary concentration and look at axial density
-#   * make a control simulation where intpot on filament is lower than inter-particle
-#   * site occupation time-series and mean -> BP estimate of concentration
+#   * vary concentration and look at axial/radial density, compare with control
 
 # to implement
-# * axial and radial density
+# * site occupation time-series and mean -> BP estimate of concentration
 # * prewet enhancers (insurance)
-#   * look at radial density
 #   * radial densities of two nearby enhancers
+#   * effective force, comparison with electrostatic
 # * nucleation sites prevent Ostwald ripening (insurance)
-# monday 08/12
+#   * plot n_enhancers vs. dilute density compared with critical concentration 
+
+
 # * poly: length-preserving moves
 #   * adapt the proposal probabilities
 #   * run a burn-in with ADD and REMOVE, then equilibrate 
@@ -252,29 +252,29 @@ end
     )
 
     c = FastBulk(;
-        length = 1024,
+        length = 2,
         initShape = "uniform"
     )
 
     a1 = FastBulk(;
-        length = 11,
+        length = 13,
         initShape = "line",
         initParams = 1,
         initPos = [1,16,16]
     )
 
     b = FastBulk(;
-        length = 10,
+        length = 6,
         initShape = "line",
         initParams = 1,
-        initPos = [12,16,16]
+        initPos = [14,16,16]
     )
 
     a2 = FastBulk(;
-        length = 11,
+        length = 13,
         initShape = "line",
         initParams = 1,
-        initPos = [22,16,16]
+        initPos = [21,16,16]
     )
 
     intPot!(c, -1.0)

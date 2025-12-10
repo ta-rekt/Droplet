@@ -2,34 +2,34 @@
 # MARK: -Phys. params
 
 l = Lattice(;
-    boxlength = 16,
+    boxlength = 32,
     nspecies = 3
 )
 
 c = FastBulk(;
-    length = 1,
+    length = 2,
     initShape = "uniform"
 )
 
 a1 = FastBulk(;
-    length = 5,
+    length = 13,
     initShape = "line",
     initParams = 1,
-    initPos = [1,8,8]
+    initPos = [1,16,16]
 )
 
 b = FastBulk(;
     length = 6,
     initShape = "line",
     initParams = 1,
-    initPos = [6,8,8]
+    initPos = [14,16,16]
 )
 
 a2 = FastBulk(;
-    length = 5,
+    length = 13,
     initShape = "line",
     initParams = 1,
-    initPos = [12,8,8]
+    initPos = [20,16,16]
 )
 
 slist = [a1, a2, b, c]
@@ -37,14 +37,15 @@ slist = [a1, a2, b, c]
 ### simulation parameters
 # MARK: -Sim. params
 
-nframes = 1000
-step = 1000
-burn_in = 500
+nframes = 10000
+step = 10000
+burn_in = 8000
 
 # minimum size of a droplet for detection
 minsize = 5
 
-vals = range(124, stop=1024, step=60)  # parallelized parameters (int. pot.)
+# vals = range(124, stop=1024, step=60)  # parallelized parameters (int. pot.)
+vals = range(300, stop=8000, step=500)
 alphas = zeros(16)
 nrepeats = 1
 
