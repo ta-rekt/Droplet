@@ -199,15 +199,14 @@ end
 # * fastbulk flory huggins (insurance)
 # * filament prewetting (insurance)
 #   * vary concentration and look at axial/radial density, compare with control
-
-# to implement
-# * site occupation time-series and mean -> BP estimate of concentration
 # * prewet enhancers (insurance)
 #   * radial densities of two nearby enhancers
 #   * effective force, comparison with electrostatic
+
+# to implement
+# * site occupation time-series and mean -> BP estimate of concentration
 # * nucleation sites prevent Ostwald ripening (insurance)
 #   * plot n_enhancers vs. dilute density compared with critical concentration 
-
 
 # * poly: length-preserving moves
 #   * adapt the proposal probabilities
@@ -247,7 +246,7 @@ end
     ############ droplet boundary ############
 
     l = Lattice(;
-        boxlength = 32,
+        boxlength = 20,
         nspecies = 3
     )
 
@@ -256,40 +255,65 @@ end
         initShape = "uniform"
     )
 
-    a1 = FastBulk(;
-        length = 13,
+    ### rod 1
+    a1_l = FastBulk(;
+        length = 7,
         initShape = "line",
         initParams = 1,
-        initPos = [1,16,16]
+        initPos = [1,5,8]
     )
 
-    b = FastBulk(;
+    b_l = FastBulk(;
         length = 6,
         initShape = "line",
         initParams = 1,
-        initPos = [14,16,16]
+        initPos = [8,5,8]
     )
 
-    a2 = FastBulk(;
-        length = 13,
+    a2_l = FastBulk(;
+        length = 7,
         initShape = "line",
         initParams = 1,
-        initPos = [21,16,16]
+        initPos = [14,5,8]
+    )
+
+    ### rod 2
+    a1_r = FastBulk(;
+        length = 7,
+        initShape = "line",
+        initParams = 1,
+        initPos = [1,12,8]
+    )
+
+    b_r = FastBulk(;
+        length = 6,
+        initShape = "line",
+        initParams = 1,
+        initPos = [8,12,8]
+    )
+
+    a2_r = FastBulk(;
+        length = 7,
+        initShape = "line",
+        initParams = 1,
+        initPos = [14,12,8]
     )
 
     intPot!(c, -1.0)
 
     # Set up multi-species interactions using the new intPot! function
-    intPot!(c, a1, -0.5)  # a-c interaction
-    intPot!(c, a2, -0.5)  # b-c interaction  
-    intPot!(c, b, -2.0)  # a-b interaction (optional)
+    intPot!(c, a1_l, -0.5)  # a-c interaction
+    intPot!(c, a2_l, -0.5)  # b-c interaction  
+    intPot!(c, b_l, -2.0)  # a-b interaction (optional)
 
-    slist = [a1, a2, b, c]
+    # intPot!(c, a1_r, -0.5)  # a-c interaction
+    # intPot!(c, a2_r, -0.5)  # b-c interaction  
+    # intPot!(c, b_r, -2.0)  # a-b interaction (optional)
+
+    slist = [a1_l, b_l, a2_l, c]
     
     # initialize lattice and species
     init!(l, slist)
-
-    println(map(x -> x[2], a1.intSpecies))
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 

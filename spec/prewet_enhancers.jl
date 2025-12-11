@@ -1,63 +1,88 @@
 ### physical parameters
+# MARK: -Phys. params
 
 l = Lattice(;
-    boxlength = 16,
-    nspecies = 3
+    boxlength = 20,
+    nspecies = 7
 )
 
-## species initial configuration
-
 c = FastBulk(;
-    length = 128,
+    length = 2000,
     initShape = "uniform"
 )
 
-a1 = FastBulk(;
-    length = 5,
+### rod 1
+a1_l = FastBulk(;
+    length = 7,
     initShape = "line",
     initParams = 1,
     initPos = [1,5,8]
 )
 
-a2 = FastBulk(;
-    length = 5,
-    initShape = "line",
-    initParams = 1,
-    initPos = [12,5,8]
-)
-
-b = FastBulk(;
+b_l = FastBulk(;
     length = 6,
     initShape = "line",
     initParams = 1,
-    initPos = [6,5,8]
+    initPos = [8,5,8]
 )
 
-slist = [a1, a2, b, c]
+a2_l = FastBulk(;
+    length = 7,
+    initShape = "line",
+    initParams = 1,
+    initPos = [14,5,8]
+)
+
+### rod 2
+a1_r = FastBulk(;
+    length = 7,
+    initShape = "line",
+    initParams = 1,
+    initPos = [1,12,8]
+)
+
+b_r = FastBulk(;
+    length = 6,
+    initShape = "line",
+    initParams = 1,
+    initPos = [8,12,8]
+)
+
+a2_r = FastBulk(;
+    length = 7,
+    initShape = "line",
+    initParams = 1,
+    initPos = [14,12,8]
+)
+
+slist = [a1_l, a1_r, a2_l, a2_r, b_l, b_r, c]
 
 ### simulation parameters
+# MARK: -Sim. params
 
-nframes = 10000
-step = 1000
+nframes = 50000
+step = 10000
+burn_in = 40000
 
 # minimum size of a droplet for detection
 minsize = 5
 
-vals = range(124, stop=1024, step=60)  # parallelized parameters (int. pot.)
-alphas = zeros(16)
+vals = range(1, stop=8, step=1)
+alphas = zeros(8)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-# alphas = [128]   # number of particles
+# alphas = [4]   # distance between filaments
 betas = [0.0]    # (physical) chemical and interaction potentials
 nparams = length(alphas)
-nspecies = 4
+nspecies = 7
 nmoving = 1
 
 ### functions
+# MARK: -Functions
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
@@ -65,22 +90,25 @@ function target!(res, args...)
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    a1, a2, b, c = slist
+    a1_l, a1_r, a2_l, a2_r, b_l, b_r, c = slist
 
-    c.length = alpha
+    a1_r.initPos[2] = a1_l.initPos[2] + alpha
+    a2_r.initPos[2] = a2_l.initPos[2] + alpha
+    b_r.initPos[2] = b_l.initPos[2] + alpha
 
     # self-interactions
-    intPot!(a1, -1.0)
-    intPot!(a2, -1.0)
-    intPot!(b, -1.0)
     intPot!(c, -1.0)
 
     # multi-species interactions
-    intPot!(c, a1, -0.5) 
-    intPot!(c, a2, -0.5)   
-    intPot!(c, b, -2.0) 
+    intPot!(c, a1_l, -0.5)  # a-c interaction
+    intPot!(c, a2_l, -0.5)  # b-c interaction  
+    intPot!(c, b_l, -2.0)  # a-b interaction (optional)
 
-    slist = [a1, a2, b, c]         # all species
+    intPot!(c, a1_r, -0.5)  # a-c interaction
+    intPot!(c, a2_r, -0.5)  # b-c interaction  
+    intPot!(c, b_r, -2.0)  # a-b interaction (optional)
+
+    slist = [a1_l, a1_r, a2_l, a2_r, b_l, b_r, c]         # all species
     movingsps = [(c, c.intIdx)]    # species that move
 
     # initialize lattice and species
@@ -88,35 +116,29 @@ function target!(res, args...)
 
     #### iterating multiple moves
     nmoves = 0
-    frame = ones(Int, nmoving)
-    frame_joint = 1
+    frame = 1
     deltaH = zeros(Float64, nspecies)
 
-    ndroplets = []
-    droplet_sizes = []
-    droplet_densities = []
-    dilute_density = []
     hams = []
     accs = []
+    density_lat = zeros(Float64, (l.boxlength, l.boxlength, l.boxlength))
+    total = 0.0
 
     niter = 0
-    moveMade = falses(nmoving)
 
-    for (sp, idx) in a1.intSpecies
-        hams_sp = Vector{Float64}(undef, 0)
-
-        push!(hams_sp, sp.ham)
-        push!(hams, hams_sp)
-
+    for (sp, idx) in a1_l.intSpecies
+        push!(hams, sp.ham)
         ham!(sp)
         sp.deltaH = 0.0
     end
 
-    while frame_joint <= nframes - 2
+    while frame <= nframes
+        niter += 1
         for (s, i) in movingsps
             if  move!(s)
                 nmoves += 1
 
+                # record data
                 if mod(nmoves, step) == 0
                     deltaH[i] += s.deltaH
 
@@ -126,28 +148,30 @@ function target!(res, args...)
                             deltaH[j] += p.deltaHP
                         end
                     end
-                    
-                    ccs = cc(b)
-                    droplets = filter(x -> length(x) >= minsize, ccs)
-                    
-                    push!(ndroplets, length(droplets))
-                    push!(droplet_sizes, map(x -> length(x), droplets))
-                    push!(droplet_densities, dropletDensities(b, droplets))
-                    push!(dilute_density, diluteDensity(b, droplets))
+
                     push!(accs, niter == 0 ? 0 : nmoves / niter)
+                    push!(hams, hams[end] + deltaH[i])
 
-                    push!(hams[i], hams[i][end] + deltaH[i])
                     deltaH[i] = 0
+                    frame += 1
 
-                    frame[i] += 1
-                    frame_joint += 1
+                    if frame >= burn_in
+                        for (_, val) in s.pos
+                            density_lat[val[1], val[2], val[3]] += 1.0
+                            total += 1.0
+                        end
+                    end
                 end
             end
         end
     end
 
+    # MARK: -Export
+
     # collect results
-    coords = Matrix{Int32}(undef, c.length, 4)
+    density_lat = density_lat ./ total
+
+    coords_c = Matrix{Int32}(undef, c.length, 4)
 
     res["species_name"] = c.name
     res["nframes"] = nframes
@@ -156,13 +180,10 @@ function target!(res, args...)
     res["beta"] = beta
     res["boxlength"] = c.boxlength
     res["length"] = c.length
-    res["ndroplets"] = ndroplets
-    res["droplet_sizes"] = droplet_sizes
-    res["droplet_densities"] = droplet_densities
-    res["dilute_density"] = dilute_density
+    res["density_lattice"] = density_lat
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
-    res["final_coordinates"] = extractCoords!(c, coords)
+    res["final_coordinates"] = extractCoords!(c, coords_c)
     res["runtime_s"] = (time_ns() - t_start) / 1e9
 
     return res
