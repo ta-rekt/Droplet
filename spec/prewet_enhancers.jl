@@ -135,7 +135,7 @@ function target!(res, args...)
     while frame <= nframes
         niter += 1
         for (s, i) in movingsps
-            if  move!(s)
+            if move!(s)
                 nmoves += 1
 
                 # record data

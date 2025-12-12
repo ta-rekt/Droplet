@@ -221,3 +221,16 @@ function diluteDensity(s::AbstractBulk, droplets::Vector{Set{Int32}})
 
     return (n - ndrop) / (s.boxlength^3 - voldrop)
 end
+
+# number of particles of a species bound to any of the binding sites
+export nspeciesBound
+function nspeciesBound(sp::AbstractBulk, 
+                       bsites::Vector{T}) where T <: AbstractSpecies
+    n = 0
+    for site in bsites
+        for (_, val) in site.pos
+            n += (sp.latS[val[1], val[2], val[3]] > 0)
+        end
+    end
+    return n
+end

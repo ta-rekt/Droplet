@@ -51,12 +51,12 @@ end
     intPot!(a1, -1.0)
     intPot!(a2, -1.0)
     intPot!(b, -1.0)
-    intPot!(c, -1.0)
+    intPot!(tf, -1.0)
 
     # inter-species interaction
-    intPot!(c, a1, -0.5)  # a-c interaction
-    intPot!(c, a2, -0.5)  # b-c interaction  
-    intPot!(c, b, -2.0)  # a-b interaction (optional)
+    intPot!(tf, a1, -0.5)  # a-c interaction
+    intPot!(tf, a2, -0.5)  # b-c interaction  
+    intPot!(tf, b, -2.0)  # a-b interaction (optional)
 
     slist = [a1, a2, b, c]
 
@@ -189,7 +189,7 @@ let
     personC = C("Clarence")
     g(personB)
 
-    @time hasproperty(personC, :ssn)
+    @time hasproperty(persontf, :ssn)
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
@@ -250,67 +250,77 @@ end
         nspecies = 3
     )
 
-    c = FastBulk(;
-        length = 2,
+    tf = FastBulk(;
+        length = 32,
         initShape = "uniform"
     )
 
+    # rnap = FastBulk(;
+    #     length = 32,
+    #     initShape = "uniform"
+    # )
+
     ### rod 1
-    a1_l = FastBulk(;
+    dna1 = FastBulk(;
         length = 7,
         initShape = "line",
         initParams = 1,
         initPos = [1,5,8]
     )
 
-    b_l = FastBulk(;
+    enhancer = FastBulk(;
         length = 6,
         initShape = "line",
         initParams = 1,
         initPos = [8,5,8]
     )
 
-    a2_l = FastBulk(;
+    dna2 = FastBulk(;
         length = 7,
         initShape = "line",
         initParams = 1,
         initPos = [14,5,8]
     )
 
-    ### rod 2
-    a1_r = FastBulk(;
+
+    ### rod 1
+    dna1_l = FastBulk(;
         length = 7,
         initShape = "line",
         initParams = 1,
-        initPos = [1,12,8]
+        initPos = [1,10,8]
     )
 
-    b_r = FastBulk(;
+    enhancer_l = FastBulk(;
         length = 6,
         initShape = "line",
         initParams = 1,
-        initPos = [8,12,8]
+        initPos = [8,10,8]
     )
 
-    a2_r = FastBulk(;
+    dna2_l = FastBulk(;
         length = 7,
         initShape = "line",
         initParams = 1,
-        initPos = [14,12,8]
+        initPos = [14,10,8]
     )
 
-    intPot!(c, -1.0)
+    # # self-interactions
+    # intPot!(tf, -1.0)
+    # intPot!(rnap, -1.0)
 
-    # Set up multi-species interactions using the new intPot! function
-    intPot!(c, a1_l, -0.5)  # a-c interaction
-    intPot!(c, a2_l, -0.5)  # b-c interaction  
-    intPot!(c, b_l, -2.0)  # a-b interaction (optional)
+    # # multi-species interactions
+    # intPot!(tf, dna1, -0.5)  
+    # intPot!(tf, dna2, -0.5)  
+    # intPot!(tf, enhancer, -2.0)
 
-    # intPot!(c, a1_r, -0.5)  # a-c interaction
-    # intPot!(c, a2_r, -0.5)  # b-c interaction  
-    # intPot!(c, b_r, -2.0)  # a-b interaction (optional)
+    # intPot!(rnap, dna1, -0.5)  
+    # intPot!(rnap, dna2, -0.5)  
+    # intPot!(rnap, enhancer, -0.5)
 
-    slist = [a1_l, b_l, a2_l, c]
+    # intPot!(tf, rnap, -2.0)
+
+    slist = [dna1, dna2, enhancer, dna1_l, dna2_l, enhancer_l, tf]
     
     # initialize lattice and species
     init!(l, slist)
@@ -318,35 +328,3 @@ end
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
 end
-
-
-# l = Lattice(;
-#     boxlength = 16,
-#     nspecies = 3
-# )
-
-# c = FastBulk(;
-#     length = 1,
-#     initShape = "uniform"
-# )
-
-# a1 = FastBulk(;
-#     length = 5,
-#     initShape = "line",
-#     initParams = 1,
-#     initPos = [1,8,8]
-# )
-
-# b = FastBulk(;
-#     length = 6,
-#     initShape = "line",
-#     initParams = 1,
-#     initPos = [6,8,8]
-# )
-
-# a2 = FastBulk(;
-#     length = 5,
-#     initShape = "line",
-#     initParams = 1,
-#     initPos = [12,8,8]
-# )

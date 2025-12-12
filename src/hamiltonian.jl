@@ -98,7 +98,6 @@ export deltaHam!
 function deltaHam!(b::AbstractBulk)
 
     # energy increment from self-interactions
-    # b.deltaH = b.intPot * ((nn(b, b.newPos) - nn(b, b.bi)) - 1)
     b.deltaH = 0.0
 
     # energy increment from cross-interactions with each partner
