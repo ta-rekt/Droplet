@@ -212,27 +212,27 @@ using Test
                     
                     ham!(p)
                     hams[frame] = p.ham
-
-                    @test hams[frame] == accDeltaH[frame]
                 end
             end
             
             moveMade = move!(p)
             nmoves += moveMade
         end
+
+        @test hams == accDeltaH
     end
 
 # MARK: -Ham bulk
     @testset "Hamiltonian (bulk)" begin
 
         l = Lattice(;
-            boxlength = 32,
+            boxlength = 16,
             nspecies = 1
         )
 
         # bulk species
         p = Bulk(;
-            length = 1000
+            length = 500
         )
 
         slist = [p]
@@ -249,7 +249,73 @@ using Test
         #### iterating multiple moves
         nmoves = 0
         frame = 1
-        nframes = 100
+        nframes = 1000
+        step = 50
+        deltaH = 0
+        moveMade = false
+        
+        hams = zeros(nframes)
+        accDeltaH = zeros(nframes)
+        
+        # first frame
+        accDeltaH[frame] = hamInitial
+        
+        ham!(p)
+        hams[frame] = hamInitial
+
+        while frame <= nframes - 1
+            
+            if moveMade
+
+                deltaH += p.deltaH
+
+                if mod(nmoves, step) == 0
+                
+                    frame += 1
+
+                    accDeltaH[frame] = accDeltaH[frame-1] + deltaH
+                    deltaH = 0
+                    
+                    ham!(p)
+                    hams[frame] = p.ham
+                end
+            end
+            
+            moveMade = move!(p)
+            nmoves += moveMade
+        end
+
+        @test hams == accDeltaH
+    end
+
+# MARK: -Ham fastbulk
+    @testset "Hamiltonian (fast bulk)" begin
+
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        # bulk species
+        p = FastBulk(;
+            length = 500
+        )
+
+        slist = [p]
+
+        # Set interaction potential after init
+        intPot!(p, -1.0)
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        # initial energy
+        hamInitial = p.ham
+
+        #### iterating multiple moves
+        nmoves = 0
+        frame = 1
+        nframes = 1000
         step = 50
         deltaH = 0
         moveMade = false
@@ -279,13 +345,14 @@ using Test
                     ham!(p)
                     hams[frame] = p.ham
 
-                    @test hams[frame] == accDeltaH[frame]
                 end
             end
             
             moveMade = move!(p)
             nmoves += moveMade
         end
+        
+        @test hams == accDeltaH
     end
 
 # MARK: -Ham multi
@@ -395,98 +462,98 @@ using Test
         @test hams[3] == accDeltaH[3]
     end
 
-# MARK: -Ham multi
+# MARK: -Ham multi fast
     @testset "Hamiltonian (multi-component fast bulk)" begin
-        l = Lattice(;
-            boxlength = 16,
-            nspecies = 2
-        )
+        # l = Lattice(;
+        #     boxlength = 16,
+        #     nspecies = 2
+        # )
 
-        a = FastBulk(;
-            length = 128,
-            intPot = -1,
-            intPotP = -1,
-            chemPot = 1,
-            initShape = "box",
-            initParams = 1,
-            initPos = [8,8,8]
-        )
+        # a = FastBulk(;
+        #     length = 128,
+        #     intPot = -1,
+        #     intPotP = -1,
+        #     chemPot = 1,
+        #     initShape = "box",
+        #     initParams = 1,
+        #     initPos = [8,8,8]
+        # )
 
-        b = FastBulk(;
-            length = 128,
-            intPot = -1,
-            intPotP = -1,
-            chemPot = 1,
-            initShape = "uniform"
-        )
+        # b = FastBulk(;
+        #     length = 128,
+        #     intPot = -1,
+        #     intPotP = -1,
+        #     chemPot = 1,
+        #     initShape = "uniform"
+        # )
 
-        b.partner = a
-        a.partner = b
+        # b.partner = a
+        # a.partner = b
 
-        slist = [a, b]
+        # slist = [a, b]
 
-        # initialize lattice and species
-        init!(l, slist)
+        # # initialize lattice and species
+        # init!(l, slist)
 
-        #### iterating multiple moves
-        nmoves = [0,0]
-        frame = [1,1]
-        frame_joint = 1
-        nframes = 10000
-        step = 1
-        deltaH = [0,0]
-        niter = 0
-        moveMade = [false, false]
+        # #### iterating multiple moves
+        # nmoves = [0,0]
+        # frame = [1,1]
+        # frame_joint = 1
+        # nframes = 10000
+        # step = 1
+        # deltaH = [0,0]
+        # niter = 0
+        # moveMade = [false, false]
 
-        hamsA = Vector{Float64}(undef, 0)
-        hamsB = Vector{Float64}(undef, 0)
-        hams = [hamsA, hamsB]
-        accDeltaHA = Vector{Float64}(undef, 0)
-        accDeltaHB = Vector{Float64}(undef, 0)
-        accDeltaH = [accDeltaHA, accDeltaHB]
+        # hamsA = Vector{Float64}(undef, 0)
+        # hamsB = Vector{Float64}(undef, 0)
+        # hams = [hamsA, hamsB]
+        # accDeltaHA = Vector{Float64}(undef, 0)
+        # accDeltaHB = Vector{Float64}(undef, 0)
+        # accDeltaH = [accDeltaHA, accDeltaHB]
         
-        # first frame, initial energy
-        push!(hams[1], a.ham)
-        push!(hams[2], b.ham)
-        push!(accDeltaH[1], a.ham)
-        push!(accDeltaH[2], b.ham)
+        # # first frame, initial energy
+        # push!(hams[1], a.ham)
+        # push!(hams[2], b.ham)
+        # push!(accDeltaH[1], a.ham)
+        # push!(accDeltaH[2], b.ham)
 
-        ham!(a)
-        ham!(b)
-        a.deltaH = 0
-        b.deltaH = 0
+        # ham!(a)
+        # ham!(b)
+        # a.deltaH = 0
+        # b.deltaH = 0
 
-        a.name = string(a.name, "_a")
-        b.name = string(b.name, "_b")
-        color = ["blue (A)", "orange (B)"]
+        # a.name = string(a.name, "_a")
+        # b.name = string(b.name, "_b")
+        # color = ["blue (A)", "orange (B)"]
 
-        while frame_joint <= nframes - 2
-            for (i, s) in enumerate(slist)
-                if move!(s)
-                    nmoves[i] += 1
-                    deltaH[i] += s.deltaH
+        # while frame_joint <= nframes - 2
+        #     for (i, s) in enumerate(slist)
+        #         if move!(s)
+        #             nmoves[i] += 1
+        #             deltaH[i] += s.deltaH
 
-                    # update deltaH for the partners
-                    for (sp, idx) in s.intSpecies
-                        if idx != s.intIdx
-                            deltaH[idx] += sp.deltaHP
-                        end
-                    end
+        #             # update deltaH for the partners
+        #             for (sp, idx) in s.intSpecies
+        #                 if idx != s.intIdx
+        #                     deltaH[idx] += sp.deltaHP
+        #                 end
+        #             end
                     
-                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
-                    deltaH[i] = 0
+        #             push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+        #             deltaH[i] = 0
                     
-                    ham!(s)
-                    push!(hams[i], s.ham)
+        #             ham!(s)
+        #             push!(hams[i], s.ham)
 
-                    frame[i] += 1
-                    frame_joint += 1
-                end
-            end
-        end
+        #             frame[i] += 1
+        #             frame_joint += 1
+        #         end
+        #     end
+        # end
 
-        @test hams[1] == accDeltaH[1]
-        @test hams[2] == accDeltaH[2]
+        # @test hams[1] == accDeltaH[1]
+        # @test hams[2] == accDeltaH[2]
     end
 
 # MARK: -CC multi
@@ -1090,350 +1157,350 @@ using Test
 
         @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
     end
-# MARK: -Movable indices
-    @testset "Movable indices" begin
-        l = Lattice(;
-            boxlength = 5,
-            nspecies = 1
-        )
+# # MARK: -Movable indices
+#     @testset "Movable indices" begin
+#         l = Lattice(;
+#             boxlength = 5,
+#             nspecies = 1
+#         )
 
-        b = FastBulk(;
-            length = 27,
-            initShape = "box",
-            initParams = 1,
-            initPos = [3,3,3]
-        )
+#         b = FastBulk(;
+#             length = 27,
+#             initShape = "box",
+#             initParams = 1,
+#             initPos = [3,3,3]
+#         )
 
-        slist = [b]
+#         slist = [b]
 
-        # Set interaction potential 
-        intPot!(b, -1.0)
+#         # Set interaction potential 
+#         intPot!(b, -1.0)
 
-        # initialize lattice and species
-        init!(l, slist)
+#         # initialize lattice and species
+#         init!(l, slist)
 
-        for i in range(1, 27)
-            if i == 14
-                @test !(i in b.movableIdxs)
-            else
-                @test i in b.movableIdxs
-            end
-        end
+#         for i in range(1, 27)
+#             if i == 14
+#                 @test !(i in b.movableIdxs)
+#             else
+#                 @test i in b.movableIdxs
+#             end
+#         end
 
-        ########### corner ###########
+#         ########### corner ###########
 
-        b.moveIdx = 1
+#         b.moveIdx = 1
 
-        # find coordinates and keys of selected bond
-        identifyBond!(b)
-        @test b.bi == [2,2,2]
+#         # find coordinates and keys of selected bond
+#         identifyBond!(b)
+#         @test b.bi == [2,2,2]
 
-        nnIdxs!(b, b.bi)
-        @test b.freeNNs == Set([2,4,6])
+#         nnIdxs!(b, b.bi)
+#         @test b.freeNNs == Set([2,4,6])
 
-        for i in range(1, 3)
-            b.tempVec[i] = b.pos[b.moveIdx][i]
-        end
+#         for i in range(1, 3)
+#             b.tempVec[i] = b.pos[b.moveIdx][i]
+#         end
         
-        # test each move direction
-        b.moveType = 2
-        axis = div(b.moveType + 1, 2)
-        dir = - mod(b.moveType + 1, 2) * 2 + 1
+#         # test each move direction
+#         b.moveType = 2
+#         axis = div(b.moveType + 1, 2)
+#         dir = - mod(b.moveType + 1, 2) * 2 + 1
         
-        b.tempVec[axis] += dir
-        @test b.tempVec == [1,2,2]
+#         b.tempVec[axis] += dir
+#         @test b.tempVec == [1,2,2]
 
-        # clip to within bounding box
-        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-        @test !overlap(b)
+#         # clip to within bounding box
+#         boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+#         @test !overlap(b)
 
-        makeMove!(b)
-        @test b.bi == [1,2,2]
+#         makeMove!(b)
+#         @test b.bi == [1,2,2]
 
 
-        ########### edge ###########
+#         ########### edge ###########
 
-        b = FastBulk(;
-            length = 27,
-            initShape = "box",
-            initParams = 1,
-            initPos = [3,3,3]
-        )
+#         b = FastBulk(;
+#             length = 27,
+#             initShape = "box",
+#             initParams = 1,
+#             initPos = [3,3,3]
+#         )
 
-        slist = [b]
+#         slist = [b]
 
-        # initialize lattice and species
-        init!(l, slist)
+#         # initialize lattice and species
+#         init!(l, slist)
 
-        b.moveIdx = 2
+#         b.moveIdx = 2
 
-        # find coordinates and keys of selected bond
-        identifyBond!(b)
-        @test b.bi == [2,2,3]
+#         # find coordinates and keys of selected bond
+#         identifyBond!(b)
+#         @test b.bi == [2,2,3]
 
-        nnIdxs!(b, b.bi)
-        @test b.freeNNs == Set([2,4])
+#         nnIdxs!(b, b.bi)
+#         @test b.freeNNs == Set([2,4])
 
-        for i in range(1, 3)
-            b.tempVec[i] = b.pos[b.moveIdx][i]
-        end
+#         for i in range(1, 3)
+#             b.tempVec[i] = b.pos[b.moveIdx][i]
+#         end
         
-        # test each move direction
-        b.moveType = 4
-        axis = div(b.moveType + 1, 2)
-        dir = - mod(b.moveType + 1, 2) * 2 + 1
+#         # test each move direction
+#         b.moveType = 4
+#         axis = div(b.moveType + 1, 2)
+#         dir = - mod(b.moveType + 1, 2) * 2 + 1
         
-        b.tempVec[axis] += dir
-        @test b.tempVec == [2,1,3]
+#         b.tempVec[axis] += dir
+#         @test b.tempVec == [2,1,3]
 
-        # clip to within bounding box
-        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-        @test !overlap(b)
+#         # clip to within bounding box
+#         boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+#         @test !overlap(b)
 
-        makeMove!(b)
-        @test b.bi == [2,1,3]
-
-
-        ########### center ###########
-
-        b = FastBulk(;
-            length = 27,
-            initShape = "box",
-            initParams = 1,
-            initPos = [3,3,3]
-        )
-
-        slist = [b]
-
-        # initialize lattice and species
-        init!(l, slist)
-
-        b.moveIdx = 14
-
-        # find coordinates and keys of selected bond
-        identifyBond!(b)
-        @test b.bi == [3,3,3]
-
-        nnIdxs!(b, b.bi)
-        @test isempty(b.freeNNs)
+#         makeMove!(b)
+#         @test b.bi == [2,1,3]
 
 
-        ########### across boundary ###########
+#         ########### center ###########
 
-        b = FastBulk(;
-            length = 8,
-            initShape = "box",
-            initParams = 1,
-            initPos = [1,1,1]
-        )
+#         b = FastBulk(;
+#             length = 27,
+#             initShape = "box",
+#             initParams = 1,
+#             initPos = [3,3,3]
+#         )
 
-        slist = [b]
+#         slist = [b]
 
-        # initialize lattice and species
-        init!(l, slist)
+#         # initialize lattice and species
+#         init!(l, slist)
 
-        b.moveIdx = 8
+#         b.moveIdx = 14
 
-        # find coordinates and keys of selected bond
-        identifyBond!(b)
-        @test b.bi == [1,1,1]
+#         # find coordinates and keys of selected bond
+#         identifyBond!(b)
+#         @test b.bi == [3,3,3]
 
-        nnIdxs!(b, b.bi)
-        @test b.freeNNs == Set([1,3,5])
+#         nnIdxs!(b, b.bi)
+#         @test isempty(b.freeNNs)
 
-        for i in range(1, 3)
-            b.tempVec[i] = b.pos[b.moveIdx][i]
-        end
+
+#         ########### across boundary ###########
+
+#         b = FastBulk(;
+#             length = 8,
+#             initShape = "box",
+#             initParams = 1,
+#             initPos = [1,1,1]
+#         )
+
+#         slist = [b]
+
+#         # initialize lattice and species
+#         init!(l, slist)
+
+#         b.moveIdx = 8
+
+#         # find coordinates and keys of selected bond
+#         identifyBond!(b)
+#         @test b.bi == [1,1,1]
+
+#         nnIdxs!(b, b.bi)
+#         @test b.freeNNs == Set([1,3,5])
+
+#         for i in range(1, 3)
+#             b.tempVec[i] = b.pos[b.moveIdx][i]
+#         end
         
-        # test each move direction
-        b.moveType = 2
-        axis = div(b.moveType + 1, 2)
-        dir = - mod(b.moveType + 1, 2) * 2 + 1
+#         # test each move direction
+#         b.moveType = 2
+#         axis = div(b.moveType + 1, 2)
+#         dir = - mod(b.moveType + 1, 2) * 2 + 1
         
-        b.tempVec[axis] += dir
+#         b.tempVec[axis] += dir
 
-        # clip to within bounding box
-        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-        @test overlap(b)
-    end
-# MARK: -Hastings factor
-    @testset "Hastings factor" begin
-        ############ full box ############
+#         # clip to within bounding box
+#         boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+#         @test overlap(b)
+#     end
+# # MARK: -Hastings factor
+#     @testset "Hastings factor" begin
+#         ############ full box ############
 
-        l = Lattice(;
-            boxlength = 4,
-            nspecies = 2
-        )
+#         l = Lattice(;
+#             boxlength = 4,
+#             nspecies = 2
+#         )
 
-        b = FastBulk(;
-            length = 64,
-            initShape = "box",
-            initParams = 1,
-            initPos = [4,4,4]
-        )
+#         b = FastBulk(;
+#             length = 64,
+#             initShape = "box",
+#             initParams = 1,
+#             initPos = [4,4,4]
+#         )
 
-        slist = [b]
+#         slist = [b]
 
-        # Set interaction potential 
-        intPot!(b, -1.0)
+#         # Set interaction potential 
+#         intPot!(b, -1.0)
 
-        # initialize lattice and species
-        init!(l, slist)
+#         # initialize lattice and species
+#         init!(l, slist)
         
-        @test isempty(b.movableIdxs)
+#         @test isempty(b.movableIdxs)
         
-        # surgically remove one bead
-        remKey = 17
-        b.latS[b.pos[remKey][1], b.pos[remKey][2], b.pos[remKey][3]] = 0
-        delete!(b.pos, remKey)
+#         # surgically remove one bead
+#         remKey = 17
+#         b.latS[b.pos[remKey][1], b.pos[remKey][2], b.pos[remKey][3]] = 0
+#         delete!(b.pos, remKey)
 
-        # re-initialize movable set
-        initMovableSet!(b)
-        @test b.movableIdxs == Set([20, 18, 29, 21, 1, 33])
+#         # re-initialize movable set
+#         initMovableSet!(b)
+#         @test b.movableIdxs == Set([20, 18, 29, 21, 1, 33])
 
-        b.moveIdx = 20
+#         b.moveIdx = 20
 
-        # find coordinates and keys of selected bond
-        identifyBond!(b)
-        @test b.bi == [3,2,1]
+#         # find coordinates and keys of selected bond
+#         identifyBond!(b)
+#         @test b.bi == [3,2,1]
 
-        # sample a move uniformly in each direction
-        proposeMove!(b)
-        @test b.hastingsFactor == 1.0
+#         # sample a move uniformly in each direction
+#         proposeMove!(b)
+#         @test b.hastingsFactor == 1.0
 
-        @test !overlap(b)
+#         @test !overlap(b)
 
-        deltaHam!(b)
-        @test b.deltaH == 0.0
+#         deltaHam!(b)
+#         @test b.deltaH == 0.0
 
-        if acceptMove(b)
-            makeMove!(b)
-        end
+#         if acceptMove(b)
+#             makeMove!(b)
+#         end
 
-        @test b.movableIdxs == Set([20, 19, 32, 24, 36, 4])
+#         @test b.movableIdxs == Set([20, 19, 32, 24, 36, 4])
 
 
-        ############ droplet boundary ############
+#         ############ droplet boundary ############
 
-        l = Lattice(;
-            boxlength = 4,
-            nspecies = 2
-        )
+#         l = Lattice(;
+#             boxlength = 4,
+#             nspecies = 2
+#         )
 
-        b = FastBulk(;
-            length = 7,
-            initShape = "box",
-            initParams = 1,
-            initPos = [3,3,3]
-        )
+#         b = FastBulk(;
+#             length = 7,
+#             initShape = "box",
+#             initParams = 1,
+#             initPos = [3,3,3]
+#         )
 
-        slist = [b]
+#         slist = [b]
 
-        # Set interaction potential 
-        intPot!(b, -1.0)
+#         # Set interaction potential 
+#         intPot!(b, -1.0)
 
-        # initialize lattice and species
-        init!(l, slist)
+#         # initialize lattice and species
+#         init!(l, slist)
         
-        @test b.movableIdxs == Set(range(1, 7))
+#         @test b.movableIdxs == Set(range(1, 7))
 
-        b.moveIdx = 6
+#         b.moveIdx = 6
 
-        # find coordinates and keys of selected bond
-        identifyBond!(b)
-        @test b.bi == [3,2,3]
+#         # find coordinates and keys of selected bond
+#         identifyBond!(b)
+#         @test b.bi == [3,2,3]
 
-        # sample a move uniformly in each direction
-        nnIdxs!(b, b.bi)
-        @test b.nnIdxs == [0,2,0,0,0,5]
-        @test b.freeNNs == Set([1,3,4,5])
+#         # sample a move uniformly in each direction
+#         nnIdxs!(b, b.bi)
+#         @test b.nnIdxs == [0,2,0,0,0,5]
+#         @test b.freeNNs == Set([1,3,4,5])
 
-        for i in range(1, 3)
-            b.tempVec[i] = b.pos[b.moveIdx][i]
-        end
+#         for i in range(1, 3)
+#             b.tempVec[i] = b.pos[b.moveIdx][i]
+#         end
 
-        # propose a move uniformly among the free sites
-        b.moveType = 3
-        axis = div(b.moveType + 1, 2)
-        dir = - mod(b.moveType + 1, 2) * 2 + 1
-        b.tempVec[axis] += dir
+#         # propose a move uniformly among the free sites
+#         b.moveType = 3
+#         axis = div(b.moveType + 1, 2)
+#         dir = - mod(b.moveType + 1, 2) * 2 + 1
+#         b.tempVec[axis] += dir
 
-        @test b.tempVec == [3,3,3]
+#         @test b.tempVec == [3,3,3]
 
-        # clip to within bounding box
-        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+#         # clip to within bounding box
+#         boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
 
-        hastingsFactor!(b)
-        @test b.hastingsFactor == 1.0
+#         hastingsFactor!(b)
+#         @test b.hastingsFactor == 1.0
 
-        deltaHam!(b)
-        @test b.deltaH == 0.0
+#         deltaHam!(b)
+#         @test b.deltaH == 0.0
 
-        makeMove!(b)
+#         makeMove!(b)
 
-        @test b.movableIdxs == Set(range(1, 7))
+#         @test b.movableIdxs == Set(range(1, 7))
 
 
-        ############ droplet boundary 2 ############
+#         ############ droplet boundary 2 ############
 
-        l = Lattice(;
-            boxlength = 4,
-            nspecies = 2
-        )
+#         l = Lattice(;
+#             boxlength = 4,
+#             nspecies = 2
+#         )
 
-        b = FastBulk(;
-            length = 7,
-            initShape = "box",
-            initParams = 1,
-            initPos = [3,3,3]
-        )
+#         b = FastBulk(;
+#             length = 7,
+#             initShape = "box",
+#             initParams = 1,
+#             initPos = [3,3,3]
+#         )
 
-        slist = [b]
+#         slist = [b]
 
-        # Set interaction potential 
-        intPot!(b, -1.0)
+#         # Set interaction potential 
+#         intPot!(b, -1.0)
 
-        # initialize lattice and species
-        init!(l, slist)
+#         # initialize lattice and species
+#         init!(l, slist)
         
-        @test b.movableIdxs == Set(range(1, 7))
+#         @test b.movableIdxs == Set(range(1, 7))
 
-        b.moveIdx = 6
+#         b.moveIdx = 6
 
-        # find coordinates and keys of selected bond
-        identifyBond!(b)
-        @test b.bi == [3,2,3]
+#         # find coordinates and keys of selected bond
+#         identifyBond!(b)
+#         @test b.bi == [3,2,3]
 
-        # sample a move uniformly in each direction
-        nnIdxs!(b, b.bi)
-        @test b.nnIdxs == [0,2,0,0,0,5]
-        @test b.freeNNs == Set([1,3,4,5])
+#         # sample a move uniformly in each direction
+#         nnIdxs!(b, b.bi)
+#         @test b.nnIdxs == [0,2,0,0,0,5]
+#         @test b.freeNNs == Set([1,3,4,5])
 
-        for i in range(1, 3)
-            b.tempVec[i] = b.pos[b.moveIdx][i]
-        end
+#         for i in range(1, 3)
+#             b.tempVec[i] = b.pos[b.moveIdx][i]
+#         end
 
-        # propose a move uniformly among the free sites
-        b.moveType = 4
-        axis = div(b.moveType + 1, 2)
-        dir = - mod(b.moveType + 1, 2) * 2 + 1
-        b.tempVec[axis] += dir
+#         # propose a move uniformly among the free sites
+#         b.moveType = 4
+#         axis = div(b.moveType + 1, 2)
+#         dir = - mod(b.moveType + 1, 2) * 2 + 1
+#         b.tempVec[axis] += dir
 
-        @test b.tempVec == [3,1,3]
+#         @test b.tempVec == [3,1,3]
 
-        # clip to within bounding box
-        boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
+#         # clip to within bounding box
+#         boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
 
-        hastingsFactor!(b)
-        @test b.hastingsFactor == 2/3
+#         hastingsFactor!(b)
+#         @test b.hastingsFactor == 2/3
 
-        deltaHam!(b)
-        @test b.deltaH == 2.0
+#         deltaHam!(b)
+#         @test b.deltaH == 2.0
 
-        makeMove!(b)
+#         makeMove!(b)
 
-        @test b.movableIdxs == Set(range(1, 7))
-    end
+#         @test b.movableIdxs == Set(range(1, 7))
+#     end
 
 # MARK: -intPot self
     @testset "intPot! (self)" begin

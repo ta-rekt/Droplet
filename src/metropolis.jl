@@ -6,7 +6,7 @@ export acceptMove
 function acceptMove(s::AbstractSpecies)
 
     deltaHam!(s)
-    prob = min(1, s.hastingsFactor * exp(-s.deltaH))
+    prob = min(1, exp(-s.deltaH))
 
     return rand(Uniform(0,1)) < prob
 end
@@ -37,13 +37,13 @@ function moveTypes!(p::Poly)
         # flip direction along each dimension in the orthogonal plane
         p.moveVec[dims[idx]] = sign
 
-        # Compute bi + moveVec
+        # Compute bi + b.moveVec
         for j in range(1, 3)
             p.tempVec[j] = p.bi[j] + p.moveVec[j]
         end
         boxmod!(p.tempVec, p.newPosi, Int32(1), p.boxlength)
         
-        # Compute bj + moveVec
+        # Compute bj + b.moveVec
         for j in range(1, 3)
             p.tempVec[j] = p.bj[j] + p.moveVec[j]
         end
@@ -162,61 +162,26 @@ end
 export proposeMove!
 function proposeMove!(b::FastBulk)
 
+    b.moveVec = sample(0:(b.boxlength^3-1), 2, replace=false)
+
+    mx = mod(b.moveVec[1], b.boxlength^2)
+    b.bi[1] = div(b.moveVec[1], b.boxlength^2) + 1 # x coordinate
+    b.bi[2] = div(mx, b.boxlength) + 1            # y coordinate
+    b.bi[3] = mod(mx, b.boxlength) + 1            # z coordinate
+
+    mx = mod(b.moveVec[2], b.boxlength^2)
+    b.newPos[1] = div(b.moveVec[2], b.boxlength^2) + 1 # x coordinate
+    b.newPos[2] = div(mx, b.boxlength) + 1            # y coordinate
+    b.newPos[3] = mod(mx, b.boxlength) + 1            # z coordinate
+
+    identifyBond!(b)
+
+    # resample if positions are in each other's neighborhood
     nnIdxs!(b, b.bi)
 
-    @assert !isempty(b.freeNNs) begin
-        "No free nearest neighbor sites: proposing an impossible move"
+    if b.moveIdxNew in b.nnIdxs
+        proposeMove!(b)
     end
-
-    for i in range(1, 3)
-        b.tempVec[i] = b.pos[b.moveIdx][i]
-    end
-
-    # propose a move uniformly among the free sites
-    b.moveType = rand(b.freeNNs)
-    axis = div(b.moveType + 1, 2)
-    dir = - mod(b.moveType + 1, 2) * 2 + 1
-    b.tempVec[axis] += dir
-
-    # clip to within bounding box
-    boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)
-    
-    hastingsFactor!(b)
-
-    return b
-end
-
-# hastings factor. two terms: 
-# 1. |S(x)| / |S(x')|, where S(x) is the movable set of current config. x
-# 2. |M(x)| / |M(x')|, where M(x) is the number of free nns around b.bi
-export hastingsFactor!
-function hastingsFactor!(b::FastBulk)
-
-    nmovable = length(b.movableIdxs)
-    @assert nmovable > 0 "No movable beads"
-
-    # (# of nnIdxs(bi) with nn = 6) - (# of nnIdxs(newPos) with nn = 5)
-    nmovable_new = nmovable
-
-    for key in b.nnIdxs
-        if key != 0 && nn(b, b.pos[key][range(1,3)]) == 6
-            nmovable_new += 1
-        end
-    end
-
-    nnIdxs!(b, b.newPos)
-
-    for key in b.nnIdxs
-        if key != 0 && key != b.moveIdx && nn(b, b.pos[key][range(1,3)]) == 5
-            nmovable_new -= 1
-        end
-    end
-
-    nmoves = 6 - nn(b, b.bi)
-    nmoves_new = 6 - (nn(b, b.newPos) - 1)  # count out current position
-    @assert nmoves > 0 "Selected bead is not movable"
-
-    b.hastingsFactor = nmovable * nmoves / (nmovable_new * nmoves_new)
 
     return b
 end
