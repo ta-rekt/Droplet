@@ -267,8 +267,10 @@ function initSpecies!(b::FastBulk)
 
     b.nnsOld = 0
     b.nnsNew = 0
+    b.bi = zeros(Int32, 3)
     b.newPos = zeros(Int32, 3)
     b.tempVec = zeros(Int32, 3)
+    b.moveVec = zeros(Int32, 2)
     b.nnIdxs = zeros(Int32, 6)
     b.deltaH = 0.0
     b.deltaHP = 0.0

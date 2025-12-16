@@ -68,11 +68,11 @@ end
 
 
 ############# Bulk energy functions #############
-# MARK: -Fast/Bulk
+# MARK: -Bulk
 
 # Hamiltonian of a dilute species in the bulk
 export ham!
-function ham!(b::AbstractBulk)
+function ham!(b::Bulk)
     
     # chemical potential
     b.ham = - b.chemPot * b.length
@@ -95,7 +95,7 @@ end
 
 # Energy increment for the bulk system
 export deltaHam!
-function deltaHam!(b::AbstractBulk)
+function deltaHam!(b::Bulk)
 
     # energy increment from self-interactions
     b.deltaH = 0.0
@@ -106,6 +106,61 @@ function deltaHam!(b::AbstractBulk)
             sp.deltaHP = (b.intMat[b.intIdx, idx] 
                        * ((nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))
                        - Int(b.intIdx == idx))) # subtract 1 in self-interaction
+            b.deltaH += sp.deltaHP
+        end
+    end
+
+    b.ham += b.deltaH
+
+    return b
+end
+
+
+############# FastBulk energy functions #############
+# MARK: -FastBulk
+
+# Hamiltonian of a dilute species in the bulk
+export ham!
+function ham!(b::FastBulk)
+    
+    # chemical potential
+    b.ham = - b.chemPot * b.length
+
+    # interaction potentials (including self)
+    for (sp, idx) in b.intSpecies
+        nnp_ = 0.0   # number of nearest partners
+        selfFactor = b.intIdx == idx ? 0.5 : 1.0
+
+        for i in 1:b.length
+            pos = b.pos[i][range(1, 3)]
+            nnp_ += nnp(b, sp, pos)
+        end
+        
+        b.ham += b.intMat[b.intIdx, idx] * nnp_ * selfFactor
+    end
+
+    return b
+end
+
+
+# Energy increment for the bulk system
+export deltaHam!
+function deltaHam!(b::FastBulk)
+
+    # energy increment from self-interactions
+    b.deltaH = 0.0
+
+    if !xor(b.moveIdx == 0, b.moveIdxNew == 0)
+        return b
+    else
+        sign = Int(b.moveIdxNew == 0) * 2 - 1
+    end
+
+    # energy increment from cross-interactions with each partner
+    if !isnothing(b.intMat)
+        for (sp, idx) in b.intSpecies
+            sp.deltaHP = (b.intMat[b.intIdx, idx] 
+                       * (nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))) * sign
             b.deltaH += sp.deltaHP
         end
     end

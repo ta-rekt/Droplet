@@ -282,7 +282,8 @@ end
 
 export identifyBond!
 function identifyBond!(b::FastBulk)
-    b.bi = view(b.pos[b.moveIdx], range(1, 3))
+    b.moveIdx = b.latS[b.bi[1], b.bi[2], b.bi[3]]
+    b.moveIdxNew = b.latS[b.newPos[1], b.newPos[2], b.newPos[3]]
 
     return b
 end
@@ -291,44 +292,34 @@ end
 export makeMove!
 function makeMove!(b::FastBulk)
     
-    # delete old lattice site
-    b.latS[b.bi[1], b.bi[2], b.bi[3]] = 0
-
-    # find current nns, make them movable
-    nnIdxs!(b, b.bi)
-    
-    for nnIdx in b.nnIdxs
-        if nnIdx > 0
-            push!(b.movableIdxs, nnIdx)
-        end
-    end
-
-    # set new lattice site
+    # update lattice sites
+    b.latS[b.bi[1], b.bi[2], b.bi[3]] = b.moveIdxNew
     b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] = b.moveIdx
 
-    # find if new position's nns are no longer movable
-    nnIdxs!(b, b.newPos)
+    # swap old with new position
+    if b.moveIdx != 0
+        for i in range(1, 3)
+            b.pos[b.moveIdx][i] = b.newPos[i]
+        end
 
-    for nnIdx in b.nnIdxs
-        if nnIdx > 0
-            if nn(b, b.pos[nnIdx][range(1, 3)]) == 6
-                pop!(b.movableIdxs, nnIdx)
-            end
+        @assert b.latS[b.pos[b.moveIdx][1], 
+                       b.pos[b.moveIdx][2], 
+                       b.pos[b.moveIdx][3]] == b.moveIdx begin
+            "Invalid index-position correspondence"
         end
     end
 
-    # add new site to movableIdxs (most be movable to preserve ergodicity)
-    push!(b.movableIdxs, b.moveIdx)
-    
-    # update current position and new lattice site
-    for i in range(1, 3)
-        b.pos[b.moveIdx][i] = b.newPos[i]
-    end
+    # swap new with old position
+    if b.moveIdxNew != 0
+        for i in range(1, 3)
+            b.pos[b.moveIdxNew][i] = b.bi[i]
+        end
 
-    @assert b.latS[b.pos[b.moveIdx][1], 
-                   b.pos[b.moveIdx][2], 
-                   b.pos[b.moveIdx][3]] == b.moveIdx begin
-        "Invalid index-position correspondence"
+        @assert b.latS[b.pos[b.moveIdxNew][1], 
+                       b.pos[b.moveIdxNew][2], 
+                       b.pos[b.moveIdxNew][3]] == b.moveIdxNew begin
+            "Invalid index-position correspondence"
+        end
     end
 
     return b
@@ -338,22 +329,10 @@ end
 export move!
 function move!(b::FastBulk)
 
-    if isempty(b.movableIdxs)
-        return false
-    end
-
-    # sample a particle at random among movable particles
-    b.moveIdx = rand(b.movableIdxs)
-
-    # find coordinates and keys of selected bond
-    identifyBond!(b)
-    
-    # sample a move uniformly in each direction
+    # pick two sites on the lattice uniformly without replacement
     proposeMove!(b)
-
-    @assert !overlap(b)
-
-    if acceptMove(b)
+    
+    if xor(b.moveIdx == 0, b.moveIdxNew == 0) && acceptMove(b)
         makeMove!(b)
         return true
     end

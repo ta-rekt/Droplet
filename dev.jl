@@ -17,82 +17,87 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 16,
+        boxlength = 4,
         nspecies = 2
     )
 
-    c = FastBulk(;
-        length = 256,
-        initShape = "uniform"
-    )
-
-    a1 = FastBulk(;
-        length = 5,
-        initShape = "line",
+    a = FastBulk(;
+        length = 4,
+        initShape = "box",
         initParams = 1,
-        initPos = [1,5,8]
-    )
-
-    a2 = FastBulk(;
-        length = 5,
-        initShape = "line",
-        initParams = 1,
-        initPos = [12,5,8]
+        initPos = [2,2,2]
     )
 
     b = FastBulk(;
-        length = 6,
-        initShape = "line",
-        initParams = 1,
-        initPos = [6,5,8]
+        length = 2,
+        initShape = "uniform"
     )
 
-    # self-interaction
-    intPot!(a1, -1.0)
-    intPot!(a2, -1.0)
+    c = FastBulk(;
+        length = 2,
+        initShape = "uniform"
+    )
+
+    # self and interaction potentials
+    intPot!(a, -1.0)
     intPot!(b, -1.0)
-    intPot!(tf, -1.0)
+    intPot!(c, -1.0)
+    intPot!(a, b, -1.0)
+    intPot!(a, c, -1.0)
 
-    # inter-species interaction
-    intPot!(tf, a1, -0.5)  # a-c interaction
-    intPot!(tf, a2, -0.5)  # b-c interaction  
-    intPot!(tf, b, -2.0)  # a-b interaction (optional)
-
-    slist = [a1, a2, b, c]
+    slist = [a, b, c]
+    # slist = [a, b]
 
     # initialize lattice and species
     init!(l, slist)
 
     #### iterating multiple moves
-    nmoves = zeros(Int32, 4)
-    frame = ones(Int, 4)
+    nmoves = [0,0,0]
+    frame = [1,1,1]
     frame_joint = 1
-    nframes = 10
+    nframes = 1000
     step = 1
-    deltaH = zeros(Float64, 4)
+    deltaH = [0.0,0.0,0.0]
     niter = 0
-    moveMade = falses(4)
+    moveMade = [false, false, false]
 
+    hamsA = Vector{Float64}(undef, 0)
+    hamsB = Vector{Float64}(undef, 0)
+    hamsC = Vector{Float64}(undef, 0)
+    hams_ = [hamsA, hamsB, hamsC]
     hams = []
+    accDeltaHA = Vector{Float64}(undef, 0)
+    accDeltaHB = Vector{Float64}(undef, 0)
+    accDeltaHC = Vector{Float64}(undef, 0)
+    accDeltaH_ = [accDeltaHA, accDeltaHB, accDeltaHC]
     accDeltaH = []
+    
+    # first frame, initial energy
+    push!(hams_[1], a.ham)
+    push!(hams_[2], b.ham)
+    push!(hams_[3], c.ham)
+    push!(accDeltaH_[1], a.ham)
+    push!(accDeltaH_[2], b.ham)
+    push!(accDeltaH_[3], c.ham)
 
-    for (sp, idx) in a1.intSpecies
-        hams_sp = Vector{Float64}(undef, 0)
-        accDeltaH_sp = Vector{Float64}(undef, 0)
-
-        push!(hams_sp, sp.ham)
-        push!(accDeltaH_sp, sp.ham)
-
-        push!(hams, hams_sp)
-        push!(accDeltaH, accDeltaH_sp)
-
-        ham!(sp)
-        sp.deltaH = 0.0
+    for (sp, idx) in a.intSpecies
+        push!(hams, hams_[idx])
+        push!(accDeltaH, accDeltaH_[idx])
     end
 
+    ham!(a)
+    ham!(b)
+    ham!(c)
+    a.deltaH = 0.0
+    b.deltaH = 0.0
+    c.deltaH = 0.0
+
+    color = ["blue (A)", "orange (B)", "green (C)"]
+    exportSpecies!(slist, string(outpath, "_frame$(1)"))
+
     while frame_joint <= nframes - 2
-        for (s, i) in a1.intSpecies
-            if s.intIdx == c.intIdx && move!(s)
+        for (s, i) in a.intSpecies
+            if move!(s)
                 nmoves[i] += 1
                 deltaH[i] += s.deltaH
 
@@ -100,9 +105,11 @@ end
                 for (p, j) in s.intSpecies
                     if j != s.intIdx
                         deltaH[j] += p.deltaHP
+                        # println(p.name, " ", deltaH[j])
                     end
                 end
 
+                # println(s.name, " ", deltaH[i])
                 push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
                 deltaH[i] = 0
                 
@@ -111,21 +118,25 @@ end
 
                 frame[i] += 1
                 frame_joint += 1
+
+                # println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
+                # exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
             end
         end
     end
 
     # gyration radii of a straight line and a sphere of volume 'length'
-    exportSpecies!(slist, string(outpath, "_frame$(2)"))
+    # exportSpecies!(slist, string(outpath, "_frame$(2)"))
 
     println("A acceptance rate: ", nmoves[1] / nframes)
     println("B acceptance rate: ", nmoves[2] / nframes)
 
     @assert hams[1] == accDeltaH[1]
     @assert hams[2] == accDeltaH[2]
+    @assert hams[3] == accDeltaH[3]
 
     plots = []
-    colors = ["blue", "red", "orange", "green"]
+    colors = ["blue", "orange", "green"]
 
     for i in eachindex(hams)
         pl = plot(eachindex(hams[i]), hams[i][:];
@@ -143,7 +154,7 @@ end
         push!(plots, pl)
     end
 
-    plot(plots[1]; layout = (1, 1), size = (300, 600))
+    plot(plots[1], plots[2]; layout = (2, 1), size = (600, 600))
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
