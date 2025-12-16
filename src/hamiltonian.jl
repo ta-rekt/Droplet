@@ -162,8 +162,6 @@ function deltaHam!(b::FastBulk)
             sp.deltaHP = (b.intMat[b.intIdx, idx] 
                        * (nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))) * sign
             b.deltaH += sp.deltaHP
-            # @show b.name, sp.name
-            # @show nnp(b, sp, b.newPos), nnp(b, sp, b.bi)
         end
     end
 

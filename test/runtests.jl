@@ -464,96 +464,109 @@ using Test
 
 # MARK: -Ham multi fast
     @testset "Hamiltonian (multi-component fast bulk)" begin
-        # l = Lattice(;
-        #     boxlength = 16,
-        #     nspecies = 2
-        # )
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 2
+        )
 
-        # a = FastBulk(;
-        #     length = 128,
-        #     intPot = -1,
-        #     intPotP = -1,
-        #     chemPot = 1,
-        #     initShape = "box",
-        #     initParams = 1,
-        #     initPos = [8,8,8]
-        # )
+        a = FastBulk(;
+            length = 128,
+            initShape = "box",
+            initParams = 1,
+            initPos = [8,8,8]
+        )
 
-        # b = FastBulk(;
-        #     length = 128,
-        #     intPot = -1,
-        #     intPotP = -1,
-        #     chemPot = 1,
-        #     initShape = "uniform"
-        # )
+        b = FastBulk(;
+            length = 128,
+            initShape = "uniform"
+        )
 
-        # b.partner = a
-        # a.partner = b
+        c = FastBulk(;
+            length = 128,
+            initShape = "uniform"
+        )
 
-        # slist = [a, b]
+        # self and interaction potentials
+        intPot!(a, -1.0)
+        intPot!(b, -2.0)
+        intPot!(c, -3.0)
+        intPot!(a, b, -1.5)
+        intPot!(a, c, -0.5)
 
-        # # initialize lattice and species
-        # init!(l, slist)
+        slist = [a, b, c]
 
-        # #### iterating multiple moves
-        # nmoves = [0,0]
-        # frame = [1,1]
-        # frame_joint = 1
-        # nframes = 10000
-        # step = 1
-        # deltaH = [0,0]
-        # niter = 0
-        # moveMade = [false, false]
+        # initialize lattice and species
+        init!(l, slist)
 
-        # hamsA = Vector{Float64}(undef, 0)
-        # hamsB = Vector{Float64}(undef, 0)
-        # hams = [hamsA, hamsB]
-        # accDeltaHA = Vector{Float64}(undef, 0)
-        # accDeltaHB = Vector{Float64}(undef, 0)
-        # accDeltaH = [accDeltaHA, accDeltaHB]
+        #### iterating multiple moves
+        nmoves = [0,0,0]
+        frame = [1,1,1]
+        frame_joint = 1
+        nframes = 10000
+        step = 1
+        deltaH = [0.0,0.0,0.0]
+        niter = 0
+        moveMade = [false, false, false]
+
+        hamsA = Vector{Float64}(undef, 0)
+        hamsB = Vector{Float64}(undef, 0)
+        hamsC = Vector{Float64}(undef, 0)
+        hams_ = [hamsA, hamsB, hamsC]
+        hams = []
+        accDeltaHA = Vector{Float64}(undef, 0)
+        accDeltaHB = Vector{Float64}(undef, 0)
+        accDeltaHC = Vector{Float64}(undef, 0)
+        accDeltaH_ = [accDeltaHA, accDeltaHB, accDeltaHC]
+        accDeltaH = []
         
-        # # first frame, initial energy
-        # push!(hams[1], a.ham)
-        # push!(hams[2], b.ham)
-        # push!(accDeltaH[1], a.ham)
-        # push!(accDeltaH[2], b.ham)
+        # first frame, initial energy
+        push!(hams_[1], a.ham)
+        push!(hams_[2], b.ham)
+        push!(hams_[3], c.ham)
+        push!(accDeltaH_[1], a.ham)
+        push!(accDeltaH_[2], b.ham)
+        push!(accDeltaH_[3], c.ham)
 
-        # ham!(a)
-        # ham!(b)
-        # a.deltaH = 0
-        # b.deltaH = 0
+        for (sp, idx) in a.intSpecies
+            push!(hams, hams_[idx])
+            push!(accDeltaH, accDeltaH_[idx])
+        end
 
-        # a.name = string(a.name, "_a")
-        # b.name = string(b.name, "_b")
-        # color = ["blue (A)", "orange (B)"]
+        ham!(a)
+        ham!(b)
+        ham!(c)
+        a.deltaH = 0.0
+        b.deltaH = 0.0
+        c.deltaH = 0.0
 
-        # while frame_joint <= nframes - 2
-        #     for (i, s) in enumerate(slist)
-        #         if move!(s)
-        #             nmoves[i] += 1
-        #             deltaH[i] += s.deltaH
+        while frame_joint <= nframes - 2
+            for (s, i) in a.intSpecies
+                if move!(s)
+                    nmoves[i] += 1
+                    deltaH[i] += s.deltaH
 
-        #             # update deltaH for the partners
-        #             for (sp, idx) in s.intSpecies
-        #                 if idx != s.intIdx
-        #                     deltaH[idx] += sp.deltaHP
-        #                 end
-        #             end
+                    # update deltaH for the partners
+                    for (p, j) in s.intSpecies
+                        if j != s.intIdx
+                            deltaH[j] += p.deltaHP
+                        end
+                    end
+
+                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                    deltaH[i] = 0
                     
-        #             push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
-        #             deltaH[i] = 0
-                    
-        #             ham!(s)
-        #             push!(hams[i], s.ham)
+                    ham!(s)
+                    push!(hams[i], s.ham)
 
-        #             frame[i] += 1
-        #             frame_joint += 1
-        #         end
-        #     end
-        # end
+                    frame[i] += 1
+                    frame_joint += 1
+                end
+            end
+        end
 
-        # @test hams[1] == accDeltaH[1]
-        # @test hams[2] == accDeltaH[2]
+        @test hams[1] == accDeltaH[1]
+        @test hams[2] == accDeltaH[2]
+        @test hams[3] == accDeltaH[3]
     end
 
 # MARK: -CC multi

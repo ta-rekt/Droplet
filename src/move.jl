@@ -333,8 +333,6 @@ function move!(b::FastBulk)
     proposeMove!(b)
     
     if xor(b.moveIdx == 0, b.moveIdxNew == 0) && acceptMove(b)
-        # @show b.bi, b.newPos
-        # @show b.moveIdx, b.moveIdxNew
         makeMove!(b)
         return true
     end
