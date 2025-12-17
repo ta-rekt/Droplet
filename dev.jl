@@ -207,16 +207,23 @@ end
 # Multi-component interactions
 
 # to test:
-# * fastbulk flory huggins (insurance)
-# * filament prewetting (insurance)
+# * exp: fastbulk flory huggins (insurance)
+# * exp: filament prewetting (insurance)
 #   * vary concentration and look at axial/radial density, compare with control
-# * prewet enhancers (insurance)
+# * exp: prewet enhancers (insurance)
 #   * radial densities of two nearby enhancers
 #   * effective force, comparison with electrostatic
 
 # to implement
+# * multi-species poly
+#   * new type: subspecies, without p.pos and move-related containers
+#   * keep a p.nspecies-vector of subspecies and a p.length-vector of types 
+#   * access the subspecies at bead i in deltaHam when you need intPotP 
+#   * other species use poly subspecies as partners
 # * site occupation time-series and mean -> BP estimate of concentration
-# * nucleation sites prevent Ostwald ripening (insurance)
+# * distribution of densities
+#   * average histogram of lattice densities over all sites, should bifurcate
+# * exp: nucleation sites prevent Ostwald ripening (insurance)
 #   * plot n_enhancers vs. dilute density compared with critical concentration 
 
 # * poly: length-preserving moves
@@ -236,12 +243,6 @@ end
 #       - its neighbor along the chain becomes movable
 #       - its neighbors' old nns become movable if they were stuck bcs of #3
 #   * hastings factor
-# * bulk-poly interaction (uniform)
-# * multi-species poly
-#   * new type: subspecies, without p.pos and move-related containers
-#   * keep a p.nspecies-vector of subspecies and a p.length-vector of types 
-#   * access the subspecies at bead i in deltaHam when you need intPotP 
-#   * other species use poly subspecies as partners
 # monday 15/12
 # * reproduce Mason's results
 # thursday 18/12
