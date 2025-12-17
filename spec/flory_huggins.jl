@@ -7,7 +7,7 @@ l = Lattice(;
 
 # bulk species
 b = FastBulk(;
-    length = 512
+    length = 2048
 )
 
 # list containing all species
@@ -18,10 +18,10 @@ minsize = 50
 
 ### simulation parameters
 
-nframes = 10000
+t_max = 10    # runtime in minutes
 step = 1000
 
-vals = range(1.5, stop=3.0, step=0.1)   # parallelized parameters (int. pot.)
+vals = range(0.1, stop=1.6, step=0.1)   # parallelized parameters (int. pot.)
 alphas = zeros(16)
 nrepeats = 1
 
@@ -38,6 +38,7 @@ nparams = length(alphas)
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
+    t_current = 0
 
     # species list and sweep parameters
     slist, temp, beta = args
@@ -49,28 +50,32 @@ function target!(res, args...)
     init!(l, [b])
 
     nmoves = 0
-    niter = 0
+    iter = 0
     frame = 1
 
-    ndroplets = zeros(nframes)
-    droplet_sizes = Vector{Vector{Int32}}(undef, nframes)
-    droplet_densities = Vector{Vector{Float64}}(undef, nframes)
-    dilute_density = zeros(nframes)
-    hams = zeros(nframes)
-    accs = zeros(nframes)
+    ndroplets = []
+    droplet_sizes = []
+    droplet_density = []
+    dilute_density = []
+    hams = []
+    accs = []
+
     deltaH = 0
     moveMade = false
 
     droplets = filter(x -> length(x) >= minsize, cc(b))
-    ndroplets[frame] = length(droplets)
-    droplet_sizes[frame] = map(x -> length(x), droplets)
-    droplet_densities[frame] = dropletDensities(b, droplets)
-    dilute_density[frame] = diluteDensity(b, droplets)
-    hams[frame] = b.ham   # initial energy
-    accs[frame] = 0
+    ddens = dropletDensities(b, droplets)
+
+    push!(ndroplets, length(droplets))
+    push!(droplet_sizes, map(x -> length(x), droplets))
+    push!(droplet_density, mean(ddens))
+    push!(dilute_density, diluteDensity(b, droplets))
+    push!(hams, b.ham)   # initial energy
+    push!(accs, 0)
     
-    # run simluation
-    while frame <= nframes - 1
+    # run simulation
+    while t_current <= t_max
+        t_current = (time_ns() - t_start) / 6e10
 
         if moveMade
             deltaH += b.deltaH
@@ -80,13 +85,14 @@ function target!(res, args...)
 
                 ccs = cc(b)
                 droplets = filter(x -> length(x) >= minsize, ccs)
+                ddens = dropletDensities(b, droplets)
                 
-                ndroplets[frame] = length(droplets)
-                droplet_sizes[frame] = map(x -> length(x), droplets)
-                droplet_densities[frame] = dropletDensities(b, droplets)
-                dilute_density[frame] = diluteDensity(b, droplets)
-                hams[frame] = hams[frame-1] + deltaH
-                accs[frame] = niter == 0 ? 0 : nmoves / niter
+                push!(ndroplets, length(droplets))
+                push!(droplet_sizes, map(x -> length(x), droplets))
+                push!(droplet_density, mean(ddens))
+                push!(dilute_density, diluteDensity(b, droplets))
+                push!(hams, hams[end] + deltaH)
+                push!(accs, iter == 0 ? 0 : nmoves / iter)
                 
                 deltaH = 0
             end
@@ -94,14 +100,14 @@ function target!(res, args...)
         
         moveMade = move!(b)
         nmoves += moveMade
-        niter += 1
+        iter += 1
     end
 
     # collect results
     coords = Matrix{Int32}(undef, b.length, 4)
 
     res["species_name"] = b.name
-    res["nframes"] = nframes
+    res["nframes"] = frame
     res["step"] = step
     res["temperature"] = temp
     res["beta"] = beta
@@ -109,12 +115,12 @@ function target!(res, args...)
     res["length"] = b.length
     res["ndroplets"] = ndroplets
     res["droplet_sizes"] = droplet_sizes
-    res["droplet_densities"] = droplet_densities
+    res["droplet_density"] = droplet_density
     res["dilute_density"] = dilute_density
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
     res["final_coordinates"] = extractCoords!(b, coords)
-    res["runtime_s"] = (time_ns() - t_start) / 1e9
+    res["runtime_min"] = (time_ns() - t_start) / 6e10
 
     return res
 end
