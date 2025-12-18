@@ -43,15 +43,15 @@ slist = [dna1, dna2, enhancer, tf, rnap]
 ### simulation parameters
 # MARK: -Sim. params
 
-nframes = 2000
+t_max = 5    # runtime in minutes
 step = 1000
-burn_in = nframes - div(nframes, 5)
+t_burn_in = 0.8 * t_max
 
 # minimum size of a droplet for detection
 minsize = 5
 
-vals = range(300, stop=3000, step=180)
-alphas = zeros(16)
+vals = range(300, stop=3000, step=360)
+alphas = zeros(8)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
@@ -69,6 +69,7 @@ nmoving = 1
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
+    t_current = 0
 
     # species list and sweep parameters
     slist, alpha, beta = args
@@ -119,7 +120,8 @@ function target!(res, args...)
         sp.deltaH = 0.0
     end
 
-    while frame <= nframes
+    while t_current <= t_max
+        t_current = (time_ns() - t_start) / 6e10
         niter += 1
         for (s, i) in movingsps
             if move!(s)
@@ -146,7 +148,7 @@ function target!(res, args...)
                     push!(binding, nspeciesBound(tf, [enhancer]))
                     push!(transcription, nspeciesBound(rnap, [enhancer]))
 
-                    if frame >= burn_in
+                    if t_current >= t_burn_in
                         for (_, val) in s.pos
                             if s.intIdx == tf.intIdx
                                 tf_density[val[1], val[2], val[3]] += 1.0
@@ -171,7 +173,7 @@ function target!(res, args...)
     coords_tf = Matrix{Int32}(undef, tf.length, 4)
 
     res["species_name"] = tf.name
-    res["nframes"] = nframes
+    res["nframes"] = frame
     res["step"] = step
     res["temperature"] = 1.0
     res["beta"] = beta
@@ -184,7 +186,7 @@ function target!(res, args...)
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
     res["tf_final_coordinates"] = extractCoords!(tf, coords_tf)
-    res["runtime_s"] = (time_ns() - t_start) / 1e9
+    res["runtime_min"] = (time_ns() - t_start) / 6e10
 
     return res
 end
