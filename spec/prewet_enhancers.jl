@@ -60,9 +60,9 @@ slist = [a1_l, a1_r, a2_l, a2_r, b_l, b_r, c]
 ### simulation parameters
 # MARK: -Sim. params
 
-nframes = 50000
-step = 10000
-burn_in = 40000
+t_max = 5    # runtime in minutes
+step = 1000
+t_burn_in = 0.8 * t_max
 
 # minimum size of a droplet for detection
 minsize = 5
@@ -75,7 +75,7 @@ for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-# alphas = [4]   # distance between filaments
+# alphas = [3]   # distance between filaments
 betas = [0.0]    # (physical) chemical and interaction potentials
 nparams = length(alphas)
 nspecies = 7
@@ -86,6 +86,7 @@ nmoving = 1
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
+    t_current = 0
 
     # species list and sweep parameters
     slist, alpha, beta = args
@@ -132,8 +133,10 @@ function target!(res, args...)
         sp.deltaH = 0.0
     end
 
-    while frame <= nframes
+    while t_current <= t_max
+        t_current = (time_ns() - t_start) / 6e10
         niter += 1
+
         for (s, i) in movingsps
             if move!(s)
                 nmoves += 1
@@ -155,7 +158,7 @@ function target!(res, args...)
                     deltaH[i] = 0
                     frame += 1
 
-                    if frame >= burn_in
+                    if t_current >= t_burn_in
                         for (_, val) in s.pos
                             density_lat[val[1], val[2], val[3]] += 1.0
                             total += 1.0
@@ -174,7 +177,7 @@ function target!(res, args...)
     coords_c = Matrix{Int32}(undef, c.length, 4)
 
     res["species_name"] = c.name
-    res["nframes"] = nframes
+    res["nframes"] = frame
     res["step"] = step
     res["temperature"] = 1.0
     res["beta"] = beta
@@ -184,7 +187,7 @@ function target!(res, args...)
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
     res["final_coordinates"] = extractCoords!(c, coords_c)
-    res["runtime_s"] = (time_ns() - t_start) / 1e9
+    res["runtime_min"] = (time_ns() - t_start) / 6e10
 
     return res
 end
