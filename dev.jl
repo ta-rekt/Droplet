@@ -258,7 +258,7 @@ end
     ############ droplet boundary ############
 
     l = Lattice(;
-        boxlength = 20,
+        boxlength = 32,
         nspecies = 3
     )
 
@@ -267,54 +267,54 @@ end
         initShape = "uniform"
     )
 
-    # rnap = FastBulk(;
-    #     length = 32,
-    #     initShape = "uniform"
-    # )
+    rnap = FastBulk(;
+        length = 32,
+        initShape = "uniform"
+    )
 
     ### rod 1
     dna1 = FastBulk(;
-        length = 7,
+        length = 13,
         initShape = "line",
         initParams = 1,
-        initPos = [1,5,8]
+        initPos = [1,10,16]
     )
 
     enhancer = FastBulk(;
         length = 6,
         initShape = "line",
         initParams = 1,
-        initPos = [8,5,8]
+        initPos = [13,10,16]
     )
 
     dna2 = FastBulk(;
-        length = 7,
+        length = 13,
         initShape = "line",
         initParams = 1,
-        initPos = [14,5,8]
+        initPos = [19,10,16]
     )
 
 
     ### rod 1
     dna1_l = FastBulk(;
-        length = 7,
+        length = 13,
         initShape = "line",
         initParams = 1,
-        initPos = [1,10,8]
+        initPos = [1,20,16]
     )
 
     enhancer_l = FastBulk(;
         length = 6,
         initShape = "line",
         initParams = 1,
-        initPos = [8,10,8]
+        initPos = [13,20,16]
     )
 
     dna2_l = FastBulk(;
-        length = 7,
+        length = 13,
         initShape = "line",
         initParams = 1,
-        initPos = [14,10,8]
+        initPos = [19,20,16]
     )
 
     # # self-interactions
@@ -340,3 +340,43 @@ end
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
 end
+
+
+# prewetting and regulation, 20^3 lattice, one rod
+
+# l = Lattice(;
+#     boxlength = 20,
+#     nspecies = 3
+# )
+
+# tf = FastBulk(;
+#     length = 512,
+#     initShape = "uniform"
+# )
+
+# rnap = FastBulk(;
+#     length = 512,
+#     initShape = "uniform"
+# )
+
+# ### rod 1
+# dna1 = FastBulk(;
+#     length = 7,
+#     initShape = "line",
+#     initParams = 1,
+#     initPos = [1,5,8]
+# )
+
+# enhancer = FastBulk(;
+#     length = 6,
+#     initShape = "line",
+#     initParams = 1,
+#     initPos = [8,5,8]
+# )
+
+# dna2 = FastBulk(;
+#     length = 7,
+#     initShape = "line",
+#     initParams = 1,
+#     initPos = [14,5,8]
+# )
