@@ -1,10 +1,11 @@
 ############# Species initialization functions #############
 
+export initHam!, initSubspecies!, getSubspecies, getSubspeciesIdx
+
 ######## Generic #######
 # MARK: -Generic
 
 # initialize hamiltonian
-export initHam!
 function initHam!(s::AbstractSpecies)
     ham!(s)
     return s
@@ -169,6 +170,164 @@ function initSpecies!(p::Poly)
     p.hastingsFactor = 1.0
 
     return p
+end
+
+
+"""
+    initSubspecies!(p::Poly, nSubspecies::Int32; pattern::Symbol=:uniform, customPattern::Union{Nothing, Vector{Int32}}=nothing)
+
+Initialize subspecies for a polymer with bead-dependent interactions.
+
+# Arguments
+- `p::Poly`: The polymer to initialize subspecies for
+- `nSubspecies::Int32`: Number of distinct subspecies
+- `pattern::Symbol`: How to assign beads to subspecies:
+    - `:uniform`: All beads belong to subspecies 1 (default, backward compatible)
+    - `:alternating`: Alternates between subspecies (1, 2, 1, 2, ...)
+    - `:block`: Divides polymer into n equal blocks
+    - `:random`: Random assignment
+    - `:custom`: Use customPattern vector to assign beads
+- `customPattern::Vector{Int32}`: When pattern=:custom, a vector of subspecies indices
+    of length p.maxlength. Each element is the subspecies index (using intIdx from
+    the shared intSpecies list) for the corresponding bead position.
+
+# Notes
+- Each subspecies inherits the polymer's chemPot and intPot by default.
+- Use intPot!(p, subspeciesIdx, value) to set subspecies-specific potentials.
+- All subspecies share a synchronized intSpecies list and intMat (like AbstractBulk).
+- When using :custom pattern, indices should be 1-based subspecies indices.
+"""
+function initSubspecies!(p::Poly, nSubspecies::Int32=Int32(1); 
+                         pattern::Symbol=:uniform, 
+                         customPattern::Union{Nothing, Vector{Int32}}=nothing)
+    p.nSubspecies = nSubspecies
+    
+    # Create subspecies with default values from polymer
+    p.subspecies = Vector{Subspecies}(undef, nSubspecies)
+    for i in 1:nSubspecies
+        p.subspecies[i] = Subspecies(
+            name = string(p.name, "_sub", i),
+            chemPot = p.chemPot,
+            intPot = p.intPot
+        )
+    end
+    
+    # Initialize all subspecies with synced interaction structures
+    # This ensures they all share the same intSpecies and intMat
+    for i in 1:nSubspecies
+        _ensureIntStructures!(p.subspecies[i])
+    end
+    
+    # Sync all subspecies to share the same matrix
+    if nSubspecies > 1
+        for i in 2:nSubspecies
+            if p.subspecies[1].intMat !== p.subspecies[i].intMat
+                _syncMatrices!(p.subspecies[1], p.subspecies[i])
+            end
+        end
+    end
+    
+    # Initialize beadTypes array for maxlength beads
+    p.beadTypes = zeros(Int32, p.maxlength)
+    
+    # Assign beads to subspecies based on pattern
+    if pattern == :uniform
+        # All beads are subspecies 1
+        fill!(p.beadTypes, Int32(1))
+        
+    elseif pattern == :alternating
+        # Alternate between subspecies
+        for i in 1:p.maxlength
+            p.beadTypes[i] = Int32(mod1(i, nSubspecies))
+        end
+        
+    elseif pattern == :block
+        # Divide into n equal blocks
+        blockSize = div(p.maxlength, nSubspecies)
+        for i in 1:p.maxlength
+            blockIdx = min(div(i - 1, blockSize) + 1, nSubspecies)
+            p.beadTypes[i] = Int32(blockIdx)
+        end
+        
+    elseif pattern == :random
+        # Random assignment
+        for i in 1:p.maxlength
+            p.beadTypes[i] = Int32(rand(1:nSubspecies))
+        end
+        
+    elseif pattern == :custom
+        if customPattern === nothing
+            error("pattern=:custom requires customPattern vector to be provided")
+        end
+        if length(customPattern) != p.maxlength
+            error("customPattern length ($(length(customPattern))) must equal p.maxlength ($(p.maxlength))")
+        end
+        # Validate all indices are in range
+        for (i, idx) in enumerate(customPattern)
+            if idx < 1 || idx > nSubspecies
+                error("customPattern[$i] = $idx is out of range [1, $nSubspecies]")
+            end
+        end
+        # Copy custom pattern
+        p.beadTypes .= customPattern
+    else
+        error("Unknown pattern: $pattern. Use :uniform, :alternating, :block, :random, or :custom")
+    end
+    
+    return p
+end
+
+
+"""
+    getSubspecies(p::Poly, beadKey::Int32)
+
+Get the Subspecies for a given bead by its key in the position dictionary.
+Uses the bead's position in the chain (via traversal) to look up its subspecies.
+"""
+function getSubspecies(p::Poly, beadKey::Int32)
+    if p.subspecies === nothing || p.beadTypes === nothing
+        return nothing
+    end
+    
+    # Find the bead's index in the chain by traversing from head
+    idx = 1
+    key = p.head
+    while key != beadKey && key != 0
+        key = p.pos[key][5]  # next bead
+        idx += 1
+    end
+    
+    if key == 0
+        error("Bead key $beadKey not found in polymer chain")
+    end
+    
+    return p.subspecies[p.beadTypes[idx]]
+end
+
+
+"""
+    getSubspeciesIdx(p::Poly, beadKey::Int32)
+
+Get the subspecies index for a given bead by its key.
+"""
+function getSubspeciesIdx(p::Poly, beadKey::Int32)
+    if p.beadTypes === nothing
+        return Int32(1)
+    end
+    
+    # Find the bead's index in the chain
+    idx = 1
+    key = p.head
+    while key != beadKey && key != 0
+        key = p.pos[key][5]
+        idx += 1
+    end
+    
+    if key == 0
+        error("Bead key $beadKey not found in polymer chain")
+    end
+    
+    return p.beadTypes[idx]
 end
 
 

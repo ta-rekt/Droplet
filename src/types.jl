@@ -12,6 +12,52 @@ abstract type AbstractBulk <: AbstractSpecies end
 abstract type AbstractFastBulk <: AbstractBulk end 
 
 
+######## Subspecies (for bead-dependent interactions) #######
+# MARK: -Subspecies
+
+export Subspecies
+
+"""
+    Subspecies
+
+A lightweight struct representing a subspecies of polymer beads with distinct 
+interaction potentials. Used to enable bead-dependent interactions within a polymer.
+
+Unlike full species, Subspecies does not have positions or move-related fields.
+The parent Poly maintains a vector of Subspecies and a mapping from bead indices
+to Subspecies indices.
+
+Interaction handling mirrors AbstractBulk: all interacting Subspecies share a 
+synchronized intSpecies list and intMat matrix.
+
+# Fields
+- `id`: Unique identifier for this subspecies
+- `name`: Human-readable name
+- `chemPot`: Chemical potential for beads of this subspecies
+- `intPot`: Self-interaction potential (same subspecies neighbors)
+- `intSpecies`: List of (Subspecies, index) pairs for all interacting subspecies
+- `intMat`: Shared interaction matrix (symmetric, diagonal = self intPot)
+- `intIdx`: This subspecies' canonical index in intMat
+"""
+Base.@kwdef mutable struct Subspecies
+    id::Int32 = begin
+        SPECIES_ID_COUNTER[] += 1
+        SPECIES_ID_COUNTER[]
+    end
+    
+    name::String = ""    # unique name of this subspecies
+    
+    # interaction potentials
+    chemPot::Union{Nothing, Float64} = nothing   # chemical potential for this subspecies
+    intPot::Union{Nothing, Float64} = nothing    # self-interaction potential
+    
+    # multi-subspecies interaction fields (mirrors AbstractBulk pattern)
+    intSpecies::Union{Nothing, Vector{Tuple{Subspecies, Int}}} = nothing  # list of (subspecies, canonical index) pairs
+    intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
+    intIdx::Union{Nothing, Int} = nothing  # this subspecies' canonical index in intMat
+end
+
+
 ######## Generic species #######
 # MARK: -Generic
 
@@ -68,7 +114,16 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     latS::Union{Nothing, AbstractArray{Int32}} = nothing   # lattice
     ghost::Union{Nothing, AbstractSpecies} = nothing
     partner::Union{Nothing, AbstractSpecies} = nothing
-    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
+    
+    # subspecies for bead-dependent interactions
+    subspecies::Union{Nothing, Vector{Subspecies}} = nothing   # list of subspecies (length = nSubspecies)
+    beadTypes::Union{Nothing, Vector{Int32}} = nothing         # subspecies index for each bead (length = maxlength)
+    nSubspecies::Union{Nothing, Int32} = nothing               # number of distinct subspecies
+    
+    # bulk species interactions (for subspecies-bulk interactions)
+    # Dict mapping (subspecies_intIdx, bulk_id) -> interaction potential
+    bulkIntPot::Union{Nothing, Dict{Tuple{Int, Int32}, Float64}} = nothing
+    bulkSpecies::Union{Nothing, Vector{AbstractBulk}} = nothing  # list of bulk species with interactions
     
     # addBond!, removeBond!, identifyBond! variables
     head::Union{Nothing, Int32} = nothing
@@ -134,7 +189,6 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
     partner::Union{Nothing, AbstractSpecies} = nothing
-    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
 
     # multi-species interaction fields
     intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs
@@ -195,7 +249,6 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
     partner::Union{Nothing, AbstractSpecies} = nothing
-    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
 
     # multi-species interaction fields
     intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs

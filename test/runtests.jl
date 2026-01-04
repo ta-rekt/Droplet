@@ -1925,7 +1925,6 @@ using Test
         a = FastBulk(;
             length = 10,
             intPot = -1.0,
-            intPotP = -3.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
@@ -1933,7 +1932,6 @@ using Test
         b = FastBulk(;
             length = 10,
             intPot = -2.0,
-            intPotP = -3.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
@@ -1942,13 +1940,14 @@ using Test
         a.partner = b
         b.partner = a
         
-        # Set interaction - should also update intPotP for partners
+        # Set interaction potential between a and b
         intPot!(a, b, -5.0)
 
         init!(l, [a, b])
 
-        @test a.intPotP == -5.0
-        @test b.intPotP == -5.0
+        # Check interaction is set in intMat
+        @test a.intMat[a.intIdx, b.intIdx] == -5.0
+        @test b.intMat[b.intIdx, a.intIdx] == -5.0
     end
 
 # MARK: -intPot same species
@@ -1974,5 +1973,348 @@ using Test
         @test a.intMat !== nothing
         @test size(a.intMat) == (1, 1)
         @test a.intMat[1, 1] == -5.0
+    end
+
+
+# MARK: -Subspecies Tests
+    @testset "Subspecies initialization" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        p = Poly(;
+            length = 16,
+            maxlength = 20,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        init!(l, [p])
+        
+        # Initialize with 2 subspecies, uniform pattern (all beads = subspecies 1)
+        initSubspecies!(p, Int32(2), pattern=:uniform)
+        
+        @test p.nSubspecies == 2
+        @test length(p.subspecies) == 2
+        @test length(p.beadTypes) == p.maxlength
+        @test all(p.beadTypes .== 1)
+        
+        # Each subspecies should inherit polymer's chemPot and intPot
+        @test p.subspecies[1].chemPot == p.chemPot
+        @test p.subspecies[1].intPot == p.intPot
+        @test p.subspecies[2].chemPot == p.chemPot
+        @test p.subspecies[2].intPot == p.intPot
+    end
+
+    @testset "Subspecies patterns" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        # Test alternating pattern
+        p1 = Poly(;
+            length = 10,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+        init!(l, [p1])
+        initSubspecies!(p1, Int32(2), pattern=:alternating)
+        
+        @test p1.beadTypes[1] == 1
+        @test p1.beadTypes[2] == 2
+        @test p1.beadTypes[3] == 1
+        @test p1.beadTypes[4] == 2
+
+        # Test block pattern
+        p2 = Poly(;
+            length = 10,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+        init!(l, [p2])
+        initSubspecies!(p2, Int32(2), pattern=:block)
+        
+        # First half should be subspecies 1, second half subspecies 2
+        @test p2.beadTypes[1] == 1
+        @test p2.beadTypes[5] == 1
+        @test p2.beadTypes[6] == 2
+        @test p2.beadTypes[10] == 2
+    end
+
+    @testset "Subspecies intPot!" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 2
+        )
+
+        p = Poly(;
+            length = 16,
+            maxlength = 20,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        b = Bulk(;
+            length = 100,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+        intPot!(b, 1.0)
+
+        init!(l, [p, b])
+        
+        # Initialize subspecies
+        initSubspecies!(p, Int32(2), pattern=:alternating)
+        
+        # Set different intPot for each subspecies
+        intPot!(p, 1, 2.0)  # subspecies 1 self-interaction
+        intPot!(p, 2, 3.0)  # subspecies 2 self-interaction
+        
+        @test p.subspecies[1].intPot == 2.0
+        @test p.subspecies[2].intPot == 3.0
+        
+        # Set cross-subspecies interaction (uses shared intMat on subspecies)
+        intPot!(p, 1, 2, 1.5)  # interaction between subspecies 1 and 2
+        
+        @test getIntPot(p, 1, 2) == 1.5
+        @test getIntPot(p, 2, 1) == 1.5  # symmetric
+        
+        # Verify subspecies share the same intMat
+        @test p.subspecies[1].intMat === p.subspecies[2].intMat
+        
+        # Set interaction between subspecies and bulk species
+        intPot!(p, 1, b, -1.0)  # subspecies 1 with bulk
+        intPot!(p, 2, b, -2.0)  # subspecies 2 with bulk
+        
+        @test getIntPot(p, 1, b) == -1.0
+        @test getIntPot(p, 2, b) == -2.0
+        
+        # Test bulkIntPot structure
+        @test p.bulkIntPot !== nothing
+        @test p.bulkSpecies !== nothing
+        @test b in p.bulkSpecies
+    end
+
+    @testset "Subspecies getSubspeciesIdx" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        p = Poly(;
+            length = 8,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        init!(l, [p])
+        initSubspecies!(p, Int32(2), pattern=:alternating)
+        
+        # Beads 1,3,5,7 should be subspecies 1
+        # Beads 2,4,6,8 should be subspecies 2
+        @test getSubspeciesIdx(p, Int32(1)) == 1  # head
+        @test getSubspeciesIdx(p, Int32(2)) == 2  # second bead
+        @test getSubspeciesIdx(p, Int32(3)) == 1  # third bead
+    end
+
+    @testset "Subspecies ham! backward compatibility" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        # Test without subspecies (backward compatible)
+        p = Poly(;
+            length = 16,
+            maxlength = 20,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        init!(l, [p])
+        ham!(p)
+        legacy_ham = p.ham
+        
+        # Now initialize subspecies with uniform (all same) and same intPot
+        initSubspecies!(p, Int32(1), pattern=:uniform)
+        ham!(p)
+        subspecies_ham = p.ham
+        
+        # Should give same result
+        @test legacy_ham ≈ subspecies_ham
+    end
+
+    @testset "Subspecies ham! different potentials" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        p = Poly(;
+            length = 10,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        init!(l, [p])
+        
+        # Initialize with 2 subspecies, block pattern
+        initSubspecies!(p, Int32(2), pattern=:block)
+        
+        # Set different potentials for each subspecies
+        intPot!(p, 1, 2.0)  # higher interaction for first half
+        intPot!(p, 2, 0.5)  # lower interaction for second half
+        
+        # Calculate Hamiltonian
+        ham!(p)
+        
+        # The result should be different from uniform potential case
+        p2 = Poly(;
+            length = 10,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+        init!(l, [p2])
+        ham!(p2)
+        
+        # Different potentials should give different energy
+        @test p.ham != p2.ham
+    end
+
+    @testset "Subspecies polymer-bulk interaction" begin
+        l = Lattice(;
+            boxlength = 8,
+            nspecies = 2
+        )
+
+        p = Poly(;
+            length = 6,
+            maxlength = 8,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        b = Bulk(;
+            length = 50,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+        intPot!(b, 1.0)
+
+        init!(l, [p, b])
+        
+        # Initialize subspecies
+        initSubspecies!(p, Int32(2), pattern=:alternating)
+        
+        # Set different bulk interactions for each subspecies
+        intPot!(p, 1, b, -1.0)  # subspecies 1 attracted to bulk
+        intPot!(p, 2, b, 1.0)   # subspecies 2 repelled by bulk
+        
+        # Calculate Hamiltonian - should account for bead-specific interactions
+        ham!(p)
+        
+        @test p.ham !== nothing
+        @test p.bulkIntPot !== nothing
+        
+        # Verify interactions are stored correctly
+        sub1_intIdx = p.subspecies[1].intIdx
+        sub2_intIdx = p.subspecies[2].intIdx
+        @test p.bulkIntPot[(sub1_intIdx, b.id)] == -1.0
+        @test p.bulkIntPot[(sub2_intIdx, b.id)] == 1.0
+    end
+
+    @testset "Subspecies intPot! all subspecies convenience" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 2
+        )
+
+        p = Poly(;
+            length = 10,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        b = Bulk(;
+            length = 50,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+        intPot!(b, 1.0)
+
+        init!(l, [p, b])
+        initSubspecies!(p, Int32(3), pattern=:block)
+        
+        # Set interaction for ALL subspecies at once
+        intPot!(p, b, -2.0)
+        
+        # All subspecies should have same interaction
+        @test getIntPot(p, 1, b) == -2.0
+        @test getIntPot(p, 2, b) == -2.0
+        @test getIntPot(p, 3, b) == -2.0
+        
+        # Partner should be set
+        @test p.partner === b
+    end
+
+    @testset "Subspecies custom pattern" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        p = Poly(;
+            length = 10,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        init!(l, [p])
+        
+        # Create a custom pattern: first 3 beads subspecies 1, next 4 subspecies 2, last 3 subspecies 1
+        customPattern = Int32[1, 1, 1, 2, 2, 2, 2, 1, 1, 1]
+        initSubspecies!(p, Int32(2), pattern=:custom, customPattern=customPattern)
+        
+        @test p.beadTypes == customPattern
+        @test p.subspecies[1].intMat === p.subspecies[2].intMat  # shared matrix
+    end
+
+    @testset "Subspecies intMat synchronization" begin
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 1
+        )
+
+        p = Poly(;
+            length = 10,
+            maxlength = 10,
+            intPot = 1.0,
+            chemPot = 1.0
+        )
+
+        init!(l, [p])
+        initSubspecies!(p, Int32(3), pattern=:block)
+        
+        # All subspecies should share the same intMat and intSpecies
+        @test p.subspecies[1].intMat === p.subspecies[2].intMat
+        @test p.subspecies[2].intMat === p.subspecies[3].intMat
+        @test p.subspecies[1].intSpecies === p.subspecies[2].intSpecies
+        
+        # Setting interaction should update the shared matrix
+        intPot!(p, 1, 2, 0.5)
+        intPot!(p, 2, 3, 0.7)
+        
+        # Access via any subspecies should give same result
+        @test p.subspecies[1].intMat[p.subspecies[1].intIdx, p.subspecies[2].intIdx] == 0.5
+        @test p.subspecies[2].intMat[p.subspecies[2].intIdx, p.subspecies[3].intIdx] == 0.7
     end
 end

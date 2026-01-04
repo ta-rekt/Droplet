@@ -226,12 +226,7 @@ end
 # * exp: nucleation sites prevent Ostwald ripening (insurance)
 #   * plot n_enhancers vs. dilute density compared with critical concentration 
 
-# * poly: length-preserving moves
-#   * adapt the proposal probabilities
-#   * run a burn-in with ADD and REMOVE, then equilibrate 
-#     with KINK only once length = lmax. rebuild the pos dict with
-#     keys in 1:lmax
-# * fastpoly
+# * fastpoly (no longer relevant)
 #   * store bead indices at lattice sites
 #   * kink-only mode: movableIdxs: a bead can be kinked if 
 #       - 1. it isn't on a corner
@@ -243,9 +238,7 @@ end
 #       - its neighbor along the chain becomes movable
 #       - its neighbors' old nns become movable if they were stuck bcs of #3
 #   * hastings factor
-# monday 15/12
 # * reproduce Mason's results
-# thursday 18/12
 
 
 @time let
