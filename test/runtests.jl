@@ -9,8 +9,8 @@ using Test
             nspecies = 2
         )
 
-        # polymer
-        p = Poly(;
+        # Polymer
+        p = Polymer(;
             length = 16,
             maxlength = 20,
             intPot = 1.0,
@@ -18,7 +18,7 @@ using Test
         )
 
         # dilute monomers
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 256
         )
         
@@ -74,8 +74,8 @@ using Test
             nspecies = 2
         )
 
-        # polymer
-        p = Poly(;
+        # Polymer
+        p = Polymer(;
             length = 16,
             maxlength = 20,
             intPot = 1.0,
@@ -83,7 +83,7 @@ using Test
         )
 
         # dilute monomers
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 256
         )
 
@@ -155,16 +155,16 @@ using Test
         @test p.moveTypes == [1,2,1,2]
     end
 
-# MARK: -Ham poly
-    @testset "Hamiltonian (poly)" begin
+# MARK: -Ham Polymer
+    @testset "Hamiltonian (Polymer)" begin
 
         l = Lattice(;
             boxlength = 42,
             nspecies = 2
         )
 
-        # polymer
-        p = Poly(;
+        # Polymer
+        p = Polymer(;
             length = 32,
             maxlength = 24,
             intPot = 1,
@@ -222,16 +222,16 @@ using Test
         @test hams == accDeltaH
     end
 
-# MARK: -Ham bulk
-    @testset "Hamiltonian (bulk)" begin
+# MARK: -Ham BulkMonomer
+    @testset "Hamiltonian (BulkMonomer)" begin
 
         l = Lattice(;
             boxlength = 16,
             nspecies = 1
         )
 
-        # bulk species
-        p = Bulk(;
+        # BulkMonomer species
+        p = BulkMonomer(;
             length = 500
         )
 
@@ -288,16 +288,16 @@ using Test
         @test hams == accDeltaH
     end
 
-# MARK: -Ham fastbulk
-    @testset "Hamiltonian (fast bulk)" begin
+# MARK: -Ham fastBulkMonomer
+    @testset "Hamiltonian (fast BulkMonomer)" begin
 
         l = Lattice(;
             boxlength = 16,
             nspecies = 1
         )
 
-        # bulk species
-        p = FastBulk(;
+        # BulkMonomer species
+        p = FastBulkMonomer(;
             length = 500
         )
 
@@ -356,25 +356,25 @@ using Test
     end
 
 # MARK: -Ham multi
-    @testset "Hamiltonian (multi-component bulk)" begin
+    @testset "Hamiltonian (multi-component BulkMonomer)" begin
         l = Lattice(;
             boxlength = 16,
             nspecies = 2
         )
 
-        a = Bulk(;
+        a = BulkMonomer(;
             length = 128,
             initShape = "box",
             initParams = 1,
             initPos = [8,8,8]
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 128,
             initShape = "uniform"
         )
 
-        c = Bulk(;
+        c = BulkMonomer(;
             length = 128,
             initShape = "uniform"
         )
@@ -463,25 +463,25 @@ using Test
     end
 
 # MARK: -Ham multi fast
-    @testset "Hamiltonian (multi-component fast bulk)" begin
+    @testset "Hamiltonian (multi-component fast BulkMonomer)" begin
         l = Lattice(;
             boxlength = 16,
             nspecies = 2
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 128,
             initShape = "box",
             initParams = 1,
             initPos = [8,8,8]
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 128,
             initShape = "uniform"
         )
 
-        c = FastBulk(;
+        c = FastBulkMonomer(;
             length = 128,
             initShape = "uniform"
         )
@@ -577,13 +577,13 @@ using Test
             nspecies = 1
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 2,
             initShape = "box",
             initParams = 2
         )
 
-        fb = FastBulk(;
+        fb = FastBulkMonomer(;
             length = 2,
             initShape = "box",
             initParams = 2
@@ -607,13 +607,13 @@ using Test
             nspecies = 1
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 20,
             initShape = "box",
             initParams = 1
         )
 
-        fb = FastBulk(;
+        fb = FastBulkMonomer(;
             length = 20,
             initShape = "box",
             initParams = 1
@@ -648,12 +648,12 @@ using Test
             nspecies = 2
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "line"
         )
 
-        fb = FastBulk(;
+        fb = FastBulkMonomer(;
             length = 8,
             initShape = "line"
         )
@@ -686,7 +686,7 @@ using Test
             nspecies = 1
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 256,
             initShape = "uniform",
             initParams = 2
@@ -712,7 +712,7 @@ using Test
             nspecies = 1
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 27,
             initShape = "box",
             initParams = 1,
@@ -733,7 +733,7 @@ using Test
                         [Int32(1), Int32(3)]])
         @test x == y
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 26,
             initShape = "box",
             initParams = 1,
@@ -776,7 +776,7 @@ using Test
         @test x == y
 
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 27,
             initShape = "box",
             initParams = 1,
@@ -812,7 +812,7 @@ using Test
             nspecies = 1
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -831,7 +831,7 @@ using Test
         dlist = splitDroplet!(b, ccs[1])
         @test dlist == [Set([5, 6]), Set([4, 3]), Set([7, 8]), Set([2, 1])]
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -851,7 +851,7 @@ using Test
         @test dlist == [Set([5]), Set([4]), Set([6]), Set([7]), 
                       Set([2]), Set([8]), Set([3]), Set([1])]
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -871,7 +871,7 @@ using Test
         
         @test dlist == [Set([5, 6, 7, 8]), Set([4, 2, 3, 1])]
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -899,7 +899,7 @@ using Test
             nspecies = 1
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -919,7 +919,7 @@ using Test
 
         @test bbox == [[6, 9], [6, 9], [6, 9]]
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -939,7 +939,7 @@ using Test
 
         @test bbox == [[1,3],[1,3],[1,3]]
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -970,7 +970,7 @@ using Test
 
         for i in range(1, 100)
 
-            b = Bulk(;
+            b = BulkMonomer(;
                 length = i,
                 initShape = "box",
                 initParams = 1,
@@ -1007,7 +1007,7 @@ using Test
             nspecies = 1
         )
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 64,
             initShape = "box",
             initParams = 1,
@@ -1035,7 +1035,7 @@ using Test
 
         @test dropletVolume(b, ccs[1]) == 54
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 64,
             initShape = "box",
             initParams = 1,
@@ -1064,7 +1064,7 @@ using Test
         @test dropletVolume(b, ccs[1]) == 63
 
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 64,
             initShape = "box",
             initParams = 1,
@@ -1092,7 +1092,7 @@ using Test
 
         @test dropletVolume(b, ccs[1]) == 64
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 24,
             initShape = "box",
             initParams = 1,
@@ -1112,7 +1112,7 @@ using Test
         @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
 
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 29,
             initShape = "box",
             initParams = 1,
@@ -1132,7 +1132,7 @@ using Test
         @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
 
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 2,
             initShape = "box",
             initParams = 1,
@@ -1151,7 +1151,7 @@ using Test
 
         @test dropletVolume(b, ccs[1]) == length(collect(keys(b.pos)))
 
-        b = Bulk(;
+        b = BulkMonomer(;
             length = 8,
             initShape = "box",
             initParams = 1,
@@ -1177,7 +1177,7 @@ using Test
 #             nspecies = 1
 #         )
 
-#         b = FastBulk(;
+#         b = FastBulkMonomer(;
 #             length = 27,
 #             initShape = "box",
 #             initParams = 1,
@@ -1233,7 +1233,7 @@ using Test
 
 #         ########### edge ###########
 
-#         b = FastBulk(;
+#         b = FastBulkMonomer(;
 #             length = 27,
 #             initShape = "box",
 #             initParams = 1,
@@ -1276,7 +1276,7 @@ using Test
 
 #         ########### center ###########
 
-#         b = FastBulk(;
+#         b = FastBulkMonomer(;
 #             length = 27,
 #             initShape = "box",
 #             initParams = 1,
@@ -1300,7 +1300,7 @@ using Test
 
 #         ########### across boundary ###########
 
-#         b = FastBulk(;
+#         b = FastBulkMonomer(;
 #             length = 8,
 #             initShape = "box",
 #             initParams = 1,
@@ -1345,7 +1345,7 @@ using Test
 #             nspecies = 2
 #         )
 
-#         b = FastBulk(;
+#         b = FastBulkMonomer(;
 #             length = 64,
 #             initShape = "box",
 #             initParams = 1,
@@ -1400,7 +1400,7 @@ using Test
 #             nspecies = 2
 #         )
 
-#         b = FastBulk(;
+#         b = FastBulkMonomer(;
 #             length = 7,
 #             initShape = "box",
 #             initParams = 1,
@@ -1461,7 +1461,7 @@ using Test
 #             nspecies = 2
 #         )
 
-#         b = FastBulk(;
+#         b = FastBulkMonomer(;
 #             length = 7,
 #             initShape = "box",
 #             initParams = 1,
@@ -1522,7 +1522,7 @@ using Test
             nspecies = 1
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,
@@ -1535,8 +1535,8 @@ using Test
         init!(l, [a])
         @test a.intPot == -2.0
 
-        # Test with Bulk type as well
-        b = Bulk(;
+        # Test with BulkMonomer type as well
+        b = BulkMonomer(;
             length = 10,
             intPot = -3.0,
             chemPot = 1.0,
@@ -1560,14 +1560,14 @@ using Test
             nspecies = 2
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 10,
             intPot = -2.0,
             chemPot = 1.0,
@@ -1616,21 +1616,21 @@ using Test
             nspecies = 3
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 10,
             intPot = -2.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        c = FastBulk(;
+        c = FastBulkMonomer(;
             length = 10,
             intPot = -3.0,
             chemPot = 1.0,
@@ -1679,14 +1679,14 @@ using Test
             nspecies = 2
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 10,
             intPot = -2.0,
             chemPot = 1.0,
@@ -1718,14 +1718,14 @@ using Test
             nspecies = 2
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 10,
             intPot = -2.0,
             chemPot = 1.0,
@@ -1753,21 +1753,21 @@ using Test
             nspecies = 3
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 10,
             intPot = -2.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        c = FastBulk(;
+        c = FastBulkMonomer(;
             length = 10,
             intPot = -3.0,
             chemPot = 1.0,
@@ -1806,28 +1806,28 @@ using Test
             nspecies = 4
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 5,
             intPot = -1.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 5,
             intPot = -2.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        c = FastBulk(;
+        c = FastBulkMonomer(;
             length = 5,
             intPot = -3.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        d = FastBulk(;
+        d = FastBulkMonomer(;
             length = 5,
             intPot = -4.0,
             chemPot = 1.0,
@@ -1879,28 +1879,28 @@ using Test
         @test d.intIdx in intIdxsD
     end
 
-# MARK: -intPot with Bulk
-    @testset "intPot! (mixed Bulk and FastBulk)" begin
+# MARK: -intPot with BulkMonomer
+    @testset "intPot! (mixed BulkMonomer and FastBulkMonomer)" begin
         l = Lattice(;
             boxlength = 8,
             nspecies = 2
         )
 
-        a = Bulk(;
+        a = BulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        b = FastBulk(;
+        b = FastBulkMonomer(;
             length = 10,
             intPot = -2.0,
             chemPot = 1.0,
             initShape = "uniform"
         )
 
-        # Set cross-interaction between Bulk and FastBulk
+        # Set cross-interaction between BulkMonomer and FastBulkMonomer
         intPot!(a, b, -5.0)
         
         init!(l, [a, b])
@@ -1923,7 +1923,7 @@ using Test
             nspecies = 1
         )
 
-        a = FastBulk(;
+        a = FastBulkMonomer(;
             length = 10,
             intPot = -1.0,
             chemPot = 1.0,

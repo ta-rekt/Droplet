@@ -13,12 +13,12 @@ end
 
 
 ############# Polymer metropolis functions #############
-# MARK: -Poly
+# MARK: -Polymer
 
 # Computes all possible move types for the selected bond
 # Warning: needs p.bondVec to be set
 export moveTypes!
-function moveTypes!(p::Poly)
+function moveTypes!(p::Polymer)
 
     # dimensions along which to move
     dims = findall(iszero, p.bondVec)
@@ -65,7 +65,7 @@ end
 # samples moves according to probabilities set by detailed balance
 # writes the sampled direction vector in p.moveVec
 export proposeMove!
-function proposeMove!(p::Poly)
+function proposeMove!(p::Polymer)
     
     # compute the possible move types around a bond
     moveTypes!(p)
@@ -135,11 +135,11 @@ function proposeMove!(p::Poly)
 end
 
 
-############# Bulk metropolis functions #############
-# MARK: -Bulk
+############# BulkMonomer metropolis functions #############
+# MARK: -BulkMonomer
 
 export proposeMove!
-function proposeMove!(b::Bulk)
+function proposeMove!(b::BulkMonomer)
 
     for i in range(1, 3)
         b.tempVec[i] = b.pos[b.moveIdx][i]
@@ -156,11 +156,11 @@ function proposeMove!(b::Bulk)
 end
 
 
-############# FastBulk metropolis functions #############
-# MARK: -FastBulk
+############# FastBulkMonomer metropolis functions #############
+# MARK: -FastBulkMonomer
 
 export proposeMove!
-function proposeMove!(b::FastBulk)
+function proposeMove!(b::FastBulkMonomer)
 
     b.moveVec = sample(0:(b.boxlength^3-1), 2, replace=false)
 

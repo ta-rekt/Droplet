@@ -104,7 +104,7 @@ end
 
 # extracts the coordinates of a polymer's beads
 export extractCoords!
-function extractCoords!(p::AbstractPoly, coords::Matrix)
+function extractCoords!(p::AbstractPolymer, coords::Matrix)
     key = p.head           # initial bead
     k = 1
     
@@ -118,8 +118,8 @@ function extractCoords!(p::AbstractPoly, coords::Matrix)
     return coords
 end
 
-########### Bulk stats ###########
-# MARK: -Fast/Bulk
+########### BulkMonomer stats ###########
+# MARK: -Fast/BulkMonomer
 
 # depth-first search: takes a bead index bi and marks all beads
 # traversed starting from bi (adds their indices to the marked list)
@@ -175,7 +175,7 @@ end
 # returns the exact volume of a droplet. Length of CCs in the empty space
 # inside the bounding box, subtracts that from the volume of the box
 export dropletVolume
-function dropletVolume(s::AbstractBulk, droplet::Set{Int32})
+function dropletVolume(s::AbstractBulkMonomer, droplet::Set{Int32})
 
     # bounding box around a droplet
     bbox = dropletBbox(s, droplet)
@@ -196,7 +196,7 @@ end
 
 # exact density of each droplet in a list 
 export dropletDensities
-function dropletDensities(s::AbstractBulk, droplets::Vector{Set{Int32}})
+function dropletDensities(s::AbstractBulkMonomer, droplets::Vector{Set{Int32}})
     densities = Vector{Float64}(undef, 0)
 
     for d in droplets
@@ -209,7 +209,7 @@ end
 
 # (number of particles - total droplet size) / (volume - total droplet volume)
 export diluteDensity
-function diluteDensity(s::AbstractBulk, droplets::Vector{Set{Int32}})
+function diluteDensity(s::AbstractBulkMonomer, droplets::Vector{Set{Int32}})
     
     n = s.length
     ndrop = sum(map(x -> length(x), droplets))
@@ -224,7 +224,7 @@ end
 
 # number of particles of a species bound to any of the binding sites
 export nspeciesBound
-function nspeciesBound(sp::AbstractBulk, 
+function nspeciesBound(sp::AbstractBulkMonomer, 
                        bsites::Vector{T}) where T <: AbstractSpecies
     n = 0
     for site in bsites

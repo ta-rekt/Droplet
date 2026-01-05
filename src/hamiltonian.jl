@@ -1,9 +1,9 @@
 ############# Polymer Energy functions #############
-# MARK: -Poly
+# MARK: -Polymer
 
 # Hamiltonian of a polymer
 export ham!
-function ham!(p::Poly)
+function ham!(p::Polymer)
 
     p.ham = 0
     nnn = 0                # number of nearest neighbors
@@ -31,7 +31,7 @@ end
 # Energy increment of a proposed move. Requires proposeMove! to be called
 # which sets moveType and newPosi/j. 
 export deltaHam!
-function deltaHam!(p::Poly)
+function deltaHam!(p::Polymer)
 
     @assert p.moveType == 1 || p.moveType == 2 || p.moveType == 3 begin
         "p.moveType must be either 1, 2, or 3"
@@ -67,12 +67,12 @@ function deltaHam!(p::Poly)
 end
 
 
-############# Bulk energy functions #############
-# MARK: -Bulk
+############# BulkMonomer energy functions #############
+# MARK: -BulkMonomer
 
-# Hamiltonian of a dilute species in the bulk
+# Hamiltonian of a dilute species in the bulkMonomer
 export ham!
-function ham!(b::Bulk)
+function ham!(b::BulkMonomer)
     
     # chemical potential
     b.ham = - b.chemPot * b.length
@@ -93,9 +93,9 @@ function ham!(b::Bulk)
     return b
 end
 
-# Energy increment for the bulk system
+# Energy increment for the bulkMonomer system
 export deltaHam!
-function deltaHam!(b::Bulk)
+function deltaHam!(b::BulkMonomer)
 
     # energy increment from self-interactions
     b.deltaH = 0.0
@@ -116,12 +116,12 @@ function deltaHam!(b::Bulk)
 end
 
 
-############# FastBulk energy functions #############
-# MARK: -FastBulk
+############# FastBulkMonomer energy functions #############
+# MARK: -FastBulkMonomer
 
-# Hamiltonian of a dilute species in the bulk
+# Hamiltonian of a dilute species in the bulkMonomer
 export ham!
-function ham!(b::FastBulk)
+function ham!(b::FastBulkMonomer)
     
     # chemical potential
     b.ham = - b.chemPot * b.length
@@ -143,9 +143,9 @@ function ham!(b::FastBulk)
 end
 
 
-# Energy increment for the bulk system
+# Energy increment for the bulkMonomer system
 export deltaHam!
-function deltaHam!(b::FastBulk)
+function deltaHam!(b::FastBulkMonomer)
 
     # energy increment from self-interactions
     b.deltaH = 0.0

@@ -126,11 +126,11 @@ end
 
 
 ######## Polymer #######
-# MARK: -Poly
+# MARK: -Polymer
 
 # initializes species configuration from a list of presets
 export initShape!
-function initShape!(s::AbstractPoly)
+function initShape!(s::AbstractPolymer)
     if s.initShape == "line" || s.initShape === nothing
         initLine!(s.pos, s.initPos, s.boxlength, s.length)
     else
@@ -144,9 +144,9 @@ function initShape!(s::AbstractPoly)
     return s
 end
 
-# initializes bead locations of a long polymer in a doubly-linked list
+# initializes bead locations of a long Polymer in a doubly-linked list
 export initSpecies!
-function initSpecies!(p::Poly)
+function initSpecies!(p::Polymer)
     p.name = string("poly", p.id)
     p.pos = OrderedDict{Int32, Vector{Int32}}()
     
@@ -172,12 +172,12 @@ function initSpecies!(p::Poly)
 end
 
 
-######## Bulk #######
-# MARK: -Bulk
+######## BulkMonomer #######
+# MARK: -BulkMonomer
 
 # initializes species configuration from a list of presets
 export initShape!
-function initShape!(s::AbstractBulk)
+function initShape!(s::AbstractBulkMonomer)
     if s.initShape == "uniform" || s.initShape === nothing
         initUniform!(s.pos, s.boxlength, s.length)
 
@@ -220,9 +220,9 @@ end
 
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
 export initSpecies!
-function initSpecies!(b::Bulk)
+function initSpecies!(b::BulkMonomer)
 
-    b.name = string("bulk", b.id)
+    b.name = string("BulkMonomer", b.id)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
     
     initShape!(b)
@@ -246,14 +246,14 @@ function initSpecies!(b::Bulk)
 end
 
 
-######## FastBulk #######
-# MARK: -FastBulk
+######## FastBulkMonomer #######
+# MARK: -FastBulkMonomer
 
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
 export initSpecies!
-function initSpecies!(b::FastBulk)
+function initSpecies!(b::FastBulkMonomer)
 
-    b.name = string("bulk", b.id)
+    b.name = string("BulkMonomer", b.id)
     b.pos = OrderedDict{Int32, Vector{Int32}}()
 
     initShape!(b)
@@ -318,7 +318,7 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         l.speciesDir[s.id] = i
 
         # TODO: apply this to all species
-        if typeof(s) <: AbstractBulk
+        if typeof(s) <: AbstractBulkMonomer
             for j in 1:s.length
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = j
             end
@@ -328,7 +328,7 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
             end
         end
 
-        if typeof(s) <: FastBulk
+        if typeof(s) <: FastBulkMonomer
             initMovableSet!(s)
         end
     end

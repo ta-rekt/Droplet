@@ -21,19 +21,19 @@ end
         nspecies = 2
     )
 
-    a = FastBulk(;
+    a = FastBulkMonomer(;
         length = 4,
         initShape = "box",
         initParams = 1,
         initPos = [2,2,2]
     )
 
-    b = FastBulk(;
+    b = FastBulkMonomer(;
         length = 2,
         initShape = "uniform"
     )
 
-    c = FastBulk(;
+    c = FastBulkMonomer(;
         length = 2,
         initShape = "uniform"
     )
@@ -207,7 +207,7 @@ end
 # Multi-component interactions
 
 # to test:
-# * exp: fastbulk flory huggins (insurance)
+# * exp: fastbulkMonomer flory huggins (insurance)
 # * exp: filament prewetting (insurance)
 #   * vary concentration and look at axial/radial density, compare with control
 # * exp: prewet enhancers (insurance)
@@ -255,32 +255,32 @@ end
         nspecies = 3
     )
 
-    tf = FastBulk(;
+    tf = FastBulkMonomer(;
         length = 32,
         initShape = "uniform"
     )
 
-    # rnap = FastBulk(;
+    # rnap = FastBulkMonomer(;
     #     length = 32,
     #     initShape = "uniform"
     # )
 
     ### rod 1
-    dna1 = FastBulk(;
+    dna1 = FastBulkMonomer(;
         length = 7,
         initShape = "line",
         initParams = 1,
         initPos = [1,5,8]
     )
 
-    enhancer = FastBulk(;
+    enhancer = FastBulkMonomer(;
         length = 6,
         initShape = "line",
         initParams = 1,
         initPos = [8,5,8]
     )
 
-    dna2 = FastBulk(;
+    dna2 = FastBulkMonomer(;
         length = 7,
         initShape = "line",
         initParams = 1,
@@ -289,21 +289,21 @@ end
 
 
     ### rod 1
-    dna1_l = FastBulk(;
+    dna1_l = FastBulkMonomer(;
         length = 7,
         initShape = "line",
         initParams = 1,
         initPos = [1,10,8]
     )
 
-    enhancer_l = FastBulk(;
+    enhancer_l = FastBulkMonomer(;
         length = 6,
         initShape = "line",
         initParams = 1,
         initPos = [8,10,8]
     )
 
-    dna2_l = FastBulk(;
+    dna2_l = FastBulkMonomer(;
         length = 7,
         initShape = "line",
         initParams = 1,

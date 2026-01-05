@@ -116,7 +116,7 @@ end
 
 
 # Set of nearest neighbors of a given position
-# WARNING: will break if called on a Poly TODO: fix
+# WARNING: will break if called on a AbstractPoly TODO: fix
 export nnIdxs!
 function nnIdxs!(b::AbstractSpecies, 
                  pos::Union{SubArray{Int32}, Vector{Int32}})
@@ -156,13 +156,13 @@ function nnIdxs!(b::AbstractSpecies,
 end
 
 
-############# Bulk utilities #############
-# MARK: -Fast/Bulk
+############# BulkMonomer utilities #############
+# MARK: -Fast/BulkMonomer
 
 # splits droplets that sit across a lattice boundary
 # WARNING: assumes droplet max diameter < boxlength / 2, 
 export splitDroplet!
-function splitDroplet!(s::AbstractBulk, droplet::Set{Int32})
+function splitDroplet!(s::AbstractBulkMonomer, droplet::Set{Int32})
 
     droplet_vecs = []
     droplet_vec = collect(droplet)
@@ -194,7 +194,7 @@ end
 # finds the bounding box of a droplet, adds 1 along each axis for the empty
 # space around the droplet to be connected
 export dropletBbox
-function dropletBbox(s::AbstractBulk, droplet::Set{Int32})
+function dropletBbox(s::AbstractBulkMonomer, droplet::Set{Int32})
 
     # start with position of an arbitrary particle in the droplet
     key0 = collect(droplet)[1]
@@ -229,7 +229,7 @@ end
 
 # fills up a box around a droplet in the co-lattice
 export fillBbox!
-function fillBbox!(s::AbstractBulk, droplet::Set{Int32}, bbox::Vector{Vector{Int32}})
+function fillBbox!(s::AbstractBulkMonomer, droplet::Set{Int32}, bbox::Vector{Vector{Int32}})
 
     xl, xh = bbox[1]
     yl, yh = bbox[2]
@@ -262,7 +262,7 @@ end
 
 # clears a box around a droplet in the ghost lattice
 export clearBbox!
-function clearBbox!(s::AbstractBulk, bbox::Vector{Vector{Int32}})
+function clearBbox!(s::AbstractBulkMonomer, bbox::Vector{Vector{Int32}})
 
     xl, xh = bbox[1]
     yl, yh = bbox[2]
