@@ -105,7 +105,7 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing    # box linear dimension
     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
-    pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
+    pos::Union{Nothing, OrderedDict{Int32, Vector{Int32}}} = nothing      # xyz coordinates of all the beads
     initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
     initShape::Union{Nothing, String} = nothing
     finalPos::Union{Nothing, Vector{Int32}} = nothing   # anchor position on the other side
@@ -113,17 +113,11 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing   # lattice
     ghost::Union{Nothing, AbstractSpecies} = nothing
-    partner::Union{Nothing, AbstractSpecies} = nothing
     
     # subspecies for bead-dependent interactions
     subspecies::Union{Nothing, Vector{Subspecies}} = nothing   # list of subspecies (length = nSubspecies)
     beadTypes::Union{Nothing, Vector{Int32}} = nothing         # subspecies index for each bead (length = maxlength)
     nSubspecies::Union{Nothing, Int32} = nothing               # number of distinct subspecies
-    
-    # bulk species interactions (for subspecies-bulk interactions)
-    # Dict mapping (subspecies_intIdx, bulk_id) -> interaction potential
-    bulkIntPot::Union{Nothing, Dict{Tuple{Int, Int32}, Float64}} = nothing
-    bulkSpecies::Union{Nothing, Vector{AbstractBulk}} = nothing  # list of bulk species with interactions
     
     # addBond!, removeBond!, identifyBond! variables
     head::Union{Nothing, Int32} = nothing
@@ -140,7 +134,7 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
 
     # moveTypes! variables
     moveVec::Union{Nothing, Vector{Int32}} = nothing       # move vector
-    moveIdx::Union{Nothing, Int32}      = nothing          # bead index to move next
+    moveIdx::Union{Nothing, Int32} = nothing          # bead index to move next
     moveType::Union{Nothing, Int32} = nothing              # type of move: bond addition (1), bond removal (2) or kink (3)
     newPosi::Union{Nothing, Vector{Int32}} = nothing       # placeholder position (e.g. to store next bond position)
     newPosj::Union{Nothing, Vector{Int32}} = nothing       # placeholder position (e.g. to store next bond position)
@@ -188,7 +182,6 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
-    partner::Union{Nothing, AbstractSpecies} = nothing
 
     # multi-species interaction fields
     intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs
@@ -248,7 +241,6 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
-    partner::Union{Nothing, AbstractSpecies} = nothing
 
     # multi-species interaction fields
     intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs
