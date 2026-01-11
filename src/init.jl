@@ -54,11 +54,11 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
                   latticelength::Int32,
                   length::Int32,
                   startPos::Union{Nothing, Vector{Int32}},
-                  newIndex::Int = 1)
+                  newIndex::Int32 = Int32(1))
 
     # filled box shape
     idx = newIndex
-    box_side = ceil(Int, length^(1/3))
+    box_side = ceil(Int32, length^(1/3))
     offset = Int32(div(box_side, 2))
     clippedPos = zeros(Int32, 3)
     rawPos = zeros(Int32, 3)
@@ -91,6 +91,15 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
             break
         end
     end
+end
+
+# Convenience method that converts Int64 to Int32
+function initBox!(pos::OrderedDict{Int32, Vector{Int32}}, 
+                  latticelength::Int32,
+                  length::Int32,
+                  startPos::Union{Nothing, Vector{Int32}},
+                  newIndex::Int64)
+    initBox!(pos, latticelength, length, startPos, Int32(newIndex))
 end
 
 # populate the set of movable particles of a species
@@ -128,9 +137,166 @@ end
 ######## Polymer #######
 # MARK: -Polymer
 
+export initMonomers!
+"""
+    initMonomers!(p::Polymer, nMonomerTypes::Int32; p.pattern::Symbol=:uniform, p.customPattern::Union{Nothing, Vector{Int32}}=nothing)
+
+Initialize subspecies for a polymer with bead-dependent interactions.
+
+# Arguments
+- `p::Poly`: The polymer to initialize subspecies for
+- `nMonomerTypes::Int32`: Number of distinct subspecies
+- `pattern::Symbol`: How to assign beads to subspecies:
+    - `:uniform`: All beads belong to subspecies 1 (default, backward compatible)
+    - `:alternating`: Alternates between subspecies (1, 2, 1, 2, ...)
+    - `:block`: Divides polymer into n equal blocks
+    - `:random`: Random assignment
+    - `:custom`: Use p.customPattern vector to assign beads
+- `p.customPattern::Vector{Int32}`: When p.pattern=:custom, a vector of subspecies indices
+    of length p.maxlength. Each element is the subspecies index (using intIdx from
+    the shared intSpecies list) for the corresponding bead position.
+
+# Notes
+- Each subspecies inherits the polymer's chemPot and intPot by default.
+- Use intPot!(p, subspeciesIdx, value) to set subspecies-specific potentials.
+- All subspecies share a synchronized intSpecies list and intMat (like AbstractBulk).
+- When using :custom p.pattern, indices should be 1-based subspecies indices.
+"""
+function initMonomers!(p::Polymer)
+    
+    # Create subspecies with default values from polymer
+    p.monomers = Vector{PolyMonomer}(undef, p.nMonomerTypes)
+    for i in 1:p.nMonomerTypes
+        p.monomers[i] = PolyMonomer(
+            name = string(p.name, "_monomer", i),
+            poly = p,
+            chemPot = p.chemPot,
+            intPot = p.intPot
+        )
+    end
+    
+    # Initialize all subspecies with synced interaction structures
+    # This ensures they all share the same intSpecies and intMat
+    for i in 1:p.nMonomerTypes
+        _ensureIntStructures!(p.monomers[i])
+    end
+    
+    # Sync all subspecies to share the same matrix
+    if p.nMonomerTypes > 1
+        for i in 2:p.nMonomerTypes
+            if p.monomers[1].intMat !== p.monomers[i].intMat
+                _syncMatrices!(p.monomers[1], p.monomers[i])
+            end
+        end
+    end
+    
+    # Initialize monomerIndex array for maxlength beads
+    p.monomerIndex = zeros(Int32, p.maxlength)
+    
+    # Assign beads to subspecies based on p.pattern
+    if p.pattern == :uniform
+        # All beads are subspecies 1
+        fill!(p.monomerIndex, 1)
+        
+    elseif p.pattern == :alternating
+        # Alternate between subspecies
+        for i in 1:p.maxlength
+            p.monomerIndex[i] = mod1(i, p.nMonomerTypes)
+        end
+        
+    elseif p.pattern == :block
+        # Divide into n equal blocks
+        blockSize = div(p.maxlength, p.nMonomerTypes)
+        for i in 1:p.maxlength
+            blockIdx = min(div(i - 1, blockSize) + 1, p.nMonomerTypes)
+            p.monomerIndex[i] = blockIdx
+        end
+        
+    elseif p.pattern == :random
+        # Random assignment
+        for i in 1:p.maxlength
+            p.monomerIndex[i] = Int32(rand(1:p.nMonomerTypes))
+        end
+        
+    elseif p.pattern == :custom
+        if p.customPattern === nothing
+            error("pattern=:custom requires p.customPattern vector to be provided")
+        end
+        if length(p.customPattern) != p.maxlength
+            error("p.customPattern length ($(length(p.customPattern))) must equal p.maxlength ($(p.maxlength))")
+        end
+        # Validate all indices are in range
+        for (i, idx) in enumerate(p.customPattern)
+            if idx < 1 || idx > p.nMonomerTypes
+                error("p.customPattern[$i] = $idx is out of range [1, $p.nMonomerTypes]")
+            end
+        end
+        # Copy custom p.pattern
+        p.monomerIndex .= p.customPattern
+    else
+        error("Unknown p.pattern: $pattern. Use :uniform, :alternating, :block, :random, or :custom")
+    end
+    
+    return p
+end
+
+
+"""
+    getPolyMonomer(p::Polymer, beadKey::Int32)
+
+Get the Subspecies for a given bead by its key in the position dictionary.
+Uses the bead's position in the chain (via traversal) to look up its subspecies.
+"""
+function getPolyMonomer(p::Polymer, beadKey::Int32)
+    if p.monomers === nothing || p.monomerIndex === nothing
+        return nothing
+    end
+    
+    # Find the bead's index in the chain by traversing from head
+    idx = 1
+    key = p.head
+    while key != beadKey && key != 0
+        key = p.pos[key][5]  # next bead
+        idx += 1
+    end
+    
+    if key == 0
+        error("Bead key $beadKey not found in polymer chain")
+    end
+    
+    return p.monomers[p.monomerIndex[idx]]
+end
+
+
+"""
+    getSubspeciesIdx(p::Polymer, beadKey::Int32)
+
+Get the subspecies index for a given bead by its key.
+"""
+function getPolyMonomerIdx(p::Polymer, beadKey::Int32)
+    if p.monomerIndex === nothing
+        return Int32(1)
+    end
+    
+    # Find the bead's index in the chain
+    idx = 1
+    key = p.head
+    while key != beadKey && key != 0
+        key = p.pos[key][5]
+        idx += 1
+    end
+    
+    if key == 0
+        error("Bead key $beadKey not found in polymer chain")
+    end
+    
+    return p.monomerIndex[idx]
+end
+
+
 # initializes species configuration from a list of presets
 export initShape!
-function initShape!(s::AbstractPolymer)
+function initShape!(s::Polymer)
     if s.initShape == "line" || s.initShape === nothing
         initLine!(s.pos, s.initPos, s.boxlength, s.length)
     else
@@ -171,6 +337,14 @@ function initSpecies!(p::Polymer)
     return p
 end
 
+# initializes beads positioned uniformly randomly (dilute and well-mixed)
+export initSpecies!
+function initSpecies!(b::PolyMonomer)
+
+    _ensureIntStructures!(b)
+
+    return b
+end
 
 ######## BulkMonomer #######
 # MARK: -BulkMonomer
@@ -289,35 +463,53 @@ end
 export init!
 function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
-    @assert length(slist) <= 26 "Too many species"
+    # Separate species that need lattice layers from monomers that delegate
+    layeredSpecies = AbstractSpecies[]
+    monomers = AbstractPolyMonomer[]
+    polyParents = Set{AbstractPolymer}()
+    
+    for s in slist
+        if s isa AbstractPolyMonomer
+            push!(monomers, s)
+            push!(polyParents, s.poly)
+        else
+            push!(layeredSpecies, s)
+        end
+    end
+    
+    # Combine regular species with parent polymers for lattice allocation
+    allLayeredSpecies = vcat(layeredSpecies, collect(polyParents))
+    
+    @assert length(allLayeredSpecies) <= 26 "Too many species"
 
-    l.nspecies = length(slist)   # update number of species
+    l.nspecies = length(allLayeredSpecies)
     l.lat = zeros((l.nspecies + 1, l.boxlength, l.boxlength, l.boxlength))
-    l.speciesDir = Dict{Int, Int}()
+    l.speciesDir = Dict{Int32, Int32}()
 
     # initialize ghost species
     gs = Species(;)
     gs.latS = view(l.lat, 1, :, :, :)
     gs.boxlength = l.boxlength
-
     initSpecies!(gs)
 
-    # initialize each physical species
-    for (i, s) in enumerate(slist)
+    # initialize each layered species (regular species + parent polymers)
+    for (i, s) in enumerate(allLayeredSpecies)
         
         # give species s a view on its lattice sites, and on the ghost species
         s.latS = view(l.lat, i + 1, :, :, :)
         s.ghost = gs
-
         s.boxlength = l.boxlength
-        initSpecies!(s)
+        
+        # Initialize species if not already done (parent polymers might be pre-initialized)
+        if s.pos === nothing
+            initSpecies!(s)
+        end
 
         # give each species a unique letter suffix
         s.name = string(s.name, "_", ALPHABET[i])
-
         l.speciesDir[s.id] = i
 
-        # TODO: apply this to all species
+        # Populate lattice
         if typeof(s) <: AbstractBulkMonomer
             for j in 1:s.length
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = j
@@ -333,8 +525,8 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         end
     end
 
-    for s in slist
-        # requires s.latS to be set
+    # Initialize Hamiltonians for all layered species
+    for s in allLayeredSpecies
         if hasproperty(s, :ham)
             initHam!(s)
         end

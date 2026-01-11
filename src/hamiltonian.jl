@@ -93,6 +93,60 @@ function ham!(b::BulkMonomer)
     return b
 end
 
+
+############# PolyMonomer energy functions #############
+# MARK: -PolyMonomer
+
+# Hamiltonian contribution from beads of this monomer type in a multicomponent polymer
+# Note: PolyMonomer doesn't have its own ham field - energy is tracked at the Polymer level
+# This function calculates the contribution from beads of this specific monomer type
+export ham!
+function ham!(m::PolyMonomer)
+    
+    if m.intSpecies === nothing || m.intMat === nothing
+        return 0.0
+    end
+    
+    p = m.poly
+    energy = 0.0
+    
+    # Count how many beads of this monomer type exist
+    beadCount = 0
+    
+    # Iterate through polymer beads
+    key = p.head
+    beadIdx = 1
+    
+    for i in 1:p.length
+        # Check if this bead belongs to this monomer type
+        if p.monomerIndex[beadIdx] == findfirst(mon -> mon === m, p.monomers)
+            beadCount += 1
+            
+            # Get position of this bead
+            pos = p.pos[key][range(1, 3)]
+            
+            # Add chemical potential contribution
+            energy -= m.chemPot
+            
+            # Add interaction contributions with all species
+            for (sp, idx) in m.intSpecies
+                selfFactor = m.intIdx == idx ? 0.5 : 1.0
+                energy += m.intMat[m.intIdx, idx] * nnp(m, sp, pos) * selfFactor
+            end
+        end
+        
+        # Move to next bead
+        key = p.pos[key][5]
+        beadIdx += 1
+        
+        if key == 0
+            break
+        end
+    end
+    
+    return energy
+end
+
 # Energy increment for the bulkMonomer system
 export deltaHam!
 function deltaHam!(b::BulkMonomer)

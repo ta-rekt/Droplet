@@ -7,6 +7,36 @@ export coords_equal
 end
 
 
+# Helper functions to access fields that may be on the object itself
+# or on a parent (for PolyMonomer)
+export getLatS
+@inline function getLatS(m::AbstractPolyMonomer)
+    return m.poly.latS
+end
+
+@inline function getLatS(s::AbstractSpecies)
+    return s.latS
+end
+
+export getTempVec
+@inline function getTempVec(m::AbstractPolyMonomer)
+    return m.poly.tempVec
+end
+
+@inline function getTempVec(s::AbstractSpecies)
+    return s.tempVec
+end
+
+export getBoxlength
+@inline function getBoxlength(m::AbstractPolyMonomer)
+    return m.poly.boxlength
+end
+
+@inline function getBoxlength(s::AbstractSpecies)
+    return s.boxlength
+end
+
+
 # ensures positions are periodic within the lattice's bounding box
 export boxmod!
 function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
@@ -68,23 +98,26 @@ end
 
 # Number of same-species nearest neighbors at a given position
 export nn
-function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
+function nn(s::Union{AbstractSpecies, AbstractMonomer}, pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
+    latS = getLatS(s)
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
 
     for i in range(1, 3)
         pos[i] += 1
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += (s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (latS[tempVec[1], tempVec[2], tempVec[3]] > 0)
 
         pos[i] -= 2
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += (s.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (latS[tempVec[1], tempVec[2], tempVec[3]] > 0)
 
         pos[i] += 1
     end
 
     # clear temporary containers
-    clamp!(s.tempVec, 0, 0)
+    clamp!(tempVec, 0, 0)
 
     return n
 end
@@ -92,24 +125,28 @@ end
 
 # Number of nearest neighbors between species s and p at a given position
 export nnp
-function nnp(s::AbstractSpecies, p::AbstractSpecies, 
+function nnp(s::Union{AbstractSpecies, AbstractMonomer}, 
+             p::Union{AbstractSpecies, AbstractMonomer}, 
              pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(p)
 
     for i in range(1, 3)
         pos[i] += 1
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += (p.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
 
         pos[i] -= 2
-        boxmod!(pos, s.tempVec, Int32(1), s.boxlength)
-        n += (p.latS[s.tempVec[1], s.tempVec[2], s.tempVec[3]] > 0)
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
 
         pos[i] += 1
     end
 
     # clear temporary containers
-    clamp!(s.tempVec, 0, 0)
+    clamp!(tempVec, 0, 0)
 
     return n
 end

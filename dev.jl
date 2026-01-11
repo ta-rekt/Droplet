@@ -331,5 +331,75 @@ end
     init!(l, slist)
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
+end
+
+# TODO:
+# 1:00 - 2:30 pm: init, interaction, tests, plotting for multicomponent poly
+# 2:30 - 4:00 pm: lunch, laundry @ mom's
+# 4:00 - 4:30 pm: dry laundry
+# 4:30 - 6:30 pm: hamiltonian, tests
+# 6:30 - 7:30 pm: break
+# 7:30 - 9:00 pm: hamiltonian, tests, experiments
+# 9:00 - 10:30 pm: dinner
+# 10:30 - 12:30 pm: experiments
+
+## 1010011111110000100000101010111100010100001100101110000
+# Multi-component polymer
+
+@time let
+
+    date = "20251208"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "test"
+    outpath = string(outdir, outfile)
+
+    ############ droplet boundary ############
+
+    l = Lattice(;
+        boxlength = 4,
+        nspecies = 3
+    )
+    
+    tf = FastBulkMonomer(;
+        length = 12,
+        initShape = "uniform"
+    )
+
+    poly = Polymer(;
+        length = l.boxlength,
+        maxlength = 8,
+        nMonomerTypes = 3,
+        chemPot = 0.0,
+        intPot = 0.0
+    )
+    
+    initMonomers!(poly)
+
+    dna = poly.monomers[1]
+    promoter = poly.monomers[2]
+
+    dna.name = "dna"
+    promoter.name = "promoter"
+
+    intPot!(tf, dna, 0.3)
+    intPot!(tf, promoter, 2.0)
+
+    intPot!(tf, 1.0)
+    intPot!(dna, 0.5)
+    intPot!(promoter, 0.5)
+
+    # map(p -> (p.name, p.intPot, getIntPot(tf, p)), poly.monomers)
+
+    # add all species here, including polymonomers
+    # let init initialize them
+    # let ham use a mono's parent poly's position, or a bulk mono's position
+    species = [tf, dna, promoter]
+
+    init!(l, species)
+
+    @show getIntPot(tf, dna)
+    @show getIntPot(tf, promoter)
+    @show getIntPot(tf, tf)
 
 end
