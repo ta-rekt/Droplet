@@ -6,12 +6,26 @@ export ham!
 function ham!(p::Polymer)
 
     p.ham = 0
-    nnn = 0                # number of nearest neighbors
+    totalChemEnergy = 0.0
+    totalIntEnergy = 0.0
+    
     key = p.head           # initial bead
-    pos = p.pos[key][range(1, 3)]  # initial posiion
+    pos = p.pos[key][range(1, 3)]  # initial position
 
     for i in 1:p.length
-        nnn += nn(p, pos)
+        # Get potentials for this specific bead
+        chemPot, intPot = getMonomerPotentials(p, Int32(i))
+        
+        # Chemical potential contribution
+        totalChemEnergy -= chemPot
+        
+        # Interaction energy: neighbors - self
+        # Note: nn(pos) counts occupied nns, so total_nn double-counts each interaction
+        # Original formula: -intPot*N + intPot*total_nn
+        # Per-bead: -intPot + intPot*nn_i
+        nnn = nn(p, pos)
+        totalIntEnergy += intPot * nnn - intPot
+        
         key = p.pos[key][5]    # next bead
 
         if key != 0
@@ -23,7 +37,7 @@ function ham!(p::Polymer)
         "Tail is not N'th bead"
     end
 
-    p.ham = - (p.chemPot + p.intPot) * p.length + p.intPot * nnn
+    p.ham = totalChemEnergy + totalIntEnergy
 
     return p
 end
@@ -41,24 +55,43 @@ function deltaHam!(p::Polymer)
 
     # bond addition
     if p.moveType == 1
-        p.deltaH = (- 2 * (p.chemPot + p.intPot) 
-                + p.intPot * (2*(nn(p, p.newPosi) + nn(p, p.newPosj)) + 2))
+        # Two new beads will be added at newPosi and newPosj
+        # For now, assume they have the same potentials (uniform polymer case)
+        # In a heterogeneous polymer, we'd need to know which monomer types these will be
+        # This is a limitation of the current move proposal system
+        chemPot, intPot = getMonomerPotentials(p, p.moveIdx)
+        
+        p.deltaH = (- 2 * (chemPot + intPot) 
+                + intPot * (2*(nn(p, p.newPosi) + nn(p, p.newPosj)) + 2))
 
     # kink
     elseif p.moveType == 2
 
-        if p.newPosi == p.bprev 
-            p.deltaH = 2 * p.intPot * (nn(p, p.newPosj) - nn(p, p.bi))
+        if p.newPosi == p.bprev
+            # bead ki is moving from bi to newPosj
+            chemPot, intPot = getMonomerPotentials(p, p.moveIdx)
+            p.deltaH = 2 * intPot * (nn(p, p.newPosj) - nn(p, p.bi))
         elseif p.newPosj == p.bnext
-            p.deltaH = 2 * p.intPot * (nn(p, p.newPosi) - nn(p, p.bj))
+            # bead kj is moving from bj to newPosi
+            chemPot, intPot = getMonomerPotentials(p, p.moveIdx + Int32(1))
+            p.deltaH = 2 * intPot * (nn(p, p.newPosi) - nn(p, p.bj))
         else
             error("Move is not a kink")
         end
 
     # bond removal  
-    elseif p.moveType == 3 
-        p.deltaH = (2 * (p.chemPot + p.intPot)  
-                    - p.intPot * (2*(nn(p, p.bi) + nn(p, p.bj)) - 2))
+    elseif p.moveType == 3
+        # Get potentials for the two beads being removed
+        chemPoti, intPoti = getMonomerPotentials(p, p.moveIdx)
+        chemPotj, intPotj = getMonomerPotentials(p, p.moveIdx + Int32(1))
+        
+        # When removing two bonded beads, the energy change is:
+        # + chemical potential (removing negative contribution)
+        # + 2*interaction potential (removing self-interaction, adjusted for the 
+        # bond between them)
+        # - interaction potential * neighbors
+        p.deltaH = ((chemPoti + chemPotj) + 2*(intPoti + intPotj) 
+                    - 2*intPoti * nn(p, p.bi) - 2*intPotj * nn(p, p.bj))
     end
 
     p.ham += p.deltaH
@@ -67,38 +100,11 @@ function deltaHam!(p::Polymer)
 end
 
 
-############# BulkMonomer energy functions #############
-# MARK: -BulkMonomer
-
-# Hamiltonian of a dilute species in the bulkMonomer
-export ham!
-function ham!(b::BulkMonomer)
-    
-    # chemical potential
-    b.ham = - b.chemPot * b.length
-
-    # interaction potentials (including self)
-    for (sp, idx) in b.intSpecies
-        nnp_ = 0.0   # number of nearest partners
-        selfFactor = b.intIdx == idx ? 0.5 : 1.0
-
-        for i in 1:b.length
-            pos = b.pos[i][range(1, 3)]
-            nnp_ += nnp(b, sp, pos)
-        end
-        
-        b.ham += b.intMat[b.intIdx, idx] * nnp_ * selfFactor
-    end
-
-    return b
-end
-
-
 ############# PolyMonomer energy functions #############
 # MARK: -PolyMonomer
 
 # Hamiltonian contribution from beads of this monomer type in a multicomponent polymer
-# Note: PolyMonomer doesn't have its own ham field - energy is tracked at the Polymer level
+# Note: PolyMonomer doesn't have its own ham field - energy is tracked at the Poly level
 # This function calculates the contribution from beads of this specific monomer type
 export ham!
 function ham!(m::PolyMonomer)
@@ -145,6 +151,33 @@ function ham!(m::PolyMonomer)
     end
     
     return energy
+end
+
+
+############# BulkMonomer energy functions #############
+# MARK: -BulkMonomer
+
+# Hamiltonian of a dilute species in the bulkMonomer
+export ham!
+function ham!(b::BulkMonomer)
+    
+    # chemical potential
+    b.ham = - b.chemPot * b.length
+
+    # interaction potentials (including self)
+    for (sp, idx) in b.intSpecies
+        nnp_ = 0.0   # number of nearest partners
+        selfFactor = b.intIdx == idx ? 0.5 : 1.0
+
+        for i in 1:b.length
+            pos = b.pos[i][range(1, 3)]
+            nnp_ += nnp(b, sp, pos)
+        end
+        
+        b.ham += b.intMat[b.intIdx, idx] * nnp_ * selfFactor
+    end
+
+    return b
 end
 
 # Energy increment for the bulkMonomer system

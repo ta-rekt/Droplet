@@ -13,9 +13,10 @@ using Test
         p = Polymer(;
             length = 16,
             maxlength = 20,
-            intPot = 1.0,
-            chemPot = 1.0
+            nMonomerTypes = 1
         )
+        
+        initMonomers!(p, defaultChemPot=1.0, defaultIntPot=1.0)
 
         # dilute monomers
         b = BulkMonomer(;
@@ -78,9 +79,10 @@ using Test
         p = Polymer(;
             length = 16,
             maxlength = 20,
-            intPot = 1.0,
-            chemPot = 1.0
+            nMonomerTypes = 1
         )
+        
+        initMonomers!(p, defaultChemPot=1.0, defaultIntPot=1.0)
 
         # dilute monomers
         b = BulkMonomer(;
@@ -165,12 +167,13 @@ using Test
 
         # Polymer
         p = Polymer(;
-            length = 32,
-            maxlength = 24,
-            intPot = 1,
-            chemPot = 1,
+            length = 24,
+            maxlength = 32,
+            nMonomerTypes = 1,
             initPos = [5,21,21]
         )
+        
+        initMonomers!(p, defaultChemPot=1.0, defaultIntPot=1.0)
 
         slist = [p]
 
@@ -1947,13 +1950,11 @@ using Test
         poly = Polymer(;
             length = 4,
             maxlength = 8,
-            nMonomerTypes = 2,
-            chemPot = 0.0,
-            intPot = 0.0
+            nMonomerTypes = 2
         )
         
-        # Initialize monomers
-        initMonomers!(poly)
+        # Initialize monomers with default potentials
+        initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
         
         # Check that monomers were created
         @test poly.monomers !== nothing
@@ -1987,11 +1988,9 @@ using Test
             length = 4,
             maxlength = 8,
             nMonomerTypes = 2,
-            chemPot = 0.0,
-            intPot = 0.0,
             pattern = :uniform
         )
-        initMonomers!(poly1)
+        initMonomers!(poly1, defaultChemPot=0.0, defaultIntPot=0.0)
         @test all(poly1.monomerIndex .== 1)
         
         # Test alternating pattern
@@ -1999,11 +1998,9 @@ using Test
             length = 4,
             maxlength = 8,
             nMonomerTypes = 2,
-            chemPot = 0.0,
-            intPot = 0.0,
             pattern = :alternating
         )
-        initMonomers!(poly2)
+        initMonomers!(poly2, defaultChemPot=0.0, defaultIntPot=0.0)
         @test poly2.monomerIndex == [1, 2, 1, 2, 1, 2, 1, 2]
         
         # Test block pattern
@@ -2011,11 +2008,9 @@ using Test
             length = 4,
             maxlength = 8,
             nMonomerTypes = 2,
-            chemPot = 0.0,
-            intPot = 0.0,
             pattern = :block
         )
-        initMonomers!(poly3)
+        initMonomers!(poly3, defaultChemPot=0.0, defaultIntPot=0.0)
         @test poly3.monomerIndex == [1, 1, 1, 1, 2, 2, 2, 2]
         
         # Test custom pattern
@@ -2023,12 +2018,10 @@ using Test
             length = 4,
             maxlength = 8,
             nMonomerTypes = 3,
-            chemPot = 0.0,
-            intPot = 0.0,
             pattern = :custom,
             customPattern = [1, 2, 3, 1, 2, 3, 1, 2]
         )
-        initMonomers!(poly4)
+        initMonomers!(poly4, defaultChemPot=0.0, defaultIntPot=0.0)
         @test poly4.monomerIndex == [1, 2, 3, 1, 2, 3, 1, 2]
     end
     
@@ -2037,12 +2030,10 @@ using Test
         poly = Polymer(;
             length = 4,
             maxlength = 8,
-            nMonomerTypes = 3,
-            chemPot = 0.0,
-            intPot = 0.0
+            nMonomerTypes = 3
         )
         
-        initMonomers!(poly)
+        initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
         
         dna = poly.monomers[1]
         promoter = poly.monomers[2]
@@ -2082,12 +2073,10 @@ using Test
         poly = Polymer(;
             length = l.boxlength,
             maxlength = 8,
-            nMonomerTypes = 3,
-            chemPot = 0.0,
-            intPot = 0.0
+            nMonomerTypes = 3
         )
         
-        initMonomers!(poly)
+        initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
         
         dna = poly.monomers[1]
         promoter = poly.monomers[2]
@@ -2126,12 +2115,10 @@ using Test
             length = 4,
             maxlength = 8,
             nMonomerTypes = 2,
-            chemPot = 0.0,
-            intPot = 0.0,
             pattern = :alternating
         )
         
-        initMonomers!(poly)
+        initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
         
         dna = poly.monomers[1]
         promoter = poly.monomers[2]
@@ -2167,9 +2154,7 @@ using Test
         poly = Polymer(;
             length = 4,
             maxlength = 8,
-            nMonomerTypes = 2,
-            chemPot = 0.0,
-            intPot = 0.0
+            nMonomerTypes = 2
         )
         
         l = Lattice(;
@@ -2177,7 +2162,7 @@ using Test
             nspecies = 1
         )
         
-        initMonomers!(poly)
+        initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
         init!(l, [poly])
         
         monomer = poly.monomers[1]
@@ -2215,9 +2200,7 @@ using Test
         poly = Polymer(;
             length = 4,
             maxlength = 8,
-            nMonomerTypes = 2,
-            chemPot = 0.0,
-            intPot = 0.0
+            nMonomerTypes = 2
         )
         
         tf = FastBulkMonomer(;
@@ -2225,7 +2208,7 @@ using Test
             initShape = "uniform"
         )
         
-        initMonomers!(poly)
+        initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
         init!(l, [poly, tf])
         
         monomer = poly.monomers[1]
@@ -2253,12 +2236,10 @@ using Test
             length = 4,
             maxlength = 8,
             nMonomerTypes = 2,
-            chemPot = 1.0,
-            intPot = 0.5,
             pattern = :alternating
         )
         
-        initMonomers!(poly)
+        initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.5)
         init!(l, [poly])
         
         # Set specific potentials for each monomer type

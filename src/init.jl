@@ -139,39 +139,38 @@ end
 
 export initMonomers!
 """
-    initMonomers!(p::Polymer, nMonomerTypes::Int32; p.pattern::Symbol=:uniform, p.customPattern::Union{Nothing, Vector{Int32}}=nothing)
+    initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::Float64=0.0)
 
 Initialize subspecies for a polymer with bead-dependent interactions.
 
 # Arguments
-- `p::Poly`: The polymer to initialize subspecies for
-- `nMonomerTypes::Int32`: Number of distinct subspecies
-- `pattern::Symbol`: How to assign beads to subspecies:
-    - `:uniform`: All beads belong to subspecies 1 (default, backward compatible)
-    - `:alternating`: Alternates between subspecies (1, 2, 1, 2, ...)
-    - `:block`: Divides polymer into n equal blocks
-    - `:random`: Random assignment
-    - `:custom`: Use p.customPattern vector to assign beads
-- `p.customPattern::Vector{Int32}`: When p.pattern=:custom, a vector of subspecies indices
-    of length p.maxlength. Each element is the subspecies index (using intIdx from
-    the shared intSpecies list) for the corresponding bead position.
+- `p::Polymer`: The polymer to initialize subspecies for
+- `defaultChemPot::Float64`: Default chemical potential for all monomers (default: 0.0)
+- `defaultIntPot::Float64`: Default interaction potential for all monomers (default: 0.0)
+
+# Pattern options (set via p.pattern field):
+- `:uniform`: All beads belong to subspecies 1 (default, backward compatible)
+- `:alternating`: Alternates between subspecies (1, 2, 1, 2, ...)
+- `:block`: Divides polymer into n equal blocks
+- `:random`: Random assignment
+- `:custom`: Use p.customPattern vector to assign beads
 
 # Notes
-- Each subspecies inherits the polymer's chemPot and intPot by default.
+- Each subspecies is initialized with the provided default potentials.
 - Use intPot!(p, subspeciesIdx, value) to set subspecies-specific potentials.
 - All subspecies share a synchronized intSpecies list and intMat (like AbstractBulk).
 - When using :custom p.pattern, indices should be 1-based subspecies indices.
 """
-function initMonomers!(p::Polymer)
+function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::Float64=0.0)
     
-    # Create subspecies with default values from polymer
+    # Create subspecies with default values
     p.monomers = Vector{PolyMonomer}(undef, p.nMonomerTypes)
     for i in 1:p.nMonomerTypes
         p.monomers[i] = PolyMonomer(
             name = string(p.name, "_monomer", i),
             poly = p,
-            chemPot = p.chemPot,
-            intPot = p.intPot
+            chemPot = defaultChemPot,
+            intPot = defaultIntPot
         )
     end
     
@@ -240,60 +239,6 @@ function initMonomers!(p::Polymer)
     return p
 end
 
-
-"""
-    getPolyMonomer(p::Polymer, beadKey::Int32)
-
-Get the Subspecies for a given bead by its key in the position dictionary.
-Uses the bead's position in the chain (via traversal) to look up its subspecies.
-"""
-function getPolyMonomer(p::Polymer, beadKey::Int32)
-    if p.monomers === nothing || p.monomerIndex === nothing
-        return nothing
-    end
-    
-    # Find the bead's index in the chain by traversing from head
-    idx = 1
-    key = p.head
-    while key != beadKey && key != 0
-        key = p.pos[key][5]  # next bead
-        idx += 1
-    end
-    
-    if key == 0
-        error("Bead key $beadKey not found in polymer chain")
-    end
-    
-    return p.monomers[p.monomerIndex[idx]]
-end
-
-
-"""
-    getSubspeciesIdx(p::Polymer, beadKey::Int32)
-
-Get the subspecies index for a given bead by its key.
-"""
-function getPolyMonomerIdx(p::Polymer, beadKey::Int32)
-    if p.monomerIndex === nothing
-        return Int32(1)
-    end
-    
-    # Find the bead's index in the chain
-    idx = 1
-    key = p.head
-    while key != beadKey && key != 0
-        key = p.pos[key][5]
-        idx += 1
-    end
-    
-    if key == 0
-        error("Bead key $beadKey not found in polymer chain")
-    end
-    
-    return p.monomerIndex[idx]
-end
-
-
 # initializes species configuration from a list of presets
 export initShape!
 function initShape!(s::Polymer)
@@ -335,15 +280,6 @@ function initSpecies!(p::Polymer)
     p.hastingsFactor = 1.0
 
     return p
-end
-
-# initializes beads positioned uniformly randomly (dilute and well-mixed)
-export initSpecies!
-function initSpecies!(b::PolyMonomer)
-
-    _ensureIntStructures!(b)
-
-    return b
 end
 
 ######## BulkMonomer #######

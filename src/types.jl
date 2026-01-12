@@ -106,8 +106,6 @@ Base.@kwdef mutable struct Polymer <: AbstractPolymer
     length::Int32        # number of beads
     maxlength::Int32     # max number of beads
     nMonomerTypes::Union{Nothing, Int32} = nothing  # number of distinct PolyMonomer
-    chemPot::Union{Nothing,Float64}   # monomer chemical potential
-    intPot::Union{Nothing,Float64}    # monomer interaction potential
     
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing    # box linear dimension
@@ -191,9 +189,9 @@ Base.@kwdef mutable struct BulkMonomer <: AbstractBulkMonomer
     ghost::Union{Nothing, AbstractSpecies} = nothing
 
     # multi-species interaction fields
-    intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int}}} = nothing  # list of (species, canonical index) pairs
+    intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int32}}} = nothing  # list of (species, canonical index) pairs
     intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
-    intIdx::Union{Nothing, Int} = nothing  # this species' canonical index in intMat
+    intIdx::Union{Nothing, Int32} = nothing  # this species' canonical index in intMat
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -249,9 +247,9 @@ Base.@kwdef mutable struct FastBulkMonomer <: AbstractFastBulkMonomer
     ghost::Union{Nothing, AbstractSpecies} = nothing
 
     # multi-species interaction fields
-    intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int}}} = nothing  # list of (species, canonical index) pairs
+    intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int32}}} = nothing  # list of (species, canonical index) pairs
     intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
-    intIdx::Union{Nothing, Int} = nothing  # this species' canonical index in intMat
+    intIdx::Union{Nothing, Int32} = nothing  # this species' canonical index in intMat
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing

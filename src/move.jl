@@ -188,7 +188,7 @@ export move!
 function move!(p::Polymer)
 
     # sample a bond at random along the chain
-    p.moveIdx = rand(1:p.length)
+    p.moveIdx = rand(1:p.length - 1)
     
     # find coordinates and keys of selected bond and adjacent beads
     identifyBond!(p)

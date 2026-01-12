@@ -8,6 +8,101 @@ let
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
+# Testing Hamiltonian - PolyMonomer implementation
+@time let
+    date = "20251208"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "test"
+    outpath = string(outdir, outfile)
+
+    l = Lattice(;
+        boxlength = 16,
+        nspecies = 1
+    )
+
+    # Polymer
+    p = Polymer(;
+        length = 16,
+        maxlength = 128,
+        nMonomerTypes = 1,
+        initPos = [1,8,8]
+    )
+    
+    initMonomers!(p, defaultChemPot=0.0, defaultIntPot=-1.0)
+    m = p.monomers[1]
+
+    slist = [p]
+
+    # initialize lattice and species
+    init!(l, slist)
+
+    # initial energy
+    hamInitial = p.ham
+
+    #### iterating multiple moves
+    nmoves = 0
+    frame = 1
+    nframes = 10
+    step = 50
+    deltaH = 0
+    moveMade = false
+    
+    hams = zeros(nframes)
+    accDeltaH = zeros(nframes)
+    
+    # first frame
+    accDeltaH[frame] = hamInitial
+    
+    ham!(p)
+    hams[frame] = hamInitial
+
+    # exportSpecies!(slist, string(outpath, "_frame$(1)"))
+
+    while frame <= nframes - 1
+        if moveMade
+            deltaH += p.deltaH
+
+            if mod(nmoves, step) == 0
+                frame += 1
+
+                accDeltaH[frame] = accDeltaH[frame-1] + deltaH
+                deltaH = 0
+                
+                ham!(p)
+                hams[frame] = p.ham
+            end
+        end
+        
+        moveMade = move!(p)
+        nmoves += moveMade
+    end
+
+    @assert hams == accDeltaH
+
+    # exportSpecies!(slist, string(outpath, "_frame$(2)"))
+
+    # plots = []
+    # colors = ["blue"]
+
+    # pl = plot(eachindex(hams), hams[:];
+    # label = "ham",
+    # xlabel = "frame",
+    # ylabel = "Energy",
+    # color = colors[1],
+    # legend = :topright)
+
+    # plot!(pl, eachindex(accDeltaH), accDeltaH[:];
+    # label = "accDeltaH",
+    # color = colors[1],
+    # linestyle = :dash)
+
+    # push!(plots, pl)
+
+    # plot(plots[1]; layout = (1, 1), size = (600, 300))
+end
+
+## 1010011111110000100000101010111100010100001100101110000
 # Testing Hamiltonian and its increment
 @time let
     date = "20251208"
@@ -18,7 +113,7 @@ end
 
     l = Lattice(;
         boxlength = 4,
-        nspecies = 2
+        nspecies = 3
     )
 
     a = FastBulkMonomer(;
@@ -369,12 +464,10 @@ end
     poly = Polymer(;
         length = l.boxlength,
         maxlength = 8,
-        nMonomerTypes = 3,
-        chemPot = 0.0,
-        intPot = 0.0
+        nMonomerTypes = 3
     )
     
-    initMonomers!(poly)
+    initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
 
     dna = poly.monomers[1]
     promoter = poly.monomers[2]
