@@ -161,19 +161,20 @@ using Test
     @testset "Hamiltonian (Polymer)" begin
 
         l = Lattice(;
-            boxlength = 42,
-            nspecies = 2
+            boxlength = 16,
+            nspecies = 1
         )
 
         # Polymer
         p = Polymer(;
-            length = 24,
-            maxlength = 32,
+            length = 16,
+            maxlength = 128,
             nMonomerTypes = 1,
-            initPos = [5,21,21]
+            initPos = [1,8,8]
         )
         
-        initMonomers!(p, defaultChemPot=1.0, defaultIntPot=1.0)
+        initMonomers!(p, defaultChemPot=0.0, defaultIntPot=-1.0)
+        m = p.monomers[1]
 
         slist = [p]
 
@@ -200,14 +201,13 @@ using Test
         ham!(p)
         hams[frame] = hamInitial
 
-        while frame <= nframes - 1
-            
-            if moveMade
+        # exportSpecies!(slist, string(outpath, "_frame$(1)"))
 
+        while frame <= nframes - 1
+            if moveMade
                 deltaH += p.deltaH
 
                 if mod(nmoves, step) == 0
-                
                     frame += 1
 
                     accDeltaH[frame] = accDeltaH[frame-1] + deltaH
@@ -223,6 +223,7 @@ using Test
         end
 
         @test hams == accDeltaH
+
     end
 
 # MARK: -Ham BulkMonomer

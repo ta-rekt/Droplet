@@ -1,5 +1,5 @@
 
-############# Polymermer move functions #############
+############# Polymer move functions #############
 # MARK: -Polymer
 
 export overlap

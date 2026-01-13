@@ -7,6 +7,12 @@ let
     using OrderedCollections
 end
 
+# TODO:
+# - position and lattice have to be stored at the monomer level
+# - make p.pos store monomer types instead of position (combine it with p.monomers)
+# - the energy of a poly is then just the sum of monomer energies, minus the 
+#   pairwise interaction potentials along the polymer
+
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing Hamiltonian - PolyMonomer implementation
 @time let
@@ -17,20 +23,21 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 16,
+        boxlength = 4,
         nspecies = 1
     )
 
     # Polymer
     p = Polymer(;
-        length = 16,
-        maxlength = 128,
+        length = 4,
+        maxlength = 8,
         nMonomerTypes = 1,
-        initPos = [1,8,8]
+        initPos = [1,2,2],
+        pattern=:uniform
     )
     
     initMonomers!(p, defaultChemPot=0.0, defaultIntPot=-1.0)
-    m = p.monomers[1]
+    a = p.monomers[1]
 
     slist = [p]
 
@@ -43,8 +50,8 @@ end
     #### iterating multiple moves
     nmoves = 0
     frame = 1
-    nframes = 10
-    step = 50
+    nframes = 1000
+    step = 1
     deltaH = 0
     moveMade = false
     
