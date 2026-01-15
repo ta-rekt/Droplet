@@ -119,23 +119,15 @@ end
     outpath = string(outdir, outfile)
 
     l = Lattice(;
-        boxlength = 4,
+        boxlength = 16,
         nspecies = 3
     )
 
-    # a = FastBulkMonomer(;
-    #     length = 4,
-    #     initShape = "box",
-    #     initParams = 1,
-    #     initPos = [2,2,2]
-    # )
-
-    # Polymer
     p = Polymer(;
-        length = 4,
-        maxlength = 8,
+        length = 16,
+        maxlength = 64,
         nMonomerTypes = 1,
-        initPos = [1,2,2],
+        initPos = [1,8,8],
         pattern=:uniform
     )
     
@@ -143,12 +135,12 @@ end
     a = p.monomers[1]
 
     b = FastBulkMonomer(;
-        length = 2,
+        length = 64,
         initShape = "uniform"
     )
 
     c = FastBulkMonomer(;
-        length = 2,
+        length = 64,
         initShape = "uniform"
     )
 
@@ -169,7 +161,7 @@ end
     nmoves = [0,0,0]
     frame = [1,1,1]
     frame_joint = 1
-    nframes = 10
+    nframes = 100
     step = 1
     deltaH = [0.0,0.0,0.0]
     niter = 0
@@ -242,8 +234,13 @@ end
                 frame[i] += 1
                 frame_joint += 1
 
-                println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
-                exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
+                # println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
+                # exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
+
+                if hams[1] != accDeltaH[1] || hams[2] != accDeltaH[2] || hams[3] != accDeltaH[3]
+                    println("inconsistency at frame ", frame_joint)
+                    break
+                end
             end
         end
     end

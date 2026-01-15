@@ -65,10 +65,7 @@ Base.@kwdef mutable struct PolyMonomer <: AbstractPolyMonomer
     intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int32}}} = nothing  # list of (Monomer, canonical index) pairs
     intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
     intIdx::Union{Nothing, Int32} = nothing  # this Monomer' canonical index in intMat
-
-    # for convenience
-    deltaHP::Union{Nothing, Float64} = nothing   # Hamiltonian increment from partner move
-end
+  end
 
 
 # Now define Polymer completely

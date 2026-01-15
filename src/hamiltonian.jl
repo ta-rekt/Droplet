@@ -25,7 +25,7 @@ function ham!(p::Polymer)
         for (sp, idx) in m.intSpecies    
             # Interaction energy: neighbors - self, subtract 1 from self-interaction
             nnp_ = nnp(m, sp, pos)
-            totalIntEnergy += m.intMat[m.intIdx, idx] * (nnp_ - Int(m.intIdx == idx))   
+            totalIntEnergy += m.intMat[m.intIdx, idx] * (nnp_ - Int(m.intIdx == idx))
         end
 
         key = p.pos[key][5]    # next bead
@@ -60,25 +60,36 @@ function deltaHam!(p::Polymer)
     # bond addition
     if p.moveType == 1
         for (sp, idx) in m.intSpecies
+
+            @show sp.name
             
             # bulk species interactions
             if m.intIdx != idx  
-                sp.deltaHP = - 2 * (m.chemPot + m.intPot)  # change in chain length
 
                 # bulk species energy increment
                 sp.deltaHP += (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
                              + m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj))
 
+                @show sp.deltaHP
+                @show m.intMat[m.intIdx, idx]
+                @show nnp(p, sp, p.newPosi), nnp(p, sp, p.newPosj)
+
                 # polymer energy increment
                 p.deltaH += sp.deltaHP
+
+                @show p.deltaH
             
             # self-interactions
             else
-                p.deltaH = - 2 * (m.chemPot + m.intPot)  # change in chain length
+                p.deltaH += - 2 * (m.chemPot + m.intPot)  # change in chain length
 
                 p.deltaH += (2 * m.intPot * nn(p, p.newPosi) 
                            + 2 * m.intPot * nn(p, p.newPosj)
                            + 2 * m.intPot)  # beads i and j each gain a new neighbor
+                
+                @show p.deltaH
+                @show m.intPot
+                @show nn(p, p.newPosi), nn(p, p.newPosj)
             end
         end
 
@@ -101,7 +112,7 @@ function deltaHam!(p::Polymer)
 
                 # self-interactions
                 else
-                    p.deltaH = (2 * m.intMat[m.intIdx, idx] 
+                    p.deltaH += (2 * m.intMat[m.intIdx, idx] 
                                 * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi)))
                 end
 
@@ -120,7 +131,7 @@ function deltaHam!(p::Polymer)
 
                 # self-interactions
                 else
-                    p.deltaH = (2 * m.intMat[m.intIdx, idx] 
+                    p.deltaH += (2 * m.intMat[m.intIdx, idx] 
                                 * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj)))
 
                 end
@@ -137,8 +148,6 @@ function deltaHam!(p::Polymer)
             # bulk species interactions
             if m.intIdx != idx  
 
-                sp.deltaHP = 2 * (m.chemPot + m.intPot)   # change in chain length
-
                 # bulk species energy increment
                 sp.deltaHP -= (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
                              + m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj))
@@ -148,7 +157,7 @@ function deltaHam!(p::Polymer)
             
             # self-interactions
             else
-                p.deltaH = 2 * (m.chemPot + m.intPot)   # change in chain length
+                p.deltaH += 2 * (m.chemPot + m.intPot)   # change in chain length
 
                 p.deltaH -= (2 * m.intPot * nn(p, p.newPosi) 
                            + 2 * m.intPot * nn(p, p.newPosj)
@@ -199,10 +208,10 @@ function deltaHam!(b::BulkMonomer)
     # energy increment from cross-interactions with each partner
     if !isnothing(b.intMat)
         for (sp, idx) in b.intSpecies
-            sp.deltaHP = (b.intMat[b.intIdx, idx] 
+            setDeltaHP(sp, (b.intMat[b.intIdx, idx] 
                        * ((nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))
-                       - Int(b.intIdx == idx))) # subtract 1 in self-interaction
-            b.deltaH += sp.deltaHP
+                       - Int(b.intIdx == idx)))) # subtract 1 in self-interaction
+            b.deltaH += getDeltaHP(sp)
         end
     end
 
@@ -230,9 +239,9 @@ function deltaHam!(b::FastBulkMonomer)
     # energy increment from cross-interactions with each partner
     if !isnothing(b.intMat)
         for (sp, idx) in b.intSpecies
-            sp.deltaHP = (b.intMat[b.intIdx, idx] 
-                       * (nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))) * sign
-            b.deltaH += sp.deltaHP
+            setDeltaHP(sp, (b.intMat[b.intIdx, idx] 
+                       * (nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))) * sign)
+            b.deltaH += getDeltaHP(sp)
         end
     end
 

@@ -1,7 +1,8 @@
 
 export coords_equal, getLatS, getTempVec, getBoxlength, getPolyMonomer, 
        getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nnIdxs!, splitDroplet!,
-       dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP
+       dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP,
+       setHam, setDeltaHam, setDeltaHP
 
 ############# Generic utilities #############
 # MARK: -Generic
@@ -59,6 +60,36 @@ end
 
 @inline function getDeltaHP(s::AbstractSpecies)
     return s.deltaHP
+end
+
+@inline function setHam(m::AbstractPolyMonomer, val::Float64)
+    m.poly.ham = val
+    return m
+end
+
+@inline function setHam(s::AbstractSpecies, val::Float64)
+    s.ham = val
+    return s
+end
+
+@inline function setDeltaHam(m::AbstractPolyMonomer, val::Float64)
+    m.poly.deltaH = val
+    return m
+end
+
+@inline function setDeltaHam(s::AbstractSpecies, val::Float64)
+    s.deltaH = val
+    return s
+end
+
+@inline function setDeltaHP(m::AbstractPolyMonomer, val::Float64)
+    m.poly.deltaHP = val
+    return m
+end
+
+@inline function setDeltaHP(s::AbstractSpecies, val::Float64)
+    s.deltaHP = val
+    return s
 end
 
 
