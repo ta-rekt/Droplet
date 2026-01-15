@@ -1,3 +1,6 @@
+
+export intPot!, intPot!, getIntPot
+
 ############# Interaction potential functions #############
 
 ############# Helpers #############
@@ -112,7 +115,6 @@ end
 # MARK: -Monomer
 
 # sets the self interaction potential of a species
-export intPot!
 function intPot!(b::AbstractMonomer, pot::Float64)
     _ensureIntStructures!(b)
     
@@ -126,7 +128,6 @@ end
 
 # sets the interaction potential between two species
 # updates the interaction matrix and interacting species list
-export intPot!
 function intPot!(a::AbstractMonomer, b::AbstractMonomer, pot::Float64)
     # ensure both species have interaction structures initialized
     _ensureIntStructures!(a)
@@ -153,7 +154,6 @@ function intPot!(a::AbstractMonomer, b::AbstractMonomer, pot::Float64)
 end
 
 # get interaction potential between two species
-export getIntPot
 function getIntPot(a::AbstractMonomer, b::AbstractMonomer)
     if a.intMat === nothing || a.intIdx === nothing
         return nothing

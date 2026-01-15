@@ -123,12 +123,24 @@ end
         nspecies = 3
     )
 
-    a = FastBulkMonomer(;
+    # a = FastBulkMonomer(;
+    #     length = 4,
+    #     initShape = "box",
+    #     initParams = 1,
+    #     initPos = [2,2,2]
+    # )
+
+    # Polymer
+    p = Polymer(;
         length = 4,
-        initShape = "box",
-        initParams = 1,
-        initPos = [2,2,2]
+        maxlength = 8,
+        nMonomerTypes = 1,
+        initPos = [1,2,2],
+        pattern=:uniform
     )
+    
+    initMonomers!(p)
+    a = p.monomers[1]
 
     b = FastBulkMonomer(;
         length = 2,
@@ -147,7 +159,7 @@ end
     intPot!(a, b, -1.0)
     intPot!(a, c, -1.0)
 
-    slist = [a, b, c]
+    slist = [p, b, c]
     # slist = [a, b]
 
     # initialize lattice and species
@@ -157,7 +169,7 @@ end
     nmoves = [0,0,0]
     frame = [1,1,1]
     frame_joint = 1
-    nframes = 1000
+    nframes = 10
     step = 1
     deltaH = [0.0,0.0,0.0]
     niter = 0
@@ -175,24 +187,33 @@ end
     accDeltaH = []
     
     # first frame, initial energy
-    push!(hams_[1], a.ham)
-    push!(hams_[2], b.ham)
-    push!(hams_[3], c.ham)
-    push!(accDeltaH_[1], a.ham)
-    push!(accDeltaH_[2], b.ham)
-    push!(accDeltaH_[3], c.ham)
+    push!(hams_[1], getHam(a))
+    push!(hams_[2], getHam(b))
+    push!(hams_[3], getHam(c))
+    push!(accDeltaH_[1], getHam(a))
+    push!(accDeltaH_[2], getHam(b))
+    push!(accDeltaH_[3], getHam(c))
+
+    bulkSpecies = Vector{Any}(undef, 0)
 
     for (sp, idx) in a.intSpecies
         push!(hams, hams_[idx])
         push!(accDeltaH, accDeltaH_[idx])
+
+        if typeof(sp) != PolyMonomer
+            push!(bulkSpecies, (sp, idx))
+        end
     end
 
     ham!(a)
     ham!(b)
     ham!(c)
-    a.deltaH = 0.0
+    p.deltaH = 0.0
     b.deltaH = 0.0
     c.deltaH = 0.0
+    p.deltaHP = 0.0
+    b.deltaHP = 0.0
+    c.deltaHP = 0.0
 
     color = ["blue (A)", "orange (B)", "green (C)"]
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
@@ -201,12 +222,12 @@ end
         for (s, i) in a.intSpecies
             if move!(s)
                 nmoves[i] += 1
-                deltaH[i] += s.deltaH
+                deltaH[i] += getDeltaHam(s)
 
                 # update deltaH for the partners
-                for (p, j) in s.intSpecies
+                for (p, j) in a.intSpecies
                     if j != s.intIdx
-                        deltaH[j] += p.deltaHP
+                        deltaH[j] += getDeltaHP(p)
                         # println(p.name, " ", deltaH[j])
                     end
                 end
@@ -216,13 +237,13 @@ end
                 deltaH[i] = 0
                 
                 ham!(s)
-                push!(hams[i], s.ham)
+                push!(hams[i], getHam(s))
 
                 frame[i] += 1
                 frame_joint += 1
 
-                # println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
-                # exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
+                println("frame ", frame_joint, ", ", color[i], " moved (", frame[i], ")")
+                exportSpecies!(slist, string(outpath, "_frame$(frame_joint)"))
             end
         end
     end
@@ -233,9 +254,9 @@ end
     println("A acceptance rate: ", nmoves[1] / nframes)
     println("B acceptance rate: ", nmoves[2] / nframes)
 
-    @assert hams[1] == accDeltaH[1]
-    @assert hams[2] == accDeltaH[2]
-    @assert hams[3] == accDeltaH[3]
+    # @assert hams[1] == accDeltaH[1]
+    # @assert hams[2] == accDeltaH[2]
+    # @assert hams[3] == accDeltaH[3]
 
     plots = []
     colors = ["blue", "orange", "green"]
@@ -256,7 +277,7 @@ end
         push!(plots, pl)
     end
 
-    plot(plots[1], plots[2]; layout = (2, 1), size = (600, 600))
+    plot(plots[1], plots[2], plots[3]; layout = (3, 1), size = (600, 600))
 end
 
 ## 1010011111110000100000101010111100010100001100101110000

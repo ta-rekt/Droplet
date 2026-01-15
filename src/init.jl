@@ -1,17 +1,19 @@
+
+export initHam!, initUniform!, initLine!, initBox!, initMovableSet!, 
+       initMonomers!, initShape!, init!
+
 ############# Species initialization functions #############
 
 ######## Generic #######
 # MARK: -Generic
 
 # initialize hamiltonian
-export initHam!
 function initHam!(s::AbstractSpecies)
     ham!(s)
     return s
 end
 
 # initial configurations
-export initUniform!
 function initUniform!(pos::OrderedDict{Int32, Vector{Int32}}, boxlength::Int32, length::Int32)
     # sample uniformly randomly
     pos_idxs = sample(0:(boxlength^3-1), length, replace=false)
@@ -30,7 +32,6 @@ function initUniform!(pos::OrderedDict{Int32, Vector{Int32}}, boxlength::Int32, 
     return pos
 end
 
-export initLine!
 function initLine!(pos::OrderedDict{Int32, Vector{Int32}}, 
                    initPos::Union{Nothing, Vector{Int32}}, 
                    boxlength::Int32,
@@ -49,7 +50,6 @@ function initLine!(pos::OrderedDict{Int32, Vector{Int32}},
     return pos
 end
 
-export initBox!
 function initBox!(pos::OrderedDict{Int32, Vector{Int32}}, 
                   latticelength::Int32,
                   length::Int32,
@@ -103,7 +103,6 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
 end
 
 # populate the set of movable particles of a species
-export initMovableSet!
 function initMovableSet!(s::AbstractSpecies)
     for i in collect(keys(s.pos))
         nns = nn(s, s.pos[i][range(1,3)])
@@ -119,7 +118,6 @@ end
 # MARK: -Species
 
 # initializes empty dict of bead locations and other containers
-export initSpecies!
 function initSpecies!(s::Species)
     s.name = string("species", s.id)
     s.pos = OrderedDict{Int32, Vector{Int32}}()
@@ -137,7 +135,6 @@ end
 ######## Polymer #######
 # MARK: -Polymer
 
-export initMonomers!
 """
     initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::Float64=0.0)
 
@@ -240,7 +237,6 @@ function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::F
 end
 
 # initializes species configuration from a list of presets
-export initShape!
 function initShape!(s::Polymer)
     if s.initShape == "line" || s.initShape === nothing
         initLine!(s.pos, s.initPos, s.boxlength, s.length)
@@ -256,7 +252,6 @@ function initShape!(s::Polymer)
 end
 
 # initializes bead locations of a long Polymer in a doubly-linked list
-export initSpecies!
 function initSpecies!(p::Polymer)
     p.name = string("poly", p.id)
     p.pos = OrderedDict{Int32, Vector{Int32}}()
@@ -286,7 +281,6 @@ end
 # MARK: -BulkMonomer
 
 # initializes species configuration from a list of presets
-export initShape!
 function initShape!(s::AbstractBulkMonomer)
     if s.initShape == "uniform" || s.initShape === nothing
         initUniform!(s.pos, s.boxlength, s.length)
@@ -329,7 +323,6 @@ function initShape!(s::AbstractBulkMonomer)
 end
 
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
-export initSpecies!
 function initSpecies!(b::BulkMonomer)
 
     b.name = string("BulkMonomer", b.id)
@@ -360,7 +353,6 @@ end
 # MARK: -FastBulkMonomer
 
 # initializes beads positioned uniformly randomly (dilute and well-mixed)
-export initSpecies!
 function initSpecies!(b::FastBulkMonomer)
 
     b.name = string("BulkMonomer", b.id)
@@ -396,7 +388,6 @@ end
 # MARK: -System
 
 # initializes lattice sites of each species from their bead locations
-export init!
 function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
     # Separate species that need lattice layers from monomers that delegate

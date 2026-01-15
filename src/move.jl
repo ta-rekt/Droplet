@@ -1,8 +1,10 @@
 
+export  overlap, addBond!, kinkBond!, removeBond!, identifyBond!, 
+        makeMove!, move!, identifyBond!
+
 ############# Polymer move functions #############
 # MARK: -Polymer
 
-export overlap
 function overlap(p::Polymer)
     return ((p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] == 1 && 
              !coords_equal(p.bprev, p.newPosi)) ||
@@ -10,7 +12,6 @@ function overlap(p::Polymer)
              !coords_equal(p.bnext, p.newPosj)))
 end
 
-export addBond!
 function addBond!(p::Polymer)
 
     # TODO: handle corner cases
@@ -59,7 +60,6 @@ function addBond!(p::Polymer)
     return p
 end
 
-export kinkBond!
 function kinkBond!(p::Polymer)
 
     # TODO: handle corner cases
@@ -94,7 +94,6 @@ function kinkBond!(p::Polymer)
     return p
 end
 
-export removeBond!
 function removeBond!(p::Polymer)
 
     # TODO: handle corner cases
@@ -126,7 +125,6 @@ end
 
 # Finds the bead coordinates, neighbording beads, and vector of the bond 
 # to which the bead selected by p.moveIdx belongs
-export identifyBond!
 function identifyBond!(p::Polymer)
 
     @assert p.moveIdx >= 1 && p.moveIdx <= p.length begin
@@ -159,7 +157,6 @@ function identifyBond!(p::Polymer)
 end
 
 # Calls the appropriate operation (add, kink or remove) to execute a move
-export makeMove!
 function makeMove!(p::Polymer)
 
     @assert p.moveType == 1 || p.moveType == 2 || p.moveType == 3 begin
@@ -184,7 +181,6 @@ end
 
 # executes a move on polymermer s inside lattice l at position p.moveIdx, of type
 # moveType (add, remove or kink) sampled according to the metropolis algorithm
-export move!
 function move!(p::Polymer)
 
     # sample a bond at random along the chain
@@ -215,16 +211,17 @@ function move!(p::Polymer)
     return false
 end
 
+# delegates moving to parent polymer
+move!(m::PolyMonomer) = move!(m.poly)
+
 
 ############# BulkMonomer move functions #############
 # MARK: -BulkMonomer
 
-export overlap
 function overlap(b::AbstractBulkMonomer)
     return b.latS[b.newPos[1], b.newPos[2], b.newPos[3]] > 0
 end
 
-export identifyBond!
 function identifyBond!(b::BulkMonomer)
     b.bi = view(b.pos[b.moveIdx], range(1, 3))
 
@@ -232,7 +229,6 @@ function identifyBond!(b::BulkMonomer)
 end
 
 # Translates a particle to a new position set by b.newPos
-export makeMove!
 function makeMove!(b::BulkMonomer)
     
     # update lattice sites
@@ -254,7 +250,6 @@ function makeMove!(b::BulkMonomer)
 end
 
 # Executes a move on a species of bulkMonomer monomers diluted in the box
-export move!
 function move!(b::BulkMonomer)
 
     # sample a particle at random
@@ -280,7 +275,6 @@ end
 ############# FastBulkMonomer move functions #############
 # MARK: -FastBulkMonomer
 
-export identifyBond!
 function identifyBond!(b::FastBulkMonomer)
     b.moveIdx = b.latS[b.bi[1], b.bi[2], b.bi[3]]
     b.moveIdxNew = b.latS[b.newPos[1], b.newPos[2], b.newPos[3]]
@@ -289,7 +283,6 @@ function identifyBond!(b::FastBulkMonomer)
 end
 
 # Translates a particle to a new position set by b.newPos
-export makeMove!
 function makeMove!(b::FastBulkMonomer)
     
     # update lattice sites
@@ -326,7 +319,6 @@ function makeMove!(b::FastBulkMonomer)
 end
 
 # Executes a move on a species of bulkMonomer monomers diluted in the box
-export move!
 function move!(b::FastBulkMonomer)
 
     # pick two sites on the lattice uniformly without replacement

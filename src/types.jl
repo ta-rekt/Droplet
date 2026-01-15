@@ -46,30 +46,6 @@ end
 
 ######## Monomer (for bead-dependent interactions) #######
 # MARK: -PolyMonomer
-
-
-"""
-    Monomer
-
-    A lightweight struct representing a Monomer of polymer beads with distinct 
-    interaction potentials. Used to enable bead-dependent interactions within a polymer.
-
-    Unlike full species, Monomer does not have positions or move-related fields.
-    The parent Polymer maintains a vector of Monomer and a mapping from bead indices
-    to Monomer indices.
-
-    Interaction handling mirrors AbstractBulkMonomer: all interacting Monomer share a 
-    synchronized intSpecies list and intMat matrix.
-
-    # Fields
-    - `id`: Unique identifier for this Monomer
-    - `name`: Human-readable name
-    - `chemPot`: Chemical potential for beads of this Monomer
-    - `intPot`: Self-interaction potential (same Monomer neighbors)
-    - `intSpecies`: List of (Monomer, index) pairs for all interacting Monomer
-    - `intMat`: Shared interaction matrix (symmetric, diagonal = self intPot)
-    - `intIdx`: This Monomer' canonical index in intMat
-"""
 Base.@kwdef mutable struct PolyMonomer <: AbstractPolyMonomer
     id::Int32 = begin
         SPECIES_ID_COUNTER[] += 1
@@ -89,6 +65,9 @@ Base.@kwdef mutable struct PolyMonomer <: AbstractPolyMonomer
     intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int32}}} = nothing  # list of (Monomer, canonical index) pairs
     intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
     intIdx::Union{Nothing, Int32} = nothing  # this Monomer' canonical index in intMat
+
+    # for convenience
+    deltaHP::Union{Nothing, Float64} = nothing   # Hamiltonian increment from partner move
 end
 
 

@@ -1,8 +1,10 @@
+
+export acceptMove, moveTypes!, proposeMove!
+
 ############# Generic metropolis functions #############
 # MARK: -Generic
 
 # accepts or rejects according to the metropolis criterion
-export acceptMove
 function acceptMove(s::AbstractSpecies)
 
     deltaHam!(s)
@@ -17,7 +19,6 @@ end
 
 # Computes all possible move types for the selected bond
 # Warning: needs p.bondVec to be set
-export moveTypes!
 function moveTypes!(p::Polymer)
 
     # dimensions along which to move
@@ -64,7 +65,6 @@ end
 
 # samples moves according to probabilities set by detailed balance
 # writes the sampled direction vector in p.moveVec
-export proposeMove!
 function proposeMove!(p::Polymer)
     
     # compute the possible move types around a bond
@@ -138,7 +138,6 @@ end
 ############# BulkMonomer metropolis functions #############
 # MARK: -BulkMonomer
 
-export proposeMove!
 function proposeMove!(b::BulkMonomer)
 
     for i in range(1, 3)
@@ -159,7 +158,6 @@ end
 ############# FastBulkMonomer metropolis functions #############
 # MARK: -FastBulkMonomer
 
-export proposeMove!
 function proposeMove!(b::FastBulkMonomer)
 
     b.moveVec = sample(0:(b.boxlength^3-1), 2, replace=false)

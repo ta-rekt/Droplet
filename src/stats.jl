@@ -1,20 +1,23 @@
+
+export extractCoords!, centerMass, radius, radiusLine, radiusSphere, boxDensity, 
+       axialDensity , radialDensity, extractCoords!, dfs, cc, dropletVolume, 
+       dropletDensities, diluteDensity, nspeciesBound
+
 ############### Generic #############
 # MARK: -Generic
 
 # extracts the coordinates of a polymer's beads
-export extractCoords!
 function extractCoords!(b::AbstractSpecies, coords::Matrix)
 
-    for k in collect(keys(b.pos))
-        coords[k, 1:3] = b.pos[k][1:3]         # next position
-        coords[k, 4] = b.latS[b.pos[k][1], b.pos[k][2], b.pos[k][3]]   # bead index
+    for (i, k) in enumerate(collect(keys(b.pos)))
+        coords[i, 1:3] = b.pos[k][1:3]         # next position
+        coords[i, 4] = b.latS[b.pos[k][1], b.pos[k][2], b.pos[k][3]]   # bead index
     end
 
     return coords
 end
 
 # returns the center of mass of all (or a subset of) particles of a species
-export centerMass
 function centerMass(s::AbstractSpecies, 
                     subset::Union{Nothing, Set{Int32}} = nothing)
     cm = zeros(3)
@@ -31,7 +34,6 @@ end
 
 # radius of gyration, mean squared distance between each bead and
 # the center of mass
-export radius
 function radius(s::AbstractSpecies)
     cm = centerMass(s)
     rg = 0
@@ -47,7 +49,6 @@ end
 
 
 # gyration radius of a line
-export radiusLine
 function radiusLine(length)
     n = div(length, 2)
     return sqrt((n - 1) / 2)
@@ -55,7 +56,6 @@ end
 
 
 # gyration radius of a sphere
-export radiusSphere
 function radiusSphere(length)
     r = (3*length/(4*pi))^(1/3)
     return sqrt(3/5)*r
@@ -64,7 +64,6 @@ end
 
 # density of particles of species s inside a bounding box
 # bbox[1] = [xl, xh], bbox[2] = [yl, yh], bbox[3] = [zl, zh]
-export boxDensity
 function boxDensity(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
     count = 0
     pos = zeros(Int32, 3)
@@ -86,14 +85,12 @@ function boxDensity(s::AbstractSpecies, bbox::Vector{Vector{Int32}})
 end
 
 # axial density along a parallelepiped with a given thickness
-export axialDensity 
 function axialDensity(s::AbstractSpecies, axis::String, 
                       pos::Vector{Int32}, thick::Int32)
 
 end
 
 # radial density along a disk with given thickness 
-export radialDensity
 function radialDensity(s::AbstractSpecies, axis::String, 
                       pos::Vector{Int32}, thick::Int32)
 
@@ -103,14 +100,14 @@ end
 # MARK: -Poly
 
 # extracts the coordinates of a polymer's beads
-export extractCoords!
 function extractCoords!(p::AbstractPolymer, coords::Matrix)
     key = p.head           # initial bead
     k = 1
     
-    for k in collect(keys(p.pos))
+    for (i, k) in enumerate(collect(keys(p.pos)))
         if key != 0
-            coords[k, :] = p.pos[key][1:3] # next position
+            coords[i, 1:3] = p.pos[key][1:3] # next position
+            coords[i, 4] = i
             key = p.pos[key][5]    # next bead
         end
     end
@@ -124,7 +121,6 @@ end
 # depth-first search: takes a bead index bi and marks all beads
 # traversed starting from bi (adds their indices to the marked list)
 # WARNING: will break if called on Poly TODO: fix
-export dfs
 function dfs(s::AbstractSpecies, bi::Int32)
     marked = Set{Int32}()
     stack_ = OrderedSet{Int32}()
@@ -150,7 +146,6 @@ end
 
 # connected components
 # WARNING: will break if called on Poly TODO: fix
-export cc
 function cc(s::AbstractSpecies)
     ccs = Vector{Set{Int32}}()
     unvisited = Set{Int32}(keys(s.pos))  # all keys
@@ -174,7 +169,6 @@ end
 
 # returns the exact volume of a droplet. Length of CCs in the empty space
 # inside the bounding box, subtracts that from the volume of the box
-export dropletVolume
 function dropletVolume(s::AbstractBulkMonomer, droplet::Set{Int32})
 
     # bounding box around a droplet
@@ -195,7 +189,6 @@ end
 
 
 # exact density of each droplet in a list 
-export dropletDensities
 function dropletDensities(s::AbstractBulkMonomer, droplets::Vector{Set{Int32}})
     densities = Vector{Float64}(undef, 0)
 
@@ -208,7 +201,6 @@ end
 
 
 # (number of particles - total droplet size) / (volume - total droplet volume)
-export diluteDensity
 function diluteDensity(s::AbstractBulkMonomer, droplets::Vector{Set{Int32}})
     
     n = s.length
@@ -223,7 +215,6 @@ function diluteDensity(s::AbstractBulkMonomer, droplets::Vector{Set{Int32}})
 end
 
 # number of particles of a species bound to any of the binding sites
-export nspeciesBound
 function nspeciesBound(sp::AbstractBulkMonomer, 
                        bsites::Vector{T}) where T <: AbstractSpecies
     n = 0

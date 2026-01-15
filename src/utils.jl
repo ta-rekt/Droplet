@@ -1,7 +1,11 @@
+
+export coords_equal, getLatS, getTempVec, getBoxlength, getPolyMonomer, 
+       getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nnIdxs!, splitDroplet!,
+       dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP
+
 ############# Generic utilities #############
 # MARK: -Generic
 
-export coords_equal
 @inline function coords_equal(a, b)
     return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
 end
@@ -9,7 +13,6 @@ end
 
 # Helper functions to access fields that may be on the object itself
 # or on a parent (for PolyMonomer)
-export getLatS
 @inline function getLatS(m::AbstractPolyMonomer)
     return m.poly.latS
 end
@@ -18,7 +21,6 @@ end
     return s.latS
 end
 
-export getTempVec
 @inline function getTempVec(m::AbstractPolyMonomer)
     return m.poly.tempVec
 end
@@ -27,7 +29,6 @@ end
     return s.tempVec
 end
 
-export getBoxlength
 @inline function getBoxlength(m::AbstractPolyMonomer)
     return m.poly.boxlength
 end
@@ -36,8 +37,31 @@ end
     return s.boxlength
 end
 
+@inline function getHam(m::AbstractPolyMonomer)
+    return m.poly.ham
+end
 
-export getPolyMonomer
+@inline function getHam(s::AbstractSpecies)
+    return s.ham
+end
+
+@inline function getDeltaHam(m::AbstractPolyMonomer)
+    return m.poly.deltaH
+end
+
+@inline function getDeltaHam(s::AbstractSpecies)
+    return s.deltaH
+end
+
+@inline function getDeltaHP(m::AbstractPolyMonomer)
+    return m.poly.deltaHP
+end
+
+@inline function getDeltaHP(s::AbstractSpecies)
+    return s.deltaHP
+end
+
+
 """
     getPolyMonomer(p::Polymer, beadIdx::Int32)
 
@@ -53,7 +77,6 @@ function getPolyMonomer(p::Polymer, beadIdx::Int32)
 end
 
 
-export getMonomerPotentials
 @inline function getMonomerPotentials(poly::AbstractPolymer, beadIdx::Int32)
     # For polymers with PolyMonomers, get potentials from the appropriate PolyMonomer
     monomer = getPolyMonomer(poly, beadIdx)
@@ -71,7 +94,6 @@ end
 
 
 # ensures positions are periodic within the lattice's bounding box
-export boxmod!
 function boxmod!(v::Union{SubArray{Int32}, Vector{Int32}}, 
                  w::Union{SubArray{Int32}, Vector{Int32}}, 
                  lb::Int32, ub::Int32)
@@ -91,7 +113,6 @@ end
 
 
 # volume of a bounding box
-export vol
 function vol(bbox::Vector{Vector{Int32}})
 
     @assert length(bbox) == 3
@@ -106,7 +127,6 @@ end
 
 
 # returns true if at least one element of x is adjacent to the bbox
-export onEdge
 function onEdge(s::AbstractSpecies, x::Set{Int32}, bbox::Vector{Vector{Int32}})
 
     @assert length(bbox) == 3
@@ -130,7 +150,6 @@ end
 
 
 # Number of same-species nearest neighbors at a given position
-export nn
 function nn(s::AbstractSpecies, pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0
     latS = getLatS(s)
@@ -157,7 +176,6 @@ end
 
 
 # Number of nearest neighbors between species s and p at a given position
-export nnp
 function nnp(s::AbstractSpecies, 
              p::AbstractSpecies, 
              pos::Union{SubArray{Int32}, Vector{Int32}})
@@ -186,7 +204,6 @@ end
 
 
 # Set of nearest neighbors of a given position
-export nnIdxs!
 function nnIdxs!(b::AbstractSpecies, 
                  pos::Union{SubArray{Int32}, Vector{Int32}})
     k = 1
@@ -230,7 +247,6 @@ end
 
 # splits droplets that sit across a lattice boundary
 # WARNING: assumes droplet max diameter < boxlength / 2
-export splitDroplet!
 function splitDroplet!(s::AbstractBulkMonomer, droplet::Set{Int32})
 
     droplet_vec = collect(droplet)
@@ -262,7 +278,6 @@ end
 
 # finds the bounding box of a droplet, adds 1 along each axis for the empty
 # space around the droplet to be connected
-export dropletBbox
 function dropletBbox(s::AbstractBulkMonomer, droplet::Set{Int32})
 
     # start with position of an arbitrary particle in the droplet
@@ -296,7 +311,6 @@ end
 
 
 # fills up a box around a droplet in the co-lattice
-export fillBbox!
 function fillBbox!(s::AbstractBulkMonomer, droplet::Set{Int32}, bbox::Vector{Vector{Int32}})
 
     xl, xh = bbox[1]
@@ -324,7 +338,6 @@ end
 
 
 # clears a box around a droplet in the ghost lattice
-export clearBbox!
 function clearBbox!(s::AbstractBulkMonomer, bbox::Vector{Vector{Int32}})
 
     xl, xh = bbox[1]
