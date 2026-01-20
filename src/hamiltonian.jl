@@ -60,24 +60,16 @@ function deltaHam!(p::Polymer)
     # bond addition
     if p.moveType == 1
         for (sp, idx) in m.intSpecies
-
-            @show sp.name
             
             # bulk species interactions
             if m.intIdx != idx  
 
                 # bulk species energy increment
-                sp.deltaHP += (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
+                sp.deltaHP = (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
                              + m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj))
-
-                @show sp.deltaHP
-                @show m.intMat[m.intIdx, idx]
-                @show nnp(p, sp, p.newPosi), nnp(p, sp, p.newPosj)
 
                 # polymer energy increment
                 p.deltaH += sp.deltaHP
-
-                @show p.deltaH
             
             # self-interactions
             else
@@ -86,10 +78,6 @@ function deltaHam!(p::Polymer)
                 p.deltaH += (2 * m.intPot * nn(p, p.newPosi) 
                            + 2 * m.intPot * nn(p, p.newPosj)
                            + 2 * m.intPot)  # beads i and j each gain a new neighbor
-                
-                @show p.deltaH
-                @show m.intPot
-                @show nn(p, p.newPosi), nn(p, p.newPosj)
             end
         end
 

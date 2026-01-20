@@ -161,7 +161,7 @@ end
     nmoves = [0,0,0]
     frame = [1,1,1]
     frame_joint = 1
-    nframes = 100
+    nframes = 1000
     step = 1
     deltaH = [0.0,0.0,0.0]
     niter = 0
@@ -218,13 +218,13 @@ end
 
                 # update deltaH for the partners
                 for (p, j) in a.intSpecies
-                    if j != s.intIdx
+                    if j != i
                         deltaH[j] += getDeltaHP(p)
-                        # println(p.name, " ", deltaH[j])
+                        # @show p.name, deltaH[j]
                     end
                 end
 
-                # println(s.name, " ", deltaH[i])
+                # @show s.name, deltaH[i] 
                 push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
                 deltaH[i] = 0
                 
@@ -251,30 +251,30 @@ end
     println("A acceptance rate: ", nmoves[1] / nframes)
     println("B acceptance rate: ", nmoves[2] / nframes)
 
-    # @assert hams[1] == accDeltaH[1]
-    # @assert hams[2] == accDeltaH[2]
-    # @assert hams[3] == accDeltaH[3]
+    @assert hams[1] == accDeltaH[1]
+    @assert hams[2] == accDeltaH[2]
+    @assert hams[3] == accDeltaH[3]
 
-    plots = []
-    colors = ["blue", "orange", "green"]
+    # plots = []
+    # colors = ["blue", "orange", "green"]
 
-    for i in eachindex(hams)
-        pl = plot(eachindex(hams[i]), hams[i][:];
-        label = "ham",
-        xlabel = "frame",
-        ylabel = "Energy",
-        color = colors[i],
-        legend = :topright)
+    # for i in eachindex(hams)
+    #     pl = plot(eachindex(hams[i]), hams[i][:];
+    #     label = "ham",
+    #     xlabel = "frame",
+    #     ylabel = "Energy",
+    #     color = colors[i],
+    #     legend = :topright)
 
-        plot!(pl, eachindex(accDeltaH[i]), accDeltaH[i][:];
-        label = "accDeltaH",
-        color = colors[i],
-        linestyle = :dash)
+    #     plot!(pl, eachindex(accDeltaH[i]), accDeltaH[i][:];
+    #     label = "accDeltaH",
+    #     color = colors[i],
+    #     linestyle = :dash)
 
-        push!(plots, pl)
-    end
+    #     push!(plots, pl)
+    # end
 
-    plot(plots[1], plots[2], plots[3]; layout = (3, 1), size = (600, 600))
+    # plot(plots[1], plots[2], plots[3]; layout = (3, 1), size = (600, 600))
 end
 
 ## 1010011111110000100000101010111100010100001100101110000

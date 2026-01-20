@@ -201,8 +201,6 @@ using Test
         ham!(p)
         hams[frame] = hamInitial
 
-        # exportSpecies!(slist, string(outpath, "_frame$(1)"))
-
         while frame <= nframes - 1
             if moveMade
                 deltaH += p.deltaH
@@ -224,6 +222,128 @@ using Test
 
         @test hams == accDeltaH
 
+    end
+
+    @testset "Hamiltonian (homonogeneous interacting polymer)" begin
+
+        l = Lattice(;
+            boxlength = 16,
+            nspecies = 3
+        )
+
+        p = Polymer(;
+            length = 16,
+            maxlength = 64,
+            nMonomerTypes = 1,
+            initPos = [1,8,8],
+            pattern=:uniform
+        )
+        
+        initMonomers!(p)
+        a = p.monomers[1]
+
+        b = FastBulkMonomer(;
+            length = 64,
+            initShape = "uniform"
+        )
+
+        c = FastBulkMonomer(;
+            length = 64,
+            initShape = "uniform"
+        )
+
+        # self and interaction potentials
+        intPot!(a, -1.0)
+        intPot!(b, -1.0)
+        intPot!(c, -1.0)
+        intPot!(a, b, -1.0)
+        intPot!(a, c, -1.0)
+
+        slist = [p, b, c]
+        # slist = [a, b]
+
+        # initialize lattice and species
+        init!(l, slist)
+
+        #### iterating multiple moves
+        nmoves = [0,0,0]
+        frame = [1,1,1]
+        frame_joint = 1
+        nframes = 1000
+        step = 1
+        deltaH = [0.0,0.0,0.0]
+        niter = 0
+        moveMade = [false, false, false]
+
+        hamsA = Vector{Float64}(undef, 0)
+        hamsB = Vector{Float64}(undef, 0)
+        hamsC = Vector{Float64}(undef, 0)
+        hams_ = [hamsA, hamsB, hamsC]
+        hams = []
+        accDeltaHA = Vector{Float64}(undef, 0)
+        accDeltaHB = Vector{Float64}(undef, 0)
+        accDeltaHC = Vector{Float64}(undef, 0)
+        accDeltaH_ = [accDeltaHA, accDeltaHB, accDeltaHC]
+        accDeltaH = []
+        
+        # first frame, initial energy
+        push!(hams_[1], getHam(a))
+        push!(hams_[2], getHam(b))
+        push!(hams_[3], getHam(c))
+        push!(accDeltaH_[1], getHam(a))
+        push!(accDeltaH_[2], getHam(b))
+        push!(accDeltaH_[3], getHam(c))
+
+        bulkSpecies = Vector{Any}(undef, 0)
+
+        for (sp, idx) in a.intSpecies
+            push!(hams, hams_[idx])
+            push!(accDeltaH, accDeltaH_[idx])
+
+            if typeof(sp) != PolyMonomer
+                push!(bulkSpecies, (sp, idx))
+            end
+        end
+
+        ham!(a)
+        ham!(b)
+        ham!(c)
+        p.deltaH = 0.0
+        b.deltaH = 0.0
+        c.deltaH = 0.0
+        p.deltaHP = 0.0
+        b.deltaHP = 0.0
+        c.deltaHP = 0.0
+
+        while frame_joint <= nframes - 2
+            for (s, i) in a.intSpecies
+                if move!(s)
+                    nmoves[i] += 1
+                    deltaH[i] += getDeltaHam(s)
+
+                    # update deltaH for the partners
+                    for (p, j) in a.intSpecies
+                        if j != i
+                            deltaH[j] += getDeltaHP(p)
+                        end
+                    end
+
+                    push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                    deltaH[i] = 0
+                    
+                    ham!(s)
+                    push!(hams[i], getHam(s))
+
+                    frame[i] += 1
+                    frame_joint += 1
+                end
+            end
+        end
+
+        @test hams[1] == accDeltaH[1]
+        @test hams[2] == accDeltaH[2]
+        @test hams[3] == accDeltaH[3]
+        
     end
 
 # MARK: -Ham BulkMonomer
@@ -2224,35 +2344,5 @@ using Test
         neighbors_cross = nnp(monomer, tf, pos)
         @test neighbors_cross >= 0
         @test neighbors_cross <= 6
-    end
-    
-    # MARK: -PolyMonomer ham
-    @testset "Hamiltonian calculation for PolyMonomer" begin
-        l = Lattice(;
-            boxlength = 8,
-            nspecies = 1
-        )
-        
-        poly = Polymer(;
-            length = 4,
-            maxlength = 8,
-            nMonomerTypes = 2,
-            pattern = :alternating
-        )
-        
-        initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.5)
-        init!(l, [poly])
-        
-        # Set specific potentials for each monomer type
-        intPot!(poly.monomers[1], 0.3)
-        intPot!(poly.monomers[2], 0.7)
-        
-        # Calculate energy contribution from first monomer type
-        # This should be possible without errors
-        energy1 = ham!(poly.monomers[1])
-        @test energy1 isa Float64
-        
-        energy2 = ham!(poly.monomers[2])
-        @test energy2 isa Float64
     end
 end
