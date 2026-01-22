@@ -105,12 +105,16 @@ function removeBond!(p::Polymer)
     p.latS[p.bi...] = 0
     p.latS[p.bj...] = 0
 
-    # join ends together
-    p.pos[p.kprev][5] = p.knext
-    p.pos[p.knext][4] = p.kprev
-
-    if p.pos[p.kprev][4] == 0
-        p.head = p.kprev   # TEST
+    # join ends together - handle boundary cases
+    if p.kprev != 0
+        p.pos[p.kprev][5] = p.knext
+    else
+        # Removing from the start, update head
+        p.head = p.knext
+    end
+    
+    if p.knext != 0
+        p.pos[p.knext][4] = p.kprev
     end
 
     # Update keys vector - remove both keys

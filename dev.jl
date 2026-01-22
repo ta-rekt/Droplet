@@ -27,7 +27,6 @@ end
         nspecies = 1
     )
 
-    # Polymer
     p = Polymer(;
         length = 4,
         maxlength = 8,
@@ -36,70 +35,104 @@ end
         pattern=:uniform
     )
     
-    initMonomers!(p, defaultChemPot=0.0, defaultIntPot=-1.0)
+    initMonomers!(p)
     a = p.monomers[1]
+
+    # self and interaction potentials
+    intPot!(a, -1.0)
 
     slist = [p]
 
     # initialize lattice and species
     init!(l, slist)
 
-    # initial energy
-    hamInitial = p.ham
-
     #### iterating multiple moves
-    nmoves = 0
-    frame = 1
-    nframes = 1000
+    nmoves = [0]
+    frame = [1]
+    frame_joint = 1
+    nframes = 10000
     step = 1
-    deltaH = 0
-    moveMade = false
+    deltaH = [0.0]
+    niter = 0
+    moveMade = [false]
+
+    hamsA = Vector{Float64}(undef, 0)
+    hams_ = [hamsA]
+    hams = []
+    accDeltaHA = Vector{Float64}(undef, 0)
+    accDeltaH_ = [accDeltaHA]
+    accDeltaH = []
     
-    hams = zeros(nframes)
-    accDeltaH = zeros(nframes)
-    
-    # first frame
-    accDeltaH[frame] = hamInitial
-    
-    ham!(p)
-    hams[frame] = hamInitial
+    # first frame, initial energy
+    push!(hams_[1], getHam(a))
+    push!(accDeltaH_[1], getHam(a))
 
-    # exportSpecies!(slist, string(outpath, "_frame$(1)"))
+    bulkSpecies = Vector{Any}(undef, 0)
 
-    while frame <= nframes - 1
-        if moveMade
-            deltaH += p.deltaH
+    for (sp, idx) in a.intSpecies
+        push!(hams, hams_[idx])
+        push!(accDeltaH, accDeltaH_[idx])
 
-            if mod(nmoves, step) == 0
-                frame += 1
-
-                accDeltaH[frame] = accDeltaH[frame-1] + deltaH
-                deltaH = 0
-                
-                ham!(p)
-                hams[frame] = p.ham
-            end
+        if typeof(sp) != PolyMonomer
+            push!(bulkSpecies, (sp, idx))
         end
-        
-        moveMade = move!(p)
-        nmoves += moveMade
     end
 
-    @assert hams == accDeltaH
+    ham!(a)
+    p.deltaH = 0.0
 
-    # exportSpecies!(slist, string(outpath, "_frame$(2)"))
+    color = ["blue (A)"]
+    exportSpecies!(slist, string(outpath, "_frame$(1)"))
+
+    movetypes = ["add", "kink", "remove"]
+    bad_frame = 1
+
+    while frame_joint <= nframes - 2
+        for (s, i) in a.intSpecies
+
+            s_prev = deepcopy(p)
+            slist_prev = [s_prev]
+
+            if move!(s)
+                nmoves[i] += 1
+                deltaH[i] += getDeltaHam(s)
+
+                push!(accDeltaH[i], accDeltaH[i][end] + deltaH[i])
+                deltaH[i] = 0
+                
+                ham!(s)
+                push!(hams[i], getHam(s))
+
+                frame[i] += 1
+                frame_joint += 1
+
+                if hams[1] != accDeltaH[1]
+                    bad_frame = frame_joint
+                    println("Inconsistency at frame: ", frame_joint)
+                    println("Move type: ", movetypes[p.moveType])
+                    println("Bead: ", p.moveIdx)
+
+                    exportSpecies!(slist_prev, string(outpath, "_frame$(2)"))
+                    exportSpecies!(slist, string(outpath, "_frame$(3)"))
+                    frame_joint = nframes
+                end
+            end
+        end
+    end
 
     # plots = []
     # colors = ["blue"]
+    # hamy = hams[1][bad_frame-1:bad_frame+9]
+    # accy = accDeltaH[1][bad_frame-1:bad_frame+9]
 
-    # pl = plot(eachindex(hams), hams[:];
+    # pl = plot(eachindex(hamy), hamy;
     # label = "ham",
     # xlabel = "frame",
     # ylabel = "Energy",
     # color = colors[1],
     # legend = :topright)
 
-    # plot!(pl, eachindex(accDeltaH), accDeltaH[:];
+    # plot!(pl, eachindex(accy), accy;
     # label = "accDeltaH",
     # color = colors[1],
     # linestyle = :dash)
@@ -217,9 +250,9 @@ end
                 deltaH[i] += getDeltaHam(s)
 
                 # update deltaH for the partners
-                for (p, j) in a.intSpecies
+                for (partner, j) in a.intSpecies
                     if j != i
-                        deltaH[j] += getDeltaHP(p)
+                        deltaH[j] += getDeltaHP(partner)
                         # @show p.name, deltaH[j]
                     end
                 end

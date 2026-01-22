@@ -23,9 +23,16 @@ function ham!(p::Polymer)
         totalChemEnergy -= m.chemPot
         
         for (sp, idx) in m.intSpecies    
-            # Interaction energy: neighbors - self, subtract 1 from self-interaction
+            # Interaction energy: count neighbors
             nnp_ = nnp(m, sp, pos)
-            totalIntEnergy += m.intMat[m.intIdx, idx] * (nnp_ - Int(m.intIdx == idx))
+            
+            # For self-interactions, divide by 2 to avoid double-counting bonds
+            # For cross-interactions, count all neighbors
+            if m.intIdx == idx
+                totalIntEnergy += m.intMat[m.intIdx, idx] * nnp_ / 2.0
+            else
+                totalIntEnergy += m.intMat[m.intIdx, idx] * nnp_
+            end
         end
 
         key = p.pos[key][5]    # next bead
@@ -53,6 +60,7 @@ function deltaHam!(p::Polymer)
     end
     
     p.deltaH = 0
+    p.deltaHP = 0
     m = p.monomers[1]  # assumes all monomers identical
     
     @assert !isnothing(m.intMat) "No interaction matrix!"
@@ -65,19 +73,23 @@ function deltaHam!(p::Polymer)
             if m.intIdx != idx  
 
                 # bulk species energy increment
-                sp.deltaHP = (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
-                             + m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj))
+                setDeltaHP(sp, (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
+                              + m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj)))
 
                 # polymer energy increment
-                p.deltaH += sp.deltaHP
+                p.deltaH += getDeltaHP(sp)
             
             # self-interactions
             else
-                p.deltaH += - 2 * (m.chemPot + m.intPot)  # change in chain length
-
-                p.deltaH += (2 * m.intPot * nn(p, p.newPosi) 
-                           + 2 * m.intPot * nn(p, p.newPosj)
-                           + 2 * m.intPot)  # beads i and j each gain a new neighbor
+                # Chemical potential: adding 2 beads
+                p.deltaH += - 2 * m.chemPot
+                
+                # Interaction energy: count bonds being added
+                # New beads at newPosi and newPosj will be connected (1 bond)
+                # New bead at newPosi will connect to nn(newPosi) existing neighbors
+                # New bead at newPosj will connect to nn(newPosj) existing neighbors  
+                # Total bonds added: 1 + nn(newPosi) + nn(newPosj)
+                p.deltaH += m.intPot * (nn(p, p.newPosi) + nn(p, p.newPosj) + 1)
             end
         end
 
@@ -92,16 +104,18 @@ function deltaHam!(p::Polymer)
                 if m.intIdx != idx  
 
                     # bulk species energy increment
-                    sp.deltaHP = (m.intMat[m.intIdx, idx] 
-                                * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi)))
+                    setDeltaHP(sp, (m.intMat[m.intIdx, idx] 
+                                 * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi))))
 
                     # polymer energy increment
-                    p.deltaH += sp.deltaHP
+                    p.deltaH += getDeltaHP(sp)
 
                 # self-interactions
                 else
-                    p.deltaH += (2 * m.intMat[m.intIdx, idx] 
-                                * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi)))
+                    # Bead ki moves from bi to newPosj
+                    # Energy change = (interactions at newPosj) - (interactions at bi)
+                    # With division by 2: each interaction counted once per bond
+                    p.deltaH += m.intPot * (nn(p, p.newPosj) - nn(p, p.bi))
                 end
 
             # bead kj is moving from bj to newPosi
@@ -111,17 +125,17 @@ function deltaHam!(p::Polymer)
                 if m.intIdx != idx  
 
                     # bulk species energy increment
-                    sp.deltaHP = (m.intMat[m.intIdx, idx] 
-                                * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj)))
+                    setDeltaHP(sp, (m.intMat[m.intIdx, idx] 
+                                 * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj))))
 
                     # polymer energy increment
-                    p.deltaH += sp.deltaHP
+                    p.deltaH += getDeltaHP(sp)
 
                 # self-interactions
                 else
-                    p.deltaH += (2 * m.intMat[m.intIdx, idx] 
-                                * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj)))
-
+                    # Bead kj moves from bj to newPosi
+                    # Energy change = (interactions at newPosi) - (interactions at bj)
+                    p.deltaH += m.intPot * (nn(p, p.newPosi) - nn(p, p.bj))
                 end
 
             else
@@ -137,19 +151,24 @@ function deltaHam!(p::Polymer)
             if m.intIdx != idx  
 
                 # bulk species energy increment
-                sp.deltaHP -= (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
-                             + m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj))
+                # Use bi and bj (positions being removed), not newPosi/newPosj
+                setDeltaHP(sp, -(m.intMat[m.intIdx, idx] * nnp(p, sp, p.bi) 
+                               + m.intMat[m.intIdx, idx] * nnp(p, sp, p.bj)))
 
                 # polymer energy increment
-                p.deltaH += sp.deltaHP
+                p.deltaH += getDeltaHP(sp)
             
             # self-interactions
             else
-                p.deltaH += 2 * (m.chemPot + m.intPot)   # change in chain length
-
-                p.deltaH -= (2 * m.intPot * nn(p, p.newPosi) 
-                           + 2 * m.intPot * nn(p, p.newPosj)
-                           - 2 * m.intPot) # beads i and j each lose a new neighbor
+                # Chemical potential: removing 2 beads
+                p.deltaH += 2 * m.chemPot
+                
+                # Interaction energy: count bonds being removed
+                # Beads bi and bj are connected (1 bond between them)
+                # Bead bi has nn(bi) - 1 other neighbors (excluding bj)
+                # Bead bj has nn(bj) - 1 other neighbors (excluding bi)
+                # Total bonds removed: 1 + (nn(bi)-1) + (nn(bj)-1) = nn(bi) + nn(bj) - 1
+                p.deltaH -= m.intPot * (nn(p, p.bi) + nn(p, p.bj) - 1)
             end
         end
     end
