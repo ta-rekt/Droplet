@@ -2,80 +2,81 @@
 # MARK: -Phys. params
 
 l = Lattice(;
-    boxlength = 20,
+    boxlength = 32,
     nspecies = 7
 )
 
-c = FastBulk(;
-    length = 2000,
+tf = FastBulk(;
+    length = 4096,
     initShape = "uniform"
 )
 
 ### rod 1
-a1_l = FastBulk(;
-    length = 7,
+dna1 = FastBulk(;
+    length = 13,
     initShape = "line",
     initParams = 1,
-    initPos = [1,5,8]
+    initPos = [1,10,16]
 )
 
-b_l = FastBulk(;
+enhancer = FastBulk(;
     length = 6,
     initShape = "line",
     initParams = 1,
-    initPos = [8,5,8]
+    initPos = [13,10,16]
 )
 
-a2_l = FastBulk(;
-    length = 7,
+dna2 = FastBulk(;
+    length = 13,
     initShape = "line",
     initParams = 1,
-    initPos = [14,5,8]
+    initPos = [19,10,16]
 )
+
 
 ### rod 2
-a1_r = FastBulk(;
-    length = 7,
+dna1_l = FastBulk(;
+    length = 13,
     initShape = "line",
     initParams = 1,
-    initPos = [1,12,8]
+    initPos = [1,10,16]
 )
 
-b_r = FastBulk(;
+enhancer_l = FastBulk(;
     length = 6,
     initShape = "line",
     initParams = 1,
-    initPos = [8,12,8]
+    initPos = [13,10,16]
 )
 
-a2_r = FastBulk(;
-    length = 7,
+dna2_l = FastBulk(;
+    length = 13,
     initShape = "line",
     initParams = 1,
-    initPos = [14,12,8]
+    initPos = [19,10,16]
 )
 
-slist = [a1_l, a1_r, a2_l, a2_r, b_l, b_r, c]
+slist = [dna1, dna2, enhancer, dna1_l, dna2_l, enhancer_l, tf]
 
 ### simulation parameters
 # MARK: -Sim. params
 
-nframes = 50000
-step = 10000
-burn_in = 40000
+t_max = 10    # runtime in minutes
+step = 1000
+t_burn_in = 0.8 * t_max
 
 # minimum size of a droplet for detection
 minsize = 5
 
-vals = range(1, stop=8, step=1)
-alphas = zeros(8)
+vals = range(1, stop=16, step=1)
+alphas = zeros(16)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-# alphas = [4]   # distance between filaments
+# alphas = [3]   # distance between filaments
 betas = [0.0]    # (physical) chemical and interaction potentials
 nparams = length(alphas)
 nspecies = 7
@@ -86,30 +87,31 @@ nmoving = 1
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
+    t_current = 0
 
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    a1_l, a1_r, a2_l, a2_r, b_l, b_r, c = slist
+    dna1, dna2, enhancer, dna1_l, dna2_l, enhancer_l, tf = slist
 
-    a1_r.initPos[2] = a1_l.initPos[2] + alpha
-    a2_r.initPos[2] = a2_l.initPos[2] + alpha
-    b_r.initPos[2] = b_l.initPos[2] + alpha
+    dna1.initPos[2] = dna1_l.initPos[2] + alpha
+    dna2.initPos[2] = dna2_l.initPos[2] + alpha
+    enhancer.initPos[2] = enhancer.initPos[2] + alpha
 
     # self-interactions
-    intPot!(c, -1.0)
+    intPot!(tf, -1.0)
 
     # multi-species interactions
-    intPot!(c, a1_l, -0.5)  # a-c interaction
-    intPot!(c, a2_l, -0.5)  # b-c interaction  
-    intPot!(c, b_l, -2.0)  # a-b interaction (optional)
+    intPot!(tf, dna1_l, -0.5)  # a-c interaction
+    intPot!(tf, dna2_l, -0.5)  # b-c interaction  
+    intPot!(tf, enhancer_l, -2.0)  # a-b interaction (optional)
 
-    intPot!(c, a1_r, -0.5)  # a-c interaction
-    intPot!(c, a2_r, -0.5)  # b-c interaction  
-    intPot!(c, b_r, -2.0)  # a-b interaction (optional)
+    intPot!(tf, dna1, -0.5)  # a-c interaction
+    intPot!(tf, dna2, -0.5)  # b-c interaction  
+    intPot!(tf, enhancer, -2.0)  # a-b interaction (optional)
 
-    slist = [a1_l, a1_r, a2_l, a2_r, b_l, b_r, c]         # all species
-    movingsps = [(c, c.intIdx)]    # species that move
+    slist = [dna1, dna2, enhancer, dna1_l, dna2_l, enhancer_l, tf]         # all species
+    movingsps = [(tf, tf.intIdx)]    # species that move
 
     # initialize lattice and species
     init!(l, slist)
@@ -126,14 +128,16 @@ function target!(res, args...)
 
     niter = 0
 
-    for (sp, idx) in a1_l.intSpecies
-        push!(hams, sp.ham)
+    for (sp, idx) in tf.intSpecies
         ham!(sp)
+        push!(hams, sp.ham)
         sp.deltaH = 0.0
     end
 
-    while frame <= nframes
+    while t_current <= t_max
+        t_current = (time_ns() - t_start) / 6e10
         niter += 1
+
         for (s, i) in movingsps
             if move!(s)
                 nmoves += 1
@@ -149,13 +153,14 @@ function target!(res, args...)
                         end
                     end
 
+                    ham!(s)
+                    push!(hams, s.ham)
                     push!(accs, niter == 0 ? 0 : nmoves / niter)
-                    push!(hams, hams[end] + deltaH[i])
 
                     deltaH[i] = 0
                     frame += 1
 
-                    if frame >= burn_in
+                    if t_current >= t_burn_in
                         for (_, val) in s.pos
                             density_lat[val[1], val[2], val[3]] += 1.0
                             total += 1.0
@@ -171,20 +176,20 @@ function target!(res, args...)
     # collect results
     density_lat = density_lat ./ total
 
-    coords_c = Matrix{Int32}(undef, c.length, 4)
+    coords_c = Matrix{Int32}(undef, tf.length, 4)
 
-    res["species_name"] = c.name
-    res["nframes"] = nframes
+    res["species_name"] = tf.name
+    res["nframes"] = frame
     res["step"] = step
     res["temperature"] = 1.0
     res["beta"] = beta
-    res["boxlength"] = c.boxlength
-    res["length"] = c.length
+    res["boxlength"] = tf.boxlength
+    res["length"] = tf.length
     res["density_lattice"] = density_lat
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
-    res["final_coordinates"] = extractCoords!(c, coords_c)
-    res["runtime_s"] = (time_ns() - t_start) / 1e9
+    res["final_coordinates"] = extractCoords!(tf, coords_c)
+    res["runtime_min"] = (time_ns() - t_start) / 6e10
 
     return res
 end
