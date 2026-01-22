@@ -7,15 +7,17 @@ const PKINK = 0.8
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
 abstract type AbstractSpecies end
-abstract type AbstractPoly <: AbstractSpecies end
-abstract type AbstractBulk <: AbstractSpecies end 
-abstract type AbstractFastBulk <: AbstractBulk end 
+abstract type AbstractPolymer <: AbstractSpecies end
+abstract type AbstractMonomer <: AbstractSpecies end
+abstract type AbstractBulkMonomer <: AbstractMonomer end 
+abstract type AbstractPolyMonomer <: AbstractMonomer end 
+abstract type AbstractFastBulkMonomer <: AbstractBulkMonomer end 
 
+export Species, Polymer, PolyMonomer, BulkMonomer, FastBulkMonomer, Lattice
 
 ######## Generic species #######
 # MARK: -Generic
 
-export Species
 Base.@kwdef mutable struct Species <: AbstractSpecies
     id::Int32 = begin
       SPECIES_ID_COUNTER[] += 1
@@ -34,14 +36,40 @@ Base.@kwdef mutable struct Species <: AbstractSpecies
     tempVec::Union{Nothing, Vector{Int32}} = nothing
     nnIdxs::Union{Nothing, Vector{Int32}} = nothing
     freeNNs::Union{Nothing, Set{Int32}} = nothing
-    
 end
 
-######## Polymer #######
-# MARK: -Poly
 
-export Poly
-Base.@kwdef mutable struct Poly <: AbstractPoly
+######## Polymer #######
+# MARK: -Polymer
+
+# Forward declare to allow PolyMonomer to reference it
+
+######## Monomer (for bead-dependent interactions) #######
+# MARK: -PolyMonomer
+Base.@kwdef mutable struct PolyMonomer <: AbstractPolyMonomer
+    id::Int32 = begin
+        SPECIES_ID_COUNTER[] += 1
+        SPECIES_ID_COUNTER[]
+    end
+    
+    name::String = ""    # unique name of this Monomer
+
+    # host polymer
+    poly::AbstractPolymer
+    
+    # interaction potentials
+    chemPot::Union{Nothing, Float64} = nothing   # chemical potential for this Monomer
+    intPot::Union{Nothing, Float64} = nothing    # self-interaction potential
+    
+    # multi-Monomer interaction fields (mirrors AbstractBulkMonomer pattern)
+    intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int32}}} = nothing  # list of (Monomer, canonical index) pairs
+    intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
+    intIdx::Union{Nothing, Int32} = nothing  # this Monomer' canonical index in intMat
+  end
+
+
+# Now define Polymer completely
+Base.@kwdef mutable struct Polymer <: AbstractPolymer
     
     id::Int32 = begin
       SPECIES_ID_COUNTER[] += 1
@@ -53,22 +81,25 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
     # required fields
     length::Int32        # number of beads
     maxlength::Int32     # max number of beads
-    chemPot::Union{Nothing,Float64}   # monomer chemical potential
-    intPot::Union{Nothing,Float64}    # monomer interaction potential
+    nMonomerTypes::Union{Nothing, Int32} = nothing  # number of distinct PolyMonomer
     
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing    # box linear dimension
     keys_vec::Union{Nothing, Vector{Int32}} = nothing  # pre-allocated key vector
-    pos::Union{Nothing, OrderedDict{Int32,Vector{Int32}}} = nothing      # xyz coordinates of all the beads
+    pos::Union{Nothing, OrderedDict{Int32, Vector{Int32}}} = nothing      # xyz coordinates of all the beads
     initPos::Union{Nothing, Vector{Int32}} = nothing     # anchor position on one side
     initShape::Union{Nothing, String} = nothing
     finalPos::Union{Nothing, Vector{Int32}} = nothing   # anchor position on the other side
-
+    
     # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing   # lattice
     ghost::Union{Nothing, AbstractSpecies} = nothing
-    partner::Union{Nothing, AbstractSpecies} = nothing
-    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
+    
+    # Monomer for bead-dependent interactions
+    monomers::Union{Nothing, Vector{PolyMonomer}} = nothing   # list of PolyMonomers (length = nMonomers)
+    monomerIndex::Union{Nothing, Vector{Int32}} = nothing         # PolyMonomer index for each bead (length = maxlength)
+    pattern::Symbol=:uniform
+    customPattern::Union{Nothing, Vector{Int}}=nothing
     
     # addBond!, removeBond!, identifyBond! variables
     head::Union{Nothing, Int32} = nothing
@@ -85,7 +116,7 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
 
     # moveTypes! variables
     moveVec::Union{Nothing, Vector{Int32}} = nothing       # move vector
-    moveIdx::Union{Nothing, Int32}      = nothing          # bead index to move next
+    moveIdx::Union{Nothing, Int32} = nothing          # bead index to move next
     moveType::Union{Nothing, Int32} = nothing              # type of move: bond addition (1), bond removal (2) or kink (3)
     newPosi::Union{Nothing, Vector{Int32}} = nothing       # placeholder position (e.g. to store next bond position)
     newPosj::Union{Nothing, Vector{Int32}} = nothing       # placeholder position (e.g. to store next bond position)
@@ -103,11 +134,10 @@ Base.@kwdef mutable struct Poly <: AbstractPoly
 end
 
 
-######## Bulk #######
-# MARK: -Bulk
+######## BulkMonomer #######
+# MARK: -BulkMonomer
 
-export Bulk
-Base.@kwdef mutable struct Bulk <: AbstractBulk
+Base.@kwdef mutable struct BulkMonomer <: AbstractBulkMonomer
     
     id::Int32 = begin
       SPECIES_ID_COUNTER[] += 1
@@ -133,13 +163,11 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
     # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
-    partner::Union{Nothing, AbstractSpecies} = nothing
-    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
 
     # multi-species interaction fields
-    intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs
+    intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int32}}} = nothing  # list of (species, canonical index) pairs
     intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
-    intIdx::Union{Nothing, Int} = nothing  # this species' canonical index in intMat
+    intIdx::Union{Nothing, Int32} = nothing  # this species' canonical index in intMat
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -164,11 +192,10 @@ Base.@kwdef mutable struct Bulk <: AbstractBulk
 end
 
 
-######## FastBulk #######
-# MARK: -FastBulk
+######## FastBulkMonomer #######
+# MARK: -FastBulkMonomer
 
-export FastBulk
-Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
+Base.@kwdef mutable struct FastBulkMonomer <: AbstractFastBulkMonomer
     
     id::Int32 = begin
       SPECIES_ID_COUNTER[] += 1
@@ -194,13 +221,11 @@ Base.@kwdef mutable struct FastBulk <: AbstractFastBulk
     # lattice, ghost and partner species
     latS::Union{Nothing, AbstractArray{Int32}} = nothing
     ghost::Union{Nothing, AbstractSpecies} = nothing
-    partner::Union{Nothing, AbstractSpecies} = nothing
-    intPotP::Union{Nothing, Float64} = nothing    # inter-species interaction potential
 
     # multi-species interaction fields
-    intSpecies::Union{Nothing, Vector{Tuple{AbstractBulk, Int}}} = nothing  # list of (species, canonical index) pairs
+    intSpecies::Union{Nothing, Vector{Tuple{AbstractMonomer, Int32}}} = nothing  # list of (species, canonical index) pairs
     intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
-    intIdx::Union{Nothing, Int} = nothing  # this species' canonical index in intMat
+    intIdx::Union{Nothing, Int32} = nothing  # this species' canonical index in intMat
 
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
@@ -228,7 +253,6 @@ end
 
 ######## Lattice #######
 
-export Lattice
 Base.@kwdef mutable struct Lattice
     boxlength::Int32     # lattice linear dimension 
     nspecies::Int32      # number of species

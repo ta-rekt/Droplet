@@ -1,20 +1,13 @@
+
+export intPot!, intPot!, getIntPot
+
 ############# Interaction potential functions #############
 
-# sets the self interaction potential of a species
-export intPot!
-function intPot!(b::AbstractBulk, pot::Float64)
-    _ensureIntStructures!(b)
-    
-    b.intPot = pot
-
-    # update the interaction matrix's diagonal entry
-    b.intMat[b.intIdx, b.intIdx] = pot
-
-    return b
-end
+############# Helpers #############
+# MARK: -Helpers
 
 # helper: find species in intSpecies list, return its canonical index or nothing
-function _findSpeciesIdx(s::AbstractBulk, target::AbstractBulk)
+function _findSpeciesIdx(s::AbstractMonomer, target::AbstractMonomer)
     if s.intSpecies === nothing
         return nothing
     end
@@ -27,9 +20,9 @@ function _findSpeciesIdx(s::AbstractBulk, target::AbstractBulk)
 end
 
 # helper: initialize interaction structures for a species if not present
-function _ensureIntStructures!(s::AbstractBulk)
+function _ensureIntStructures!(s::AbstractMonomer)
     if s.intSpecies === nothing
-        s.intSpecies = Vector{Tuple{AbstractBulk, Int}}()
+        s.intSpecies = Vector{Tuple{AbstractMonomer, Int}}()
     end
     if s.intMat === nothing
         s.intMat = Matrix{Float64}(undef, 0, 0)
@@ -52,12 +45,12 @@ end
 
 # helper: synchronize interaction matrix between two species 
 # (they share the same matrix)
-function _syncMatrices!(a::AbstractBulk, b::AbstractBulk)
+function _syncMatrices!(a::AbstractMonomer, b::AbstractMonomer)
     # both species should point to the same matrix
     # merge their intSpecies lists and rebuild a shared matrix
     
     # collect all species from both - id -> (species, new_idx)
-    allSpecies = Dict{Int, Tuple{AbstractBulk, Int}}() 
+    allSpecies = Dict{Int, Tuple{AbstractMonomer, Int}}()
     
     # first pass: collect unique species and assign new indices
     newIdx = 1
@@ -104,7 +97,7 @@ function _syncMatrices!(a::AbstractBulk, b::AbstractBulk)
     end
     
     # build new intSpecies list
-    newIntSpecies = Vector{Tuple{AbstractBulk, Int}}(undef, n)
+    newIntSpecies = Vector{Tuple{AbstractMonomer, Int}}(undef, n)
     for (sp, idx) in values(allSpecies)
         newIntSpecies[idx] = (sp, idx)
     end
@@ -117,10 +110,25 @@ function _syncMatrices!(a::AbstractBulk, b::AbstractBulk)
     end
 end
 
+
+############# Monomers #############
+# MARK: -Monomer
+
+# sets the self interaction potential of a species
+function intPot!(b::AbstractMonomer, pot::Float64)
+    _ensureIntStructures!(b)
+    
+    b.intPot = pot
+
+    # update the interaction matrix's diagonal entry
+    b.intMat[b.intIdx, b.intIdx] = pot
+
+    return b
+end
+
 # sets the interaction potential between two species
 # updates the interaction matrix and interacting species list
-export intPot!
-function intPot!(a::AbstractBulk, b::AbstractBulk, pot::Float64)
+function intPot!(a::AbstractMonomer, b::AbstractMonomer, pot::Float64)
     # ensure both species have interaction structures initialized
     _ensureIntStructures!(a)
     _ensureIntStructures!(b)
@@ -142,20 +150,11 @@ function intPot!(a::AbstractBulk, b::AbstractBulk, pot::Float64)
 
     b.intMat = a.intMat
     
-    # also update legacy intPotP if a and b are partners
-    if a.partner === b
-        a.intPotP = pot
-    end
-    if b.partner === a
-        b.intPotP = pot
-    end
-    
     return nothing
 end
 
 # get interaction potential between two species
-export getIntPot
-function getIntPot(a::AbstractBulk, b::AbstractBulk)
+function getIntPot(a::AbstractMonomer, b::AbstractMonomer)
     if a.intMat === nothing || a.intIdx === nothing
         return nothing
     end

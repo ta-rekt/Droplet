@@ -26,7 +26,7 @@ function exportSpecies!(slist::Vector{<:AbstractSpecies}, filename::String)
         data[i] = Dict()
 
         # Extract coordinates (first 3 elements of each position vector) if possible
-        coords = Array{Int32}(undef, 0, 3)
+        coords = Array{Int32}(undef, 0, 4)
         if hasproperty(si, :length) && hasproperty(si, :pos)
             try
                 coords = Matrix{Int32}(undef, Int(si.length), 4)
