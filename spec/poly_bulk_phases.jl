@@ -11,26 +11,32 @@ poly = Polymer(;
     length = 16,
     maxlength = 64,
     initShape = "line",
-    initPos = [8, 8, 8]
+    nMonomerTypes = 1,
+    initPos = [1, 8, 8],
+    pattern=:uniform
 )
 
+initMonomers!(poly)
+mono = poly.monomers[1]
+
 # bulk species
-bulk = FastBulk(;
+bulk = FastBulkMonomer(;
     length = 1024,
     initShape = "uniform"
 )
 
 # list containing all species
-slist = [poly, bulk]
+slist = [mono, bulk]
 
 
 ### simulation parameters
 # MARK: -Sim. params
 
-nframes = 50000
-step = 10000     
+t_max = 20    # runtime in minutes
+step = 10000
+t_burn_in = 0.8 * t_max
 
-vals = range(-1, stop=1, step=0.25)   # parallelized parameters (polymer self-interaction)
+vals = range(-1, stop=0, step=0.125)   # parallelized parameters (polymer self-interaction)
 alphas = zeros(9)
 nrepeats = 1
 
@@ -48,69 +54,74 @@ nparams = length(alphas)
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
+    t_current = 0
 
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    poly, bulk = slist
+    mono, bulk = slist
     
     # set interaction potentials
-    intPot!(poly, alpha)      # polymer self-interaction (SWEEP)
-    intPot!(bulk, -1.0)       # bulk self-interaction (fixed)
-    intPot!(bulk, poly, -1.0) # bulk-polymer interaction (fixed)
+    intPot!(mono, 0.5)      # polymer self-interaction (SWEEP)
+    intPot!(bulk, alpha)       # bulk self-interaction (fixed)
+    intPot!(bulk, mono, -1.0) # bulk-polymer interaction (fixed)
 
     # initialize lattice and species
-    init!(l, [poly, bulk])
+    init!(l, [mono, bulk])
 
     # moving species
-    movingsps = [(poly, poly.intIdx), (bulk, bulk.intIdx)]
+    movingsps = [(mono, mono.intIdx), (bulk, bulk.intIdx)]
 
-    nmoves = [0, 0]
+    nmoves = 0
     niter = 0
     frame = 1
 
-    radii = zeros(nframes)
-    hams_poly = zeros(nframes)
-    hams_bulk = zeros(nframes)
-    accs = zeros(nframes)
-    deltaH = zeros(2)
+    radii = []
+    hams_poly = []
+    hams_bulk = []
+    accs = []
+    deltaH = zeros(l.nspecies)
     
     # initial values
-    radii[frame] = radius(poly)
-    hams_poly[frame] = poly.ham
-    hams_bulk[frame] = bulk.ham
-    accs[frame] = 0
+    push!(radii, radius(poly))
+    push!(hams_poly, poly.ham)
+    push!(hams_bulk, bulk.ham)
+    push!(accs, 0)
     
     # run simulation
-    while frame <= nframes - 1
+    while t_current <= t_max
+        t_current = (time_ns() - t_start) / 6e10
         niter += 1
-        
+
         for (s, i) in movingsps
             if move!(s)
-                nmoves[i] += 1
-                deltaH[i] += s.deltaH
-                
-                # update partner species energies
-                for (p, j) in s.intSpecies
-                    if j != s.intIdx
-                        deltaH[j] += p.deltaHP
+                nmoves += 1
+
+                # record data
+                if mod(nmoves, step) == 0
+                    deltaH[i] += getDeltaHam(s)
+
+                    # update deltaH for the partners
+                    for (p, j) in s.intSpecies
+                        if j != s.intIdx
+                            deltaH[j] += getDeltaHP(p)
+                        end
                     end
-                end
-                
-                # record data at sampling intervals
-                if mod(nmoves[i], step) == 0
+
+                    ham!(s)
+
+                    if s.intIdx == mono.intIdx
+                        push!(hams_poly, getHam(s))
+
+                    elseif s.intIdx == bulk.intIdx
+                        push!(hams_bulk, getHam(s))
+                    end
+
+                    push!(radii, radius(poly))
+                    push!(accs, niter == 0 ? 0 : nmoves / niter)
+
+                    deltaH[i] = 0
                     frame += 1
-                    
-                    radii[frame] = radius(poly)
-                    hams_poly[frame] = hams_poly[frame-1] + deltaH[1]
-                    hams_bulk[frame] = hams_bulk[frame-1] + deltaH[2]
-                    accs[frame] = nmoves[1] / niter  # track polymer acceptance
-                    
-                    deltaH = zeros(2)
-                    
-                    if frame >= nframes
-                        break
-                    end
                 end
             end
         end
@@ -121,11 +132,11 @@ function target!(res, args...)
     coords_bulk = Matrix{Int32}(undef, bulk.length, 4)
 
     res["species_name"] = poly.name
-    res["nframes"] = nframes
+    res["nframes"] = frame
     res["step"] = step
     res["temperature"] = 1.0
-    res["beta"] = beta
-    res["interaction_matrix"] = poly.intMat
+    res["alpha"] = alpha
+    res["interaction_matrix"] = mono.intMat
     res["boxlength"] = poly.boxlength
     res["length"] = poly.length
     res["radius_of_gyration"] = radii

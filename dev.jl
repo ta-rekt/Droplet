@@ -7,6 +7,7 @@ let
     using OrderedCollections
 end
 
+
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing Hamiltonian - PolyMonomer implementation
 @time let
