@@ -7,12 +7,6 @@ let
     using OrderedCollections
 end
 
-# TODO:
-# - position and lattice have to be stored at the monomer level
-# - make p.pos store monomer types instead of position (combine it with p.monomers)
-# - the energy of a poly is then just the sum of monomer energies, minus the 
-#   pairwise interaction potentials along the polymer
-
 ## 1010011111110000100000101010111100010100001100101110000
 # Testing Hamiltonian - PolyMonomer implementation
 @time let
@@ -311,52 +305,6 @@ end
 end
 
 ## 1010011111110000100000101010111100010100001100101110000
-# Function dispatch
-
-let 
-    abstract type Person end
-    abstract type PersonA <: Person end
-    abstract type PersonB <: Person end
-
-    mutable struct A <: PersonA
-        name::String
-        ssn::Int
-    end
-
-    mutable struct B <: PersonB
-        name::String
-        ssn::Int
-    end
-
-    mutable struct C <: Person
-        name::String
-    end
-
-    function f(obj::A)
-        println(obj.name, obj.ssn)
-    end
-
-    function f(obj::B)
-        println(obj.name, obj.ssn)
-    end
-
-    function f(obj::C)
-        println(obj.name)
-    end
-
-    function g(obj::Person)
-        println(obj.ssn)
-    end
-
-    personA = A("Alice", 1)
-    personB = B("Bob", 2)
-    personC = C("Clarence")
-    g(personB)
-
-    @time hasproperty(persontf, :ssn)
-end
-
-## 1010011111110000100000101010111100010100001100101110000
 # Multi-component interactions
 
 # to test:
@@ -368,30 +316,33 @@ end
 #   * effective force, comparison with electrostatic
 
 # to implement
-# * multi-species poly
-#   * new type: subspecies, without p.pos and move-related containers
-#   * keep a p.nspecies-vector of subspecies and a p.length-vector of types 
-#   * access the subspecies at bead i in deltaHam when you need intPotP 
-#   * other species use poly subspecies as partners
 # * site occupation time-series and mean -> BP estimate of concentration
 # * distribution of densities
 #   * average histogram of lattice densities over all sites, should bifurcate
 # * exp: nucleation sites prevent Ostwald ripening (insurance)
 #   * plot n_enhancers vs. dilute density compared with critical concentration 
 
-# * fastpoly (no longer relevant)
-#   * store bead indices at lattice sites
-#   * kink-only mode: movableIdxs: a bead can be kinked if 
-#       - 1. it isn't on a corner
-#       - 2. if it is one bond away from a corner
-#       - 3. it has no nn in the direction of the corner
-#     after a kink:
-#       - kinked bead no longer movable
-#       - its 4 new nns are no longer movable
-#       - its neighbor along the chain becomes movable
-#       - its neighbors' old nns become movable if they were stuck bcs of #3
-#   * hastings factor
 # * reproduce Mason's results
+
+# TODO:
+# the idea: I'd like to be able to parallelize setting up experiments and 
+# working on new features. I need to develop a small preliminary workflow
+# where I can describe in detail the experiment I need to set up, and have 
+# the agent make a proposal. the experiment proposal format needs to be
+# designed, it must consist at mimimum of: creating a spec file, a summary
+# of the experiment, and a description of the resulting plots, expected
+# results, the technical specs such as number of cores to run on, expected
+# simulation time, varied parameters, type of output data, etc.
+
+# - set up paper airplane agentic experimental pipeline (run locally for now)
+#   - run design iterations to produce description files of the experiment 
+#     design/execution pipeline. write detailed context, let it ask questions
+# - try it on a dummy experiment for validation
+# - use it to design the bulk-mediated polymer collapse experiment
+# - run bulk-mediated polymer collapse experiment
+# - implement heterogeneous polymer
+# - test heterogeneous polymer
+# - expand agentic pipeline to cluster
 
 
 @time let
@@ -485,16 +436,6 @@ end
 
     exportSpecies!(slist, string(outpath, "_frame$(1)"))
 end
-
-# TODO:
-# 1:00 - 2:30 pm: init, interaction, tests, plotting for multicomponent poly
-# 2:30 - 4:00 pm: lunch, laundry @ mom's
-# 4:00 - 4:30 pm: dry laundry
-# 4:30 - 6:30 pm: hamiltonian, tests
-# 6:30 - 7:30 pm: break
-# 7:30 - 9:00 pm: hamiltonian, tests, experiments
-# 9:00 - 10:30 pm: dinner
-# 10:30 - 12:30 pm: experiments
 
 ## 1010011111110000100000101010111100010100001100101110000
 # Multi-component polymer
