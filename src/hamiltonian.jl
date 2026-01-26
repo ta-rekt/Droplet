@@ -61,7 +61,7 @@ function deltaHam!(p::Polymer)
     
     p.deltaH = 0
     p.deltaHP = 0
-    m = p.monomers[1]  # assumes all monomers identical
+    m = getPolyMonomer(p, p.moveIdx)  # current monomer
     
     @assert !isnothing(m.intMat) "No interaction matrix!"
 
@@ -89,7 +89,8 @@ function deltaHam!(p::Polymer)
                 # New bead at newPosi will connect to nn(newPosi) existing neighbors
                 # New bead at newPosj will connect to nn(newPosj) existing neighbors  
                 # Total bonds added: 1 + nn(newPosi) + nn(newPosj)
-                p.deltaH += m.intPot * (nn(p, p.newPosi) + nn(p, p.newPosj) + 1)
+                p.deltaH += (m.intMat[m.intIdx, idx] 
+                         * (nnp(p, sp, p.newPosi) + nnp(p, sp, p.newPosj) + 1))
             end
         end
 
@@ -115,7 +116,8 @@ function deltaHam!(p::Polymer)
                     # Bead ki moves from bi to newPosj
                     # Energy change = (interactions at newPosj) - (interactions at bi)
                     # With division by 2: each interaction counted once per bond
-                    p.deltaH += m.intPot * (nn(p, p.newPosj) - nn(p, p.bi))
+                    p.deltaH += (m.intMat[m.intIdx, idx] 
+                             * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi)))
                 end
 
             # bead kj is moving from bj to newPosi
@@ -135,7 +137,8 @@ function deltaHam!(p::Polymer)
                 else
                     # Bead kj moves from bj to newPosi
                     # Energy change = (interactions at newPosi) - (interactions at bj)
-                    p.deltaH += m.intPot * (nn(p, p.newPosi) - nn(p, p.bj))
+                    p.deltaH += (m.intMat[m.intIdx, idx] 
+                             * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj)))
                 end
 
             else
@@ -168,7 +171,8 @@ function deltaHam!(p::Polymer)
                 # Bead bi has nn(bi) - 1 other neighbors (excluding bj)
                 # Bead bj has nn(bj) - 1 other neighbors (excluding bi)
                 # Total bonds removed: 1 + (nn(bi)-1) + (nn(bj)-1) = nn(bi) + nn(bj) - 1
-                p.deltaH -= m.intPot * (nn(p, p.bi) + nn(p, p.bj) - 1)
+                p.deltaH -= (m.intMat[m.intIdx, idx] 
+                         * (nnp(p, sp, p.bi) + nnp(p, sp, p.bj) - 1))
             end
         end
     end

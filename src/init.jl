@@ -219,18 +219,21 @@ function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::F
             error("pattern=:custom requires p.customPattern vector to be provided")
         end
         if length(p.customPattern) != p.maxlength
-            error("p.customPattern length ($(length(p.customPattern))) must equal p.maxlength ($(p.maxlength))")
+            error("p.customPattern length ($(length(p.customPattern))) must equal 
+                p.maxlength ($(p.maxlength))")
         end
         # Validate all indices are in range
         for (i, idx) in enumerate(p.customPattern)
             if idx < 1 || idx > p.nMonomerTypes
-                error("p.customPattern[$i] = $idx is out of range [1, $p.nMonomerTypes]")
+                error("p.customPattern[$i] = $idx is out of range 
+                [1, $p.nMonomerTypes]")
             end
         end
         # Copy custom p.pattern
         p.monomerIndex .= p.customPattern
     else
-        error("Unknown p.pattern: $pattern. Use :uniform, :alternating, :block, :random, or :custom")
+        error("Unknown p.pattern: $pattern. 
+                Use :uniform, :alternating, :block, :random, or :custom")
     end
     
     return p
@@ -427,7 +430,8 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         s.ghost = gs
         s.boxlength = l.boxlength
         
-        # Initialize species if not already done (parent polymers might be pre-initialized)
+        # Initialize species if not already done (parent polymers 
+        # might be pre-initialized)
         if s.pos === nothing
             initSpecies!(s)
         end
