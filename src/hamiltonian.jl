@@ -11,14 +11,14 @@ function ham!(p::Polymer)
     totalIntEnergy = 0.0
 
     key = p.head           # initial bead
-    pos = p.pos[key][range(1, 3)]  # initial position
-    
-     # assumes all monomers identical
-    m = p.monomers[1]
 
-    @assert !isnothing(m.intMat) "No interaction matrix!"
+    # Use first monomer to check intMat exists (all monomers share the same intMat)
+    @assert !isnothing(p.monomers[1].intMat) "No interaction matrix!"
 
     for i in 1:p.length
+        pos = p.pos[key][range(1, 3)]  # position of this bead
+        m = p.monomers[p.pos[key][6]]  # get monomer type from pos[key][6]
+        
         # Chemical potential contribution
         totalChemEnergy -= m.chemPot
         
@@ -36,10 +36,6 @@ function ham!(p::Polymer)
         end
 
         key = p.pos[key][5]    # next bead
-
-        if key != 0
-            pos = p.pos[key][range(1, 3)]  # next position
-        end
     end
 
     @assert key == 0 begin
@@ -61,7 +57,8 @@ function deltaHam!(p::Polymer)
     
     p.deltaH = 0
     p.deltaHP = 0
-    m = getPolyMonomer(p, p.moveIdx)  # current monomer
+    m = getPolyMonomer(p, p.ki)  # current monomer (use key, not chain position)
+    currentType = p.pos[p.ki][6]
     
     @assert !isnothing(m.intMat) "No interaction matrix!"
 
@@ -92,6 +89,11 @@ function deltaHam!(p::Polymer)
                 p.deltaH += (m.intMat[m.intIdx, idx] 
                          * (nnp(p, sp, p.newPosi) + nnp(p, sp, p.newPosj) + 1))
             end
+        end
+        
+        # Energy change from type swaps at pattern tail (type X -> type 1)
+        if currentType >= 2 && p.patternTails !== nothing && haskey(p.patternTails, currentType)
+            _addSwapEnergyChange!(p, currentType, Int32(1), true)
         end
 
     # kink
@@ -175,11 +177,79 @@ function deltaHam!(p::Polymer)
                          * (nnp(p, sp, p.bi) + nnp(p, sp, p.bj) - 1))
             end
         end
+        
+        # Energy change from type swaps after pattern tail (type 1 -> type X)
+        if currentType >= 2 && p.patternTails !== nothing && haskey(p.patternTails, currentType)
+            _addSwapEnergyChange!(p, Int32(1), currentType, false)
+        end
     end
 
     p.ham += p.deltaH
 
     return p
+end
+
+"""
+    _addSwapEnergyChange!(p::Polymer, fromType::Int32, toType::Int32, isAddition::Bool)
+
+Add energy change from type swaps to p.deltaH.
+For addition: swaps happen at pattern tail (last 2 beads of pattern type change to base type)
+For removal: swaps happen after pattern tail (next 2 base-type beads change to pattern type)
+"""
+function _addSwapEnergyChange!(p::Polymer, fromType::Int32, toType::Int32, isAddition::Bool)
+    currentType = isAddition ? fromType : toType  # the pattern type
+    tailKey = p.patternTails[currentType]
+    
+    # Get the two beads that will be swapped
+    if isAddition
+        # For addition: swap the tail and the bead before it
+        swapKey1 = tailKey
+        swapKey2 = p.pos[tailKey][4]
+    else
+        # For removal: swap the bead after tail and the one after that
+        swapKey1 = p.pos[tailKey][5]
+        swapKey2 = p.pos[swapKey1][5]
+    end
+    
+    swapPos1 = p.pos[swapKey1][1:3]
+    swapPos2 = p.pos[swapKey2][1:3]
+    
+    mOld = p.monomers[fromType]
+    mNew = p.monomers[toType]
+    
+    # Calculate energy change for each swapped bead
+    for (sp, idx) in mOld.intSpecies
+        # Energy change = new interactions - old interactions
+        # For each bead, subtract old type's interaction and add new type's interaction
+        
+        nnp1 = nnp(mOld, sp, swapPos1)
+        nnp2 = nnp(mOld, sp, swapPos2)
+        
+        # Self-interactions need special handling
+        if mOld.intIdx == idx
+            # Old self-interactions being removed (with factor of 1/2 for each)
+            p.deltaH -= mOld.intMat[mOld.intIdx, idx] * (nnp1 + nnp2) / 2.0
+        else
+            # Old cross-interactions being removed
+            p.deltaH -= mOld.intMat[mOld.intIdx, idx] * (nnp1 + nnp2)
+        end
+    end
+    
+    for (sp, idx) in mNew.intSpecies
+        nnp1 = nnp(mNew, sp, swapPos1)
+        nnp2 = nnp(mNew, sp, swapPos2)
+        
+        if mNew.intIdx == idx
+            # New self-interactions being added
+            p.deltaH += mNew.intMat[mNew.intIdx, idx] * (nnp1 + nnp2) / 2.0
+        else
+            # New cross-interactions being added
+            p.deltaH += mNew.intMat[mNew.intIdx, idx] * (nnp1 + nnp2)
+        end
+    end
+    
+    # Chemical potential change: 2 beads change type
+    p.deltaH += 2 * mOld.chemPot - 2 * mNew.chemPot
 end
 
 ham!(m::PolyMonomer) = ham!(m.poly)

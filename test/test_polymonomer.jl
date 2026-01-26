@@ -13,8 +13,9 @@
     # Check that monomers were created
     @test poly.monomers !== nothing
     @test length(poly.monomers) == 2
-    @test poly.monomerIndex !== nothing
-    @test length(poly.monomerIndex) == 8
+    # Note: monomer types are now stored in pos[key][6] after init!() is called,
+    # and patternTails tracks pattern regions instead of monomerIndex.
+    # Before init!(), patternTails is nothing since types aren't assigned to pos yet.
     
     # Check that each monomer has the poly reference
     @test poly.monomers[1].poly === poly
@@ -33,11 +34,19 @@
     
     # Check that both monomers share the same interaction matrix
     @test poly.monomers[1].intMat === poly.monomers[2].intMat
+    
+    # Now initialize with lattice to assign types
+    l = Lattice(; boxlength = 8, nspecies = 1)
+    init!(l, [poly])
+    
+    # After init!(), patternTails should be populated for polymers with patterns
+    @test poly.patternTails !== nothing
 end
 
 # MARK: -PolyMonomer pattern
 @testset "PolyMonomer pattern assignment" begin
-    # Test uniform pattern (default)
+    # Test uniform pattern (default) - requires init!() to assign types to pos
+    l1 = Lattice(; boxlength = 8, nspecies = 1)
     poly1 = Polymer(;
         length = 4,
         maxlength = 8,
@@ -45,19 +54,13 @@ end
         pattern = :uniform
     )
     initMonomers!(poly1, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test all(poly1.monomerIndex .== 1)
+    init!(l1, [poly1])
+    # All beads should have type 1 for uniform pattern
+    types1 = [poly1.pos[k][6] for k in keys(poly1.pos)]
+    @test all(types1 .== 1)
     
-    # Test alternating pattern
-    poly2 = Polymer(;
-        length = 4,
-        maxlength = 8,
-        nMonomerTypes = 2,
-        pattern = :alternating
-    )
-    initMonomers!(poly2, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test poly2.monomerIndex == [1, 2, 1, 2, 1, 2, 1, 2]
-    
-    # Test block pattern
+    # Test block pattern - types 2+ must be contiguous blocks
+    l3 = Lattice(; boxlength = 8, nspecies = 1)
     poly3 = Polymer(;
         length = 4,
         maxlength = 8,
@@ -65,18 +68,32 @@ end
         pattern = :block
     )
     initMonomers!(poly3, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test poly3.monomerIndex == [1, 1, 1, 1, 2, 2, 2, 2]
+    init!(l3, [poly3])
+    # Block pattern should have first half type 1, second half type 2
+    types3 = [poly3.pos[k][6] for k in keys(poly3.pos)]
+    @test count(types3 .== 1) == 2  # Half of 4 beads
+    @test count(types3 .== 2) == 2  # Other half
     
-    # Test custom pattern
+    # Test custom pattern with contiguous blocks
+    l4 = Lattice(; boxlength = 8, nspecies = 1)
     poly4 = Polymer(;
-        length = 4,
+        length = 8,
         maxlength = 8,
         nMonomerTypes = 3,
         pattern = :custom,
-        customPattern = [1, 2, 3, 1, 2, 3, 1, 2]
+        customPattern = [1, 1, 2, 2, 3, 3, 1, 1]  # Contiguous blocks
     )
     initMonomers!(poly4, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test poly4.monomerIndex == [1, 2, 3, 1, 2, 3, 1, 2]
+    init!(l4, [poly4])
+    
+    # Verify types are assigned correctly by walking the chain
+    types4 = Int32[]
+    key = poly4.head
+    while key != Int32(0)
+        push!(types4, poly4.pos[key][6])
+        key = poly4.pos[key][5]  # next
+    end
+    @test types4 == Int32[1, 1, 2, 2, 3, 3, 1, 1]
 end
 
 # MARK: -PolyMonomer intPot
@@ -169,7 +186,7 @@ end
         length = 4,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block  # Changed from :alternating to :block for contiguous blocks
     )
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
