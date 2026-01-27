@@ -250,15 +250,21 @@ function deltaHam!(p::Polymer)
     if p.moveType == 1
         for (sp, idx) in m.intSpecies
             
-            # bulk species interactions
+            # cross-species interactions (different intIdx)
             if m.intIdx != idx  
-
-                # bulk species energy increment
-                setDeltaHP(sp, (m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) 
-                              + m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj)))
-
-                # polymer energy increment
-                p.deltaH += getDeltaHP(sp)
+                
+                energy_change = m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) + 
+                                m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj)
+                
+                # For PolyMonomers of the same polymer, just add to p.deltaH
+                # (cross-type polymer interactions don't affect partner deltaHP)
+                if sp isa PolyMonomer && sp.poly === p
+                    p.deltaH += energy_change
+                else
+                    # For external species (bulk monomers), set their deltaHP
+                    setDeltaHP(sp, energy_change)
+                    p.deltaH += getDeltaHP(sp)
+                end
             
             # self-interactions
             else
@@ -286,15 +292,18 @@ function deltaHam!(p::Polymer)
             # bead ki is moving from bi to newPosj
             if p.newPosi == p.bprev
 
-                # bulk species interactions
+                # cross-species interactions
                 if m.intIdx != idx  
 
-                    # bulk species energy increment
-                    setDeltaHP(sp, (m.intMat[m.intIdx, idx] 
-                                 * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi))))
+                    energy_change = m.intMat[m.intIdx, idx] * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi))
 
-                    # polymer energy increment
-                    p.deltaH += getDeltaHP(sp)
+                    # For PolyMonomers of the same polymer, just add to p.deltaH
+                    if sp isa PolyMonomer && sp.poly === p
+                        p.deltaH += energy_change
+                    else
+                        setDeltaHP(sp, energy_change)
+                        p.deltaH += getDeltaHP(sp)
+                    end
 
                 # self-interactions
                 else
@@ -307,15 +316,18 @@ function deltaHam!(p::Polymer)
             # bead kj is moving from bj to newPosi
             elseif p.newPosj == p.bnext
 
-                # bulk species interactions
+                # cross-species interactions
                 if m.intIdx != idx  
 
-                    # bulk species energy increment
-                    setDeltaHP(sp, (m.intMat[m.intIdx, idx] 
-                                 * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj))))
+                    energy_change = m.intMat[m.intIdx, idx] * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj))
 
-                    # polymer energy increment
-                    p.deltaH += getDeltaHP(sp)
+                    # For PolyMonomers of the same polymer, just add to p.deltaH
+                    if sp isa PolyMonomer && sp.poly === p
+                        p.deltaH += energy_change
+                    else
+                        setDeltaHP(sp, energy_change)
+                        p.deltaH += getDeltaHP(sp)
+                    end
 
                 # self-interactions
                 else
@@ -334,16 +346,19 @@ function deltaHam!(p::Polymer)
     elseif p.moveType == 3
         for (sp, idx) in m.intSpecies
             
-            # bulk species interactions
+            # cross-species interactions
             if m.intIdx != idx  
 
-                # bulk species energy increment
-                # Use bi and bj (positions being removed), not newPosi/newPosj
-                setDeltaHP(sp, -(m.intMat[m.intIdx, idx] * nnp(p, sp, p.bi) 
-                               + m.intMat[m.intIdx, idx] * nnp(p, sp, p.bj)))
+                energy_change = -(m.intMat[m.intIdx, idx] * nnp(p, sp, p.bi) + 
+                                  m.intMat[m.intIdx, idx] * nnp(p, sp, p.bj))
 
-                # polymer energy increment
-                p.deltaH += getDeltaHP(sp)
+                # For PolyMonomers of the same polymer, just add to p.deltaH
+                if sp isa PolyMonomer && sp.poly === p
+                    p.deltaH += energy_change
+                else
+                    setDeltaHP(sp, energy_change)
+                    p.deltaH += getDeltaHP(sp)
+                end
             
             # self-interactions
             else
@@ -404,13 +419,27 @@ function deltaHam!(b::BulkMonomer)
     # energy increment from self-interactions
     b.deltaH = 0.0
 
+    # Reset partner deltaHPs before accumulating (needed for heterogeneous polymers)
+    if !isnothing(b.intMat)
+        seen_polys = Set{Polymer}()
+        for (sp, idx) in b.intSpecies
+            if sp isa PolyMonomer && !(sp.poly in seen_polys)
+                sp.poly.deltaHP = 0.0
+                push!(seen_polys, sp.poly)
+            elseif !(sp isa PolyMonomer)
+                sp.deltaHP = 0.0
+            end
+        end
+    end
+
     # energy increment from cross-interactions with each partner
     if !isnothing(b.intMat)
         for (sp, idx) in b.intSpecies
-            setDeltaHP(sp, (b.intMat[b.intIdx, idx] 
+            energy_change = (b.intMat[b.intIdx, idx] 
                        * ((nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))
-                       - Int(b.intIdx == idx)))) # subtract 1 in self-interaction
-            b.deltaH += getDeltaHP(sp)
+                       - Int(b.intIdx == idx))) # subtract 1 in self-interaction
+            setDeltaHP(sp, energy_change)
+            b.deltaH += energy_change
         end
     end
 
@@ -435,12 +464,26 @@ function deltaHam!(b::FastBulkMonomer)
         sign = Int(b.moveIdxNew == 0) * 2 - 1
     end
 
+    # Reset partner deltaHPs before accumulating (needed for heterogeneous polymers)
+    if !isnothing(b.intMat)
+        seen_polys = Set{Polymer}()
+        for (sp, idx) in b.intSpecies
+            if sp isa PolyMonomer && !(sp.poly in seen_polys)
+                sp.poly.deltaHP = 0.0
+                push!(seen_polys, sp.poly)
+            elseif !(sp isa PolyMonomer)
+                sp.deltaHP = 0.0
+            end
+        end
+    end
+
     # energy increment from cross-interactions with each partner
     if !isnothing(b.intMat)
         for (sp, idx) in b.intSpecies
-            setDeltaHP(sp, (b.intMat[b.intIdx, idx] 
-                       * (nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))) * sign)
-            b.deltaH += getDeltaHP(sp)
+            energy_change = (b.intMat[b.intIdx, idx] 
+                       * (nnp(b, sp, b.newPos) - nnp(b, sp, b.bi))) * sign
+            setDeltaHP(sp, energy_change)
+            b.deltaH += energy_change
         end
     end
 
@@ -448,3 +491,4 @@ function deltaHam!(b::FastBulkMonomer)
 
     return b
 end
+

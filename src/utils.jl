@@ -110,7 +110,10 @@ end
 end
 
 @inline function setDeltaHP(m::AbstractPolyMonomer, val::Float64)
-    m.poly.deltaHP = val
+    # Use += to accumulate contributions from all monomer types
+    # When a bulk species moves, it may interact with multiple monomer types
+    # Each contributing to the polymer's total deltaHP
+    m.poly.deltaHP += val
     return m
 end
 
@@ -262,6 +265,35 @@ end
 # Number of nearest neighbors for PolyMonomer-to-PolyMonomer interactions
 # Counts only sites occupied by target monomer type (matching intIdx)
 function nnp(s::AbstractPolyMonomer, 
+             target::AbstractPolyMonomer, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(target)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+
+        pos[i] += 1
+    end
+
+    # clear temporary containers
+    clamp!(tempVec, 0, 0)
+
+    return n
+end
+
+
+# Number of nearest neighbors for BulkMonomer-to-PolyMonomer interactions
+# Counts only sites occupied by target monomer type (matching intIdx)
+function nnp(s::AbstractBulkMonomer, 
              target::AbstractPolyMonomer, 
              pos::Union{SubArray{Int32}, Vector{Int32}})
     n = 0

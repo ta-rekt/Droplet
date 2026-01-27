@@ -86,7 +86,7 @@ include("test_polymer_interacting.jl")
     @test hams[1] == accDeltaH[1]
 end
 
-@testset "Hamiltonian (homonogeneous interacting polymer)" begin
+@testset "Hamiltonian (homogeneous interacting polymer)" begin
     l = Lattice(;
         boxlength = 16,
         nspecies = 3
@@ -203,6 +203,181 @@ end
     @test hams[1] == accDeltaH[1]
     @test hams[2] == accDeltaH[2]
     @test hams[3] == accDeltaH[3]
+end
+
+@testset "Hamiltonian (heterogeneous polymer without bulk)" begin
+    l = Lattice(;
+        boxlength = 20,
+        nspecies = 1
+    )
+
+    p = Polymer(;
+        length = 10,
+        maxlength = 30,
+        nMonomerTypes = 2,
+        initPos = [1,10,10],
+        pattern = :custom,
+        customPattern = [1,1,1,1,2,2,2,2,1,1]
+    )
+    
+    initMonomers!(p, defaultChemPot=1.0, defaultIntPot=-0.3)
+    
+    # Set different interaction potentials for each monomer type
+    m1 = p.monomers[1]
+    m2 = p.monomers[2]
+    intPot!(m1, -0.3)  # base type self-interaction
+    intPot!(m2, -0.5)  # pattern type self-interaction
+
+    slist = [p]
+
+    # initialize lattice and species
+    init!(l, slist)
+
+    #### iterating multiple moves
+    nmoves = 0
+    frame = 1
+    nframes = 5000
+    
+    hams = Vector{Float64}(undef, 0)
+    accDeltaH = Vector{Float64}(undef, 0)
+    
+    # first frame, initial energy
+    ham!(p)
+    push!(hams, p.ham)
+    push!(accDeltaH, p.ham)
+
+    while frame <= nframes - 1
+        if move!(p)
+            nmoves += 1
+            
+            push!(accDeltaH, accDeltaH[end] + p.deltaH)
+            
+            ham!(p)
+            push!(hams, p.ham)
+
+            frame += 1
+        end
+    end
+
+    # Use isapprox for floating point comparison
+    @test all(isapprox.(hams, accDeltaH, atol=1e-10))
+end
+
+@testset "Hamiltonian (heterogeneous polymer with bulk)" begin
+    l = Lattice(;
+        boxlength = 20,
+        nspecies = 4  # m1, m2, b, c
+    )
+
+    p = Polymer(;
+        length = 10,
+        maxlength = 30,
+        nMonomerTypes = 2,
+        initPos = [1,10,10],
+        pattern = :custom,
+        customPattern = [1,1,1,1,2,2,2,2,1,1]
+    )
+    
+    initMonomers!(p, defaultChemPot=1.0, defaultIntPot=-0.3)
+    
+    m1 = p.monomers[1]
+    m2 = p.monomers[2]
+
+    b = FastBulkMonomer(;
+        length = 64,
+        initShape = "uniform"
+    )
+
+    c = FastBulkMonomer(;
+        length = 64,
+        initShape = "uniform"
+    )
+
+    # self-interaction potentials
+    intPot!(m1, -0.3)  # base type
+    intPot!(m2, -0.5)  # pattern type
+    intPot!(b, -0.2)
+    intPot!(c, -0.1)
+    
+    # polymer-bulk cross interactions (different for each monomer type)
+    intPot!(m1, b, -0.1)
+    intPot!(m1, c, -0.05)
+    intPot!(m2, b, -0.4)
+    intPot!(m2, c, -0.2)
+
+    slist = [p, b, c]
+
+    # initialize lattice and species
+    init!(l, slist)
+
+    #### Time evolution test - track each species separately
+    nmoves = 0
+    frame = 1
+    nframes = 5000
+    
+    # Track hamiltonians per species
+    p_hams = Vector{Float64}(undef, 0)
+    p_accDeltaH = Vector{Float64}(undef, 0)
+    b_hams = Vector{Float64}(undef, 0)
+    b_accDeltaH = Vector{Float64}(undef, 0)
+    c_hams = Vector{Float64}(undef, 0)
+    c_accDeltaH = Vector{Float64}(undef, 0)
+    
+    # first frame, initial energy
+    ham!(p)
+    ham!(b)
+    ham!(c)
+    push!(p_hams, p.ham)
+    push!(p_accDeltaH, p.ham)
+    push!(b_hams, b.ham)
+    push!(b_accDeltaH, b.ham)
+    push!(c_hams, c.ham)
+    push!(c_accDeltaH, c.ham)
+    
+    # Reset deltas
+    p.deltaH = 0.0
+    b.deltaH = 0.0
+    c.deltaH = 0.0
+    p.deltaHP = 0.0
+    b.deltaHP = 0.0
+    c.deltaHP = 0.0
+
+    # List of movable species: polymer, b, c
+    movable = [p, b, c]
+    accDeltaHs = [p_accDeltaH, b_accDeltaH, c_accDeltaH]
+    hamss = [p_hams, b_hams, c_hams]
+    
+    while frame <= nframes - 1
+        chooser = rand(1:3)
+        s = movable[chooser]
+        
+        if move!(s)
+            nmoves += 1
+            
+            # Accumulate deltaH for mover
+            push!(accDeltaHs[chooser], accDeltaHs[chooser][end] + getDeltaHam(s))
+            
+            # Accumulate deltaHP for partners
+            for j in 1:3
+                if j != chooser
+                    push!(accDeltaHs[j], accDeltaHs[j][end] + getDeltaHP(movable[j]))
+                end
+            end
+            
+            # Compute fresh ham for all species
+            for j in 1:3
+                ham!(movable[j])
+                push!(hamss[j], getHam(movable[j]))
+            end
+
+            frame += 1
+        end
+    end
+
+    # Use isapprox for floating point comparison
+    @test all(isapprox.(p_hams, p_accDeltaH, atol=1e-10))
+    @test all(isapprox.(b_hams, b_accDeltaH, atol=1e-10))
+    @test all(isapprox.(c_hams, c_accDeltaH, atol=1e-10))
 end
 
 @testset "Hamiltonian (BulkMonomer)" begin
