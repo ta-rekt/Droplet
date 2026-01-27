@@ -297,13 +297,46 @@ function assignMonomerTypes!(p::Polymer)
         currentType = p.pos[key][6]
         nextKey = p.pos[key][5]
         
-        if currentType >= 2  # pattern type (not base type)
-            # Check if this is the tail of this pattern
-            if nextKey == 0 || p.pos[nextKey][6] != currentType
-                p.patternTails[currentType] = key
+    if p.pattern == :uniform
+        p.monomerIndex = ones(p.maxlength)
+    
+    elseif p.pattern == :alternating
+        # Alternate between subspecies
+        for i in 1:p.maxlength
+            p.monomerIndex[i] = mod1(i, p.nMonomerTypes)
+        end
+        
+    elseif p.pattern == :block
+        # Divide into n equal blocks
+        blockSize = div(p.maxlength, p.nMonomerTypes)
+        for i in 1:p.maxlength
+            blockIdx = min(div(i - 1, blockSize) + 1, p.nMonomerTypes)
+            p.monomerIndex[i] = blockIdx
+        end
+        
+    elseif p.pattern == :random
+        # Random assignment
+        for i in 1:p.maxlength
+            p.monomerIndex[i] = Int32(rand(1:p.nMonomerTypes))
+        end
+        
+    elseif p.pattern == :custom
+        if p.customPattern === nothing
+            error("pattern=:custom requires p.customPattern vector to be provided")
+        end
+        if length(p.customPattern) != p.maxlength
+            error("p.customPattern length ($(length(p.customPattern))) must equal p.maxlength ($(p.maxlength))")
+        end
+        # Validate all indices are in range
+        for (i, idx) in enumerate(p.customPattern)
+            if idx < 1 || idx > p.nMonomerTypes
+                error("p.customPattern[$i] = $idx is out of range [1, $p.nMonomerTypes]")
             end
         end
-        key = nextKey
+        # Copy custom p.pattern
+        p.monomerIndex .= p.customPattern
+    else
+        error("Unknown p.pattern: $pattern. Use :uniform, :alternating, :block, :random, or :custom")
     end
     
     return p
@@ -500,8 +533,7 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         s.ghost = gs
         s.boxlength = l.boxlength
         
-        # Initialize species if not already done (parent polymers 
-        # might be pre-initialized)
+        # Initialize species if not already done (parent polymers might be pre-initialized)
         if s.pos === nothing
             initSpecies!(s)
         end
