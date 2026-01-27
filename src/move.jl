@@ -22,6 +22,16 @@ function addBond!(p::Polymer)
     # Inherit intIdx from parent bead (ki) for new beads
     intIdx = p.pos[p.ki][6]
     
+    # Capture pattern tail info BEFORE modifying chain (only for non-base types)
+    tailKey = nothing
+    prevTailKey = nothing
+    newTailKey = nothing
+    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx)
+        tailKey = p.patternTails[intIdx]
+        prevTailKey = p.pos[tailKey][4]
+        newTailKey = p.pos[prevTailKey][4]
+    end
+    
     # set new lattice sites
     p.latS[p.newPosi...] = intIdx
     p.latS[p.newPosj...] = intIdx
@@ -61,6 +71,24 @@ function addBond!(p::Polymer)
     push!(p.keys_vec, next_key2)
 
     KEYCOUNT[] += 2
+    
+    # Swap pattern tail beads to base type (only for non-base types)
+    if tailKey !== nothing
+        # Swap tail and prev-tail to base type
+        p.pos[tailKey][6] = p.baseIntIdx
+        p.pos[prevTailKey][6] = p.baseIntIdx
+        
+        # Update lattice for swapped beads
+        p.latS[p.pos[tailKey][1], p.pos[tailKey][2], p.pos[tailKey][3]] = p.baseIntIdx
+        p.latS[p.pos[prevTailKey][1], p.pos[prevTailKey][2], p.pos[prevTailKey][3]] = p.baseIntIdx
+        
+        # Update patternTails
+        if newTailKey != 0 && p.pos[newTailKey][6] == intIdx
+            p.patternTails[intIdx] = newTailKey
+        else
+            delete!(p.patternTails, intIdx)
+        end
+    end
 
     return p
 end
@@ -110,6 +138,27 @@ function removeBond!(p::Polymer)
     # TODO: handle corner cases
     @assert (p.newPosi == p.bprev) && (p.newPosj == p.bnext) begin
         "Move is not a bond removal"
+    end
+    
+    # Get the intIdx before removing (both beads have same type due to boundary check)
+    intIdx = p.pos[p.ki][6]
+    
+    # Extend pattern at tail BEFORE removing beads (only for non-base types)
+    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx)
+        tailKey = p.patternTails[intIdx]
+        nextAfterTail = p.pos[tailKey][5]
+        nextNextAfterTail = nextAfterTail == 0 ? Int32(0) : p.pos[nextAfterTail][5]
+        
+        # Swap two base-type beads to pattern type
+        p.pos[nextAfterTail][6] = intIdx
+        p.pos[nextNextAfterTail][6] = intIdx
+        
+        # Update lattice
+        p.latS[p.pos[nextAfterTail][1], p.pos[nextAfterTail][2], p.pos[nextAfterTail][3]] = intIdx
+        p.latS[p.pos[nextNextAfterTail][1], p.pos[nextNextAfterTail][2], p.pos[nextNextAfterTail][3]] = intIdx
+        
+        # Update patternTails: new tail is two beads forward
+        p.patternTails[intIdx] = nextNextAfterTail
     end
     
     # reset old lattice sites to 0
@@ -216,6 +265,30 @@ function move!(p::Polymer)
         
         # sample a move according to proposition probabilities
         proposeMove!(p)
+        
+        # Validate pattern swap is possible for non-base types
+        if p.patternTails !== nothing && !isempty(p.patternTails)
+            currentIntIdx = p.pos[p.ki][6]
+            if currentIntIdx != p.baseIntIdx
+                if p.moveType == 1  # addBond: pattern shrinks at tail
+                    # Need at least 4 beads in pattern (2 will be swapped)
+                    tailKey = p.patternTails[currentIntIdx]
+                    prevTailKey = p.pos[tailKey][4]
+                    newTailKey = p.pos[prevTailKey][4]
+                    if newTailKey == 0 || p.pos[newTailKey][6] != currentIntIdx
+                        return false  # Pattern too small
+                    end
+                elseif p.moveType == 3  # removeBond: need base-type beads after tail
+                    tailKey = p.patternTails[currentIntIdx]
+                    nextAfterTail = p.pos[tailKey][5]
+                    nextNextAfterTail = nextAfterTail == 0 ? Int32(0) : p.pos[nextAfterTail][5]
+                    if nextAfterTail == 0 || p.pos[nextAfterTail][6] != p.baseIntIdx ||
+                       nextNextAfterTail == 0 || p.pos[nextNextAfterTail][6] != p.baseIntIdx
+                        return false  # Insufficient base-type beads
+                    end
+                end
+            end
+        end
         
         # check for max length constraint and overlap
         if !overlap(p) && !(p.moveType == 1 && p.length == p.maxlength)

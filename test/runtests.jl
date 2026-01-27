@@ -11,4 +11,5 @@ using Test
     include("test_heterogeneous_phase0.jl")
     include("test_heterogeneous_phase2.jl")
     include("test_heterogeneous_phase3.jl")
+    include("test_heterogeneous_phase5.jl")
 end
