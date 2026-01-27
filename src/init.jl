@@ -209,10 +209,52 @@ function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::F
     return p
 end
 
+# Validate that each non-base pattern type (2+) appears in exactly one contiguous block
+function _validateContiguousBlocks(patternVec::Vector{Int32})
+    maxType = maximum(patternVec)
+    for t in 2:maxType
+        indices = findall(x -> x == t, patternVec)
+        if !isempty(indices) && indices != collect(indices[1]:indices[end])
+            error("Pattern type $t must appear in exactly one contiguous block")
+        end
+    end
+end
+
+# Initialize patternTails and baseIntIdx
+function _initPatternTails!(p::Polymer)
+    intIdxList = sort(collect(keys(p.monomers)))
+    p.baseIntIdx = intIdxList[1]  # base type = first intIdx (smallest)
+    
+    # For uniform pattern, no tails to track
+    if p.nMonomerTypes == 1 || p.pattern == :uniform
+        p.patternTails = nothing
+        return
+    end
+    
+    p.patternTails = Dict{Int32, Int32}()
+    
+    key = p.head
+    while key != 0
+        currentIntIdx = p.pos[key][6]
+        nextKey = p.pos[key][5]
+        
+        # If not base type, check if this is the tail of a pattern block
+        if currentIntIdx != p.baseIntIdx
+            if nextKey == 0 || p.pos[nextKey][6] != currentIntIdx
+                p.patternTails[currentIntIdx] = key
+            end
+        end
+        key = nextKey
+    end
+end
+
 # Assign monomer types to pos[key][6] based on pattern
 function _assignPattern!(p::Polymer)
     # Build pattern vector (1-based type indices)
     patternVec = _buildPatternVector(p)
+    
+    # Validate contiguous blocks for non-base types
+    _validateContiguousBlocks(patternVec)
     
     # Map 1-based type indices to intIdx values
     intIdxList = sort(collect(keys(p.monomers)))
@@ -226,6 +268,9 @@ function _assignPattern!(p::Polymer)
         key = p.pos[key][5]
         chainPos += 1
     end
+    
+    # Initialize pattern boundary tracking
+    _initPatternTails!(p)
 end
 
 # Build pattern vector of 1-based type indices

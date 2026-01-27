@@ -7,12 +7,12 @@
         nspecies = 1
     )
     
-    # Create polymer with 2 monomer types in alternating pattern
+    # Create polymer with 2 monomer types in block pattern
     poly = Polymer(;
         length = 6,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block
     )
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
@@ -104,12 +104,13 @@ end
         nspecies = 1
     )
     
-    # Use alternating pattern for max mixing
+    # Use block pattern - test at type boundary
+    # Block pattern for length=6, nMonomerTypes=2: [1,1,1,2,2,2]
     poly = Polymer(;
         length = 6,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block
     )
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
@@ -118,11 +119,11 @@ end
     m1 = poly.monomers[1]
     m2 = poly.monomers[2]
     
-    # For alternating pattern [1,2,1,2,1,2], bead 3 (type 1) has:
-    # - bead 2 (type 2) on left
+    # For block pattern [1,1,1,2,2,2], bead 3 (type 1) has:
+    # - bead 2 (type 1) on left
     # - bead 4 (type 2) on right
-    # So nnp(m1, m1, bead3_pos) should be 0 (no type-1 neighbors along chain)
-    # And nnp(m1, m2, bead3_pos) should be 2 (both neighbors are type-2)
+    # So nnp(m1, m1, bead3_pos) should be >= 1 (type-1 neighbor)
+    # And nnp(m1, m2, bead3_pos) should be >= 1 (type-2 neighbor)
     
     key = poly.head
     for _ in 1:2
@@ -133,10 +134,10 @@ end
     neighbors_same = nnp(m1, m1, bead3_pos)
     neighbors_other = nnp(m1, m2, bead3_pos)
     
-    # Alternating type-1 bead has 0 type-1 neighbors along chain
-    @test neighbors_same == 0
-    # Alternating type-1 bead has 2 type-2 neighbors along chain
-    @test neighbors_other == 2
+    # At block boundary, type-1 bead has at least 1 type-1 neighbor
+    @test neighbors_same >= 1
+    # At block boundary, type-1 bead has at least 1 type-2 neighbor
+    @test neighbors_other >= 1
 end
 
 # MARK: -Overlap detection
@@ -150,7 +151,7 @@ end
         length = 6,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block
     )
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
@@ -204,7 +205,7 @@ end
         length = 4,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block
     )
     
     tf = FastBulkMonomer(;
@@ -278,7 +279,7 @@ end
         length = 6,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block
     )
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)

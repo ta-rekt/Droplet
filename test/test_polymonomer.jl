@@ -57,29 +57,33 @@ end
     pattern1 = getPatternFromChain(poly1)
     @test all(pattern1 .== 1)  # All beads are monomer type 1 (intIdx=1)
     
-    # Test alternating pattern
+    # Test block pattern (valid: contiguous blocks)
     l2 = Lattice(; boxlength = 10, nspecies = 1)
-    poly2 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :alternating)
+    poly2 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :block)
     initMonomers!(poly2, defaultChemPot=0.0, defaultIntPot=0.0)
     init!(l2, [poly2])
     pattern2 = getPatternFromChain(poly2)
-    @test pattern2 == [1, 2, 1, 2]
+    @test pattern2 == [1, 1, 2, 2]
     
-    # Test block pattern
+    # Test custom contiguous pattern (valid)
     l3 = Lattice(; boxlength = 10, nspecies = 1)
-    poly3 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :block)
+    poly3 = Polymer(; length = 6, maxlength = 8, nMonomerTypes = 3, pattern = :custom, customPattern = [1, 2, 2, 3, 3, 1])
     initMonomers!(poly3, defaultChemPot=0.0, defaultIntPot=0.0)
     init!(l3, [poly3])
     pattern3 = getPatternFromChain(poly3)
-    @test pattern3 == [1, 1, 2, 2]
+    @test pattern3 == [1, 2, 2, 3, 3, 1]
     
-    # Test custom pattern
+    # Test alternating pattern throws error (non-contiguous blocks)
     l4 = Lattice(; boxlength = 10, nspecies = 1)
-    poly4 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 3, pattern = :custom, customPattern = [1, 2, 3, 1])
+    poly4 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :alternating)
     initMonomers!(poly4, defaultChemPot=0.0, defaultIntPot=0.0)
-    init!(l4, [poly4])
-    pattern4 = getPatternFromChain(poly4)
-    @test pattern4 == [1, 2, 3, 1]
+    @test_throws ErrorException init!(l4, [poly4])
+    
+    # Test non-contiguous custom pattern throws error
+    l5 = Lattice(; boxlength = 10, nspecies = 1)
+    poly5 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :custom, customPattern = [1, 2, 1, 2])
+    initMonomers!(poly5, defaultChemPot=0.0, defaultIntPot=0.0)
+    @test_throws ErrorException init!(l5, [poly5])
 end
 
 # MARK: -PolyMonomer intPot
@@ -172,7 +176,7 @@ end
         length = 4,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block
     )
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)

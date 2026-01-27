@@ -9,4 +9,5 @@ using Test
     include("test_interaction_potentials.jl")
     include("test_polymonomer.jl")
     include("test_heterogeneous_phase0.jl")
+    include("test_heterogeneous_phase2.jl")
 end
