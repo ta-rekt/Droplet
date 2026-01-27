@@ -207,6 +207,13 @@ function move!(p::Polymer)
     # don't move if last bead was selected
     if p.kj != 0
         
+        # Reject if bond spans type boundary (heterogeneous polymers only)
+        if p.patternTails !== nothing && !isempty(p.patternTails)
+            if p.pos[p.ki][6] != p.pos[p.kj][6]
+                return false
+            end
+        end
+        
         # sample a move according to proposition probabilities
         proposeMove!(p)
         
