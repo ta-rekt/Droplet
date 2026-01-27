@@ -6,9 +6,9 @@ export  overlap, addBond!, kinkBond!, removeBond!, identifyBond!,
 # MARK: -Polymer
 
 function overlap(p::Polymer)
-    return ((p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] == 1 && 
+    return ((p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] > 0 && 
              !coords_equal(p.bprev, p.newPosi)) ||
-            (p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] == 1 && 
+            (p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] > 0 && 
              !coords_equal(p.bnext, p.newPosj)))
 end
 
@@ -19,9 +19,22 @@ function addBond!(p::Polymer)
         "Move is not a bond addition"
     end
 
-    # set new lattice sites to 1
-    p.latS[p.newPosi...] = 1
-    p.latS[p.newPosj...] = 1
+    # Inherit intIdx from parent bead (ki) for new beads
+    intIdx = p.pos[p.ki][6]
+    
+    # Capture pattern tail info BEFORE modifying chain (only for non-base types in contiguous pattern region)
+    tailKey = nothing
+    prevTailKey = nothing
+    newTailKey = nothing
+    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx) && isInPatternRegion(p, p.ki, intIdx)
+        tailKey = p.patternTails[intIdx]
+        prevTailKey = p.pos[tailKey][4]
+        newTailKey = p.pos[prevTailKey][4]
+    end
+    
+    # set new lattice sites
+    p.latS[p.newPosi...] = intIdx
+    p.latS[p.newPosj...] = intIdx
 
     # Find next available keys
     next_key1 = KEYCOUNT[] + 1
@@ -32,20 +45,22 @@ function addBond!(p::Polymer)
         next_key2 = KEYCOUNT[] + 2
     end
 
-    # add two new entries for the bond
-    p.pos[next_key1] = Vector{Int32}(undef, 5)
+    # add two new entries for the bond (6-element vectors)
+    p.pos[next_key1] = Vector{Int32}(undef, 6)
     p.pos[next_key1][1] = p.newPosi[1]
     p.pos[next_key1][2] = p.newPosi[2]
     p.pos[next_key1][3] = p.newPosi[3]
     p.pos[next_key1][4] = p.ki
     p.pos[next_key1][5] = next_key2
+    p.pos[next_key1][6] = intIdx
 
-    p.pos[next_key2] = Vector{Int32}(undef, 5)
+    p.pos[next_key2] = Vector{Int32}(undef, 6)
     p.pos[next_key2][1] = p.newPosj[1]
     p.pos[next_key2][2] = p.newPosj[2]
     p.pos[next_key2][3] = p.newPosj[3]
     p.pos[next_key2][4] = next_key1
     p.pos[next_key2][5] = p.kj
+    p.pos[next_key2][6] = intIdx
 
     # re-route the old pointers
     p.pos[p.ki][5] = next_key1
@@ -56,6 +71,24 @@ function addBond!(p::Polymer)
     push!(p.keys_vec, next_key2)
 
     KEYCOUNT[] += 2
+    
+    # Swap pattern tail beads to base type (only for non-base types)
+    if tailKey !== nothing
+        # Swap tail and prev-tail to base type
+        p.pos[tailKey][6] = p.baseIntIdx
+        p.pos[prevTailKey][6] = p.baseIntIdx
+        
+        # Update lattice for swapped beads
+        p.latS[p.pos[tailKey][1], p.pos[tailKey][2], p.pos[tailKey][3]] = p.baseIntIdx
+        p.latS[p.pos[prevTailKey][1], p.pos[prevTailKey][2], p.pos[prevTailKey][3]] = p.baseIntIdx
+        
+        # Update patternTails
+        if newTailKey != 0 && p.pos[newTailKey][6] == intIdx
+            p.patternTails[intIdx] = newTailKey
+        else
+            delete!(p.patternTails, intIdx)
+        end
+    end
 
     return p
 end
@@ -67,28 +100,34 @@ function kinkBond!(p::Polymer)
         "Move is not a kink"
     end
 
-    # set angled site to 0, flat site to 1 (allocation-free: no splatting or array construction)
+    # Preserve the bead's intIdx from pos[key][6]
     if p.newPosi == p.bprev 
+        # bead ki moves from bi to newPosj
+        intIdx = p.pos[p.ki][6]
         p.latS[p.bi[1], p.bi[2], p.bi[3]] = 0
-        p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = 1
+        p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = intIdx
 
-        p.pos[p.ki] = Vector{Int32}(undef, 5)
+        p.pos[p.ki] = Vector{Int32}(undef, 6)
         p.pos[p.ki][1] = p.newPosj[1]
         p.pos[p.ki][2] = p.newPosj[2]
         p.pos[p.ki][3] = p.newPosj[3]
         p.pos[p.ki][4] = p.kprev
         p.pos[p.ki][5] = p.kj
+        p.pos[p.ki][6] = intIdx
 
     elseif p.newPosj == p.bnext
-        p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = 1
+        # bead kj moves from bj to newPosi
+        intIdx = p.pos[p.kj][6]
+        p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = intIdx
         p.latS[p.bj[1], p.bj[2], p.bj[3]] = 0
 
-        p.pos[p.kj] = Vector{Int32}(undef, 5)
+        p.pos[p.kj] = Vector{Int32}(undef, 6)
         p.pos[p.kj][1] = p.newPosi[1]
         p.pos[p.kj][2] = p.newPosi[2]
         p.pos[p.kj][3] = p.newPosi[3]
         p.pos[p.kj][4] = p.ki
         p.pos[p.kj][5] = p.knext
+        p.pos[p.kj][6] = intIdx
     end
 
     return p
@@ -99,6 +138,27 @@ function removeBond!(p::Polymer)
     # TODO: handle corner cases
     @assert (p.newPosi == p.bprev) && (p.newPosj == p.bnext) begin
         "Move is not a bond removal"
+    end
+    
+    # Get the intIdx before removing (both beads have same type due to boundary check)
+    intIdx = p.pos[p.ki][6]
+    
+    # Extend pattern at tail BEFORE removing beads (only for non-base types in contiguous pattern region)
+    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx) && isInPatternRegion(p, p.ki, intIdx)
+        tailKey = p.patternTails[intIdx]
+        nextAfterTail = p.pos[tailKey][5]
+        nextNextAfterTail = nextAfterTail == 0 ? Int32(0) : p.pos[nextAfterTail][5]
+        
+        # Swap two base-type beads to pattern type
+        p.pos[nextAfterTail][6] = intIdx
+        p.pos[nextNextAfterTail][6] = intIdx
+        
+        # Update lattice
+        p.latS[p.pos[nextAfterTail][1], p.pos[nextAfterTail][2], p.pos[nextAfterTail][3]] = intIdx
+        p.latS[p.pos[nextNextAfterTail][1], p.pos[nextNextAfterTail][2], p.pos[nextNextAfterTail][3]] = intIdx
+        
+        # Update patternTails: new tail is two beads forward
+        p.patternTails[intIdx] = nextNextAfterTail
     end
     
     # reset old lattice sites to 0
@@ -196,8 +256,39 @@ function move!(p::Polymer)
     # don't move if last bead was selected
     if p.kj != 0
         
+        # Reject if bond spans type boundary (heterogeneous polymers only)
+        if p.patternTails !== nothing && !isempty(p.patternTails)
+            if p.pos[p.ki][6] != p.pos[p.kj][6]
+                return false
+            end
+        end
+        
         # sample a move according to proposition probabilities
         proposeMove!(p)
+        
+        # Validate pattern swap is possible for non-base types
+        if p.patternTails !== nothing && !isempty(p.patternTails)
+            currentIntIdx = p.pos[p.ki][6]
+            if currentIntIdx != p.baseIntIdx
+                if p.moveType == 1  # addBond: pattern shrinks at tail
+                    # Need at least 4 beads in pattern (2 will be swapped)
+                    tailKey = p.patternTails[currentIntIdx]
+                    prevTailKey = p.pos[tailKey][4]
+                    newTailKey = p.pos[prevTailKey][4]
+                    if newTailKey == 0 || p.pos[newTailKey][6] != currentIntIdx
+                        return false  # Pattern too small
+                    end
+                elseif p.moveType == 3  # removeBond: need base-type beads after tail
+                    tailKey = p.patternTails[currentIntIdx]
+                    nextAfterTail = p.pos[tailKey][5]
+                    nextNextAfterTail = nextAfterTail == 0 ? Int32(0) : p.pos[nextAfterTail][5]
+                    if nextAfterTail == 0 || p.pos[nextAfterTail][6] != p.baseIntIdx ||
+                       nextNextAfterTail == 0 || p.pos[nextNextAfterTail][6] != p.baseIntIdx
+                        return false  # Insufficient base-type beads
+                    end
+                end
+            end
+        end
         
         # check for max length constraint and overlap
         if !overlap(p) && !(p.moveType == 1 && p.length == p.maxlength)

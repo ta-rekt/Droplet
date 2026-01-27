@@ -2,10 +2,37 @@
 export coords_equal, getLatS, getTempVec, getBoxlength, getPolyMonomer, 
        getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nnIdxs!, splitDroplet!,
        dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP,
-       setHam, setDeltaHam, setDeltaHP
+       setHam, setDeltaHam, setDeltaHP, isneighbor, isInPatternRegion
 
 ############# Generic utilities #############
 # MARK: -Generic
+
+# Check if two 3D positions are neighbors (Manhattan distance == 1)
+@inline function isneighbor(pos1::Union{SubArray{Int32}, Vector{Int32}}, 
+                            pos2::Union{SubArray{Int32}, Vector{Int32}})
+    return abs(pos1[1] - pos2[1]) + abs(pos1[2] - pos2[2]) + abs(pos1[3] - pos2[3]) == 1
+end
+
+# Check if bead at key is in the contiguous pattern region (connected to pattern tail)
+# Returns true if walking forward from key while staying in the same type reaches the tail
+function isInPatternRegion(p::Polymer, key::Integer, intIdx::Integer)
+    tailKey = p.patternTails[intIdx]
+    
+    # Walk forward from key toward tail, checking if we reach the tail
+    currentKey = key
+    while currentKey != 0
+        if currentKey == tailKey
+            return true
+        end
+        # If we hit a different type, we're not in the contiguous region
+        if p.pos[currentKey][6] != intIdx
+            return false
+        end
+        currentKey = p.pos[currentKey][5]  # next bead (forward)
+    end
+    
+    return false
+end
 
 @inline function coords_equal(a, b)
     return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
@@ -83,7 +110,10 @@ end
 end
 
 @inline function setDeltaHP(m::AbstractPolyMonomer, val::Float64)
-    m.poly.deltaHP = val
+    # Use += to accumulate contributions from all monomer types
+    # When a bulk species moves, it may interact with multiple monomer types
+    # Each contributing to the polymer's total deltaHP
+    m.poly.deltaHP += val
     return m
 end
 
@@ -94,25 +124,23 @@ end
 
 
 """
-    getPolyMonomer(p::Polymer, beadIdx::Int32)
+    getPolyMonomer(p::Polymer, key::Int32)
 
-Get the Subspecies for a given bead by its key in the position dictionary.
-Uses the bead's position in the chain (via traversal) to look up its subspecies.
+Get the PolyMonomer for a given bead by its key in the position dictionary.
+Uses pos[key][6] which stores the intIdx directly for O(1) dictionary lookup.
 """
-function getPolyMonomer(p::Polymer, beadIdx::Int32)
-    if p.monomers === nothing || p.monomerIndex === nothing
+function getPolyMonomer(p::Polymer, key::Int32)
+    if p.monomers === nothing
         return nothing
     end
-    
-    return p.monomers[p.monomerIndex[beadIdx]]
+    intIdx = p.pos[key][6]
+    return p.monomers[intIdx]
 end
 
 
-@inline function getMonomerPotentials(poly::AbstractPolymer, beadIdx::Int32)
-    # For polymers with PolyMonomers, get potentials from the appropriate PolyMonomer
-    monomer = getPolyMonomer(poly, beadIdx)
+@inline function getMonomerPotentials(poly::AbstractPolymer, key::Int32)
+    monomer = getPolyMonomer(poly, key)
     if monomer === nothing
-        # If no PolyMonomer is found, return zeros (shouldn't happen in normal usage)
         return (nothing, nothing)
     end
     return (monomer.chemPot, monomer.intPot)
@@ -223,6 +251,64 @@ function nnp(s::AbstractSpecies,
         pos[i] -= 2
         boxmod!(pos, tempVec, Int32(1), boxlength)
         n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
+
+        pos[i] += 1
+    end
+
+    # clear temporary containers
+    clamp!(tempVec, 0, 0)
+
+    return n
+end
+
+
+# Number of nearest neighbors for PolyMonomer-to-PolyMonomer interactions
+# Counts only sites occupied by target monomer type (matching intIdx)
+function nnp(s::AbstractPolyMonomer, 
+             target::AbstractPolyMonomer, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(target)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+
+        pos[i] += 1
+    end
+
+    # clear temporary containers
+    clamp!(tempVec, 0, 0)
+
+    return n
+end
+
+
+# Number of nearest neighbors for BulkMonomer-to-PolyMonomer interactions
+# Counts only sites occupied by target monomer type (matching intIdx)
+function nnp(s::AbstractBulkMonomer, 
+             target::AbstractPolyMonomer, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(target)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
 
         pos[i] += 1
     end
