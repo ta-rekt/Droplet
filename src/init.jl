@@ -441,6 +441,18 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
             for j in 1:s.length
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = j
             end
+        elseif typeof(s) <: AbstractPolymer && s.monomers !== nothing && s.monomerIndex !== nothing
+            # For polymers with monomers, store intIdx in lattice
+            key = s.head
+            chainPos = 1
+            while key != 0 && chainPos <= s.length
+                pos = s.pos[key]
+                monomerTypeIdx = s.monomerIndex[chainPos]
+                intIdx = s.monomers[monomerTypeIdx].intIdx
+                s.latS[pos[1], pos[2], pos[3]] = intIdx
+                key = pos[5]  # next in chain
+                chainPos += 1
+            end
         else
             for j in 1:s.length
                 s.latS[s.pos[j][1], s.pos[j][2], s.pos[j][3]] = 1

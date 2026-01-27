@@ -8,4 +8,5 @@ using Test
     include("test_density_droplet.jl")
     include("test_interaction_potentials.jl")
     include("test_polymonomer.jl")
+    include("test_heterogeneous_phase0.jl")
 end

@@ -234,6 +234,35 @@ function nnp(s::AbstractSpecies,
 end
 
 
+# Number of nearest neighbors for PolyMonomer-to-PolyMonomer interactions
+# Counts only sites occupied by target monomer type (matching intIdx)
+function nnp(s::AbstractPolyMonomer, 
+             target::AbstractPolyMonomer, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(target)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+
+        pos[i] += 1
+    end
+
+    # clear temporary containers
+    clamp!(tempVec, 0, 0)
+
+    return n
+end
+
+
 # Set of nearest neighbors of a given position
 function nnIdxs!(b::AbstractSpecies, 
                  pos::Union{SubArray{Int32}, Vector{Int32}})

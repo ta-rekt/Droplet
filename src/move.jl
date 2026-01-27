@@ -6,9 +6,9 @@ export  overlap, addBond!, kinkBond!, removeBond!, identifyBond!,
 # MARK: -Polymer
 
 function overlap(p::Polymer)
-    return ((p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] == 1 && 
+    return ((p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] > 0 && 
              !coords_equal(p.bprev, p.newPosi)) ||
-            (p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] == 1 && 
+            (p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] > 0 && 
              !coords_equal(p.bnext, p.newPosj)))
 end
 
@@ -19,9 +19,14 @@ function addBond!(p::Polymer)
         "Move is not a bond addition"
     end
 
-    # set new lattice sites to 1
-    p.latS[p.newPosi...] = 1
-    p.latS[p.newPosj...] = 1
+    # Determine what value to store in lattice
+    # For polymers with monomers, we need to look up the intIdx
+    # For now, use 1 for backward compatibility (Phase 1+ will add pos[6] with intIdx)
+    latValue = Int32(1)
+
+    # set new lattice sites
+    p.latS[p.newPosi...] = latValue
+    p.latS[p.newPosj...] = latValue
 
     # Find next available keys
     next_key1 = KEYCOUNT[] + 1
@@ -67,10 +72,13 @@ function kinkBond!(p::Polymer)
         "Move is not a kink"
     end
 
-    # set angled site to 0, flat site to 1 (allocation-free: no splatting or array construction)
+    # For polymers with monomers, preserve the intIdx stored in lattice
+    # For homogeneous polymers, this will be 1
     if p.newPosi == p.bprev 
+        # bead ki moves from bi to newPosj - preserve its intIdx
+        intIdx = p.latS[p.bi[1], p.bi[2], p.bi[3]]
         p.latS[p.bi[1], p.bi[2], p.bi[3]] = 0
-        p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = 1
+        p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = intIdx
 
         p.pos[p.ki] = Vector{Int32}(undef, 5)
         p.pos[p.ki][1] = p.newPosj[1]
@@ -80,7 +88,9 @@ function kinkBond!(p::Polymer)
         p.pos[p.ki][5] = p.kj
 
     elseif p.newPosj == p.bnext
-        p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = 1
+        # bead kj moves from bj to newPosi - preserve its intIdx
+        intIdx = p.latS[p.bj[1], p.bj[2], p.bj[3]]
+        p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = intIdx
         p.latS[p.bj[1], p.bj[2], p.bj[3]] = 0
 
         p.pos[p.kj] = Vector{Int32}(undef, 5)
