@@ -10,15 +10,16 @@ function ham!(p::Polymer)
     totalChemEnergy = 0.0
     totalIntEnergy = 0.0
 
-    key = p.head           # initial bead
-    pos = p.pos[key][range(1, 3)]  # initial position
+    key = p.head
     
-     # assumes all monomers identical
-    m = p.monomers[1]
-
-    @assert !isnothing(m.intMat) "No interaction matrix!"
+    # Get any monomer to check intMat exists (all share same matrix)
+    refMonomer = first(values(p.monomers))
+    @assert !isnothing(refMonomer.intMat) "No interaction matrix!"
 
     for i in 1:p.length
+        pos = p.pos[key][1:3]
+        m = p.monomers[p.pos[key][6]]  # Dictionary lookup by intIdx
+        
         # Chemical potential contribution
         totalChemEnergy -= m.chemPot
         
@@ -35,16 +36,10 @@ function ham!(p::Polymer)
             end
         end
 
-        key = p.pos[key][5]    # next bead
-
-        if key != 0
-            pos = p.pos[key][range(1, 3)]  # next position
-        end
+        key = p.pos[key][5]
     end
 
-    @assert key == 0 begin
-        "Tail is not N'th bead"
-    end
+    @assert key == 0 "Tail is not N'th bead"
 
     p.ham = totalChemEnergy + totalIntEnergy
 
@@ -61,7 +56,9 @@ function deltaHam!(p::Polymer)
     
     p.deltaH = 0
     p.deltaHP = 0
-    m = p.monomers[1]  # assumes all monomers identical
+    
+    # Get monomer for the bead being moved (ki)
+    m = p.monomers[p.pos[p.ki][6]]
     
     @assert !isnothing(m.intMat) "No interaction matrix!"
 

@@ -96,8 +96,8 @@ Base.@kwdef mutable struct Polymer <: AbstractPolymer
     ghost::Union{Nothing, AbstractSpecies} = nothing
     
     # Monomer for bead-dependent interactions
-    monomers::Union{Nothing, Vector{PolyMonomer}} = nothing   # list of PolyMonomers (length = nMonomers)
-    monomerIndex::Union{Nothing, Vector{Int32}} = nothing         # PolyMonomer index for each bead (length = maxlength)
+    # Dictionary keyed by intIdx for O(1) lookup; pos[key][6] stores the intIdx
+    monomers::Union{Nothing, Dict{Int32, PolyMonomer}} = nothing
     pattern::Symbol=:uniform
     customPattern::Union{Nothing, Vector{Int}}=nothing
     

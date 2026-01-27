@@ -19,14 +19,12 @@ function addBond!(p::Polymer)
         "Move is not a bond addition"
     end
 
-    # Determine what value to store in lattice
-    # For polymers with monomers, we need to look up the intIdx
-    # For now, use 1 for backward compatibility (Phase 1+ will add pos[6] with intIdx)
-    latValue = Int32(1)
-
+    # Inherit intIdx from parent bead (ki) for new beads
+    intIdx = p.pos[p.ki][6]
+    
     # set new lattice sites
-    p.latS[p.newPosi...] = latValue
-    p.latS[p.newPosj...] = latValue
+    p.latS[p.newPosi...] = intIdx
+    p.latS[p.newPosj...] = intIdx
 
     # Find next available keys
     next_key1 = KEYCOUNT[] + 1
@@ -37,20 +35,22 @@ function addBond!(p::Polymer)
         next_key2 = KEYCOUNT[] + 2
     end
 
-    # add two new entries for the bond
-    p.pos[next_key1] = Vector{Int32}(undef, 5)
+    # add two new entries for the bond (6-element vectors)
+    p.pos[next_key1] = Vector{Int32}(undef, 6)
     p.pos[next_key1][1] = p.newPosi[1]
     p.pos[next_key1][2] = p.newPosi[2]
     p.pos[next_key1][3] = p.newPosi[3]
     p.pos[next_key1][4] = p.ki
     p.pos[next_key1][5] = next_key2
+    p.pos[next_key1][6] = intIdx
 
-    p.pos[next_key2] = Vector{Int32}(undef, 5)
+    p.pos[next_key2] = Vector{Int32}(undef, 6)
     p.pos[next_key2][1] = p.newPosj[1]
     p.pos[next_key2][2] = p.newPosj[2]
     p.pos[next_key2][3] = p.newPosj[3]
     p.pos[next_key2][4] = next_key1
     p.pos[next_key2][5] = p.kj
+    p.pos[next_key2][6] = intIdx
 
     # re-route the old pointers
     p.pos[p.ki][5] = next_key1
@@ -72,33 +72,34 @@ function kinkBond!(p::Polymer)
         "Move is not a kink"
     end
 
-    # For polymers with monomers, preserve the intIdx stored in lattice
-    # For homogeneous polymers, this will be 1
+    # Preserve the bead's intIdx from pos[key][6]
     if p.newPosi == p.bprev 
-        # bead ki moves from bi to newPosj - preserve its intIdx
-        intIdx = p.latS[p.bi[1], p.bi[2], p.bi[3]]
+        # bead ki moves from bi to newPosj
+        intIdx = p.pos[p.ki][6]
         p.latS[p.bi[1], p.bi[2], p.bi[3]] = 0
         p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = intIdx
 
-        p.pos[p.ki] = Vector{Int32}(undef, 5)
+        p.pos[p.ki] = Vector{Int32}(undef, 6)
         p.pos[p.ki][1] = p.newPosj[1]
         p.pos[p.ki][2] = p.newPosj[2]
         p.pos[p.ki][3] = p.newPosj[3]
         p.pos[p.ki][4] = p.kprev
         p.pos[p.ki][5] = p.kj
+        p.pos[p.ki][6] = intIdx
 
     elseif p.newPosj == p.bnext
-        # bead kj moves from bj to newPosi - preserve its intIdx
-        intIdx = p.latS[p.bj[1], p.bj[2], p.bj[3]]
+        # bead kj moves from bj to newPosi
+        intIdx = p.pos[p.kj][6]
         p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = intIdx
         p.latS[p.bj[1], p.bj[2], p.bj[3]] = 0
 
-        p.pos[p.kj] = Vector{Int32}(undef, 5)
+        p.pos[p.kj] = Vector{Int32}(undef, 6)
         p.pos[p.kj][1] = p.newPosi[1]
         p.pos[p.kj][2] = p.newPosi[2]
         p.pos[p.kj][3] = p.newPosi[3]
         p.pos[p.kj][4] = p.ki
         p.pos[p.kj][5] = p.knext
+        p.pos[p.kj][6] = intIdx
     end
 
     return p

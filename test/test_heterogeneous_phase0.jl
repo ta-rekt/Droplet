@@ -27,12 +27,12 @@
     @test m1.intIdx != m2.intIdx
     
     # Walk the chain and verify lattice stores correct intIdx for each bead
+    # Phase 1: pos[key][6] stores the intIdx directly
     key = poly.head
     chainPos = 1
     while key != 0 && chainPos <= poly.length
         pos = poly.pos[key]
-        expectedMonomerType = poly.monomerIndex[chainPos]
-        expectedIntIdx = poly.monomers[expectedMonomerType].intIdx
+        expectedIntIdx = pos[6]  # intIdx stored directly in pos
         
         actualLatValue = poly.latS[pos[1], pos[2], pos[3]]
         @test actualLatValue == expectedIntIdx
