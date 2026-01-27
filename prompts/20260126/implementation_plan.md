@@ -439,7 +439,3 @@ Similar logic for `moveType == 3` (removeBond), but with opposite swap direction
 3. Yes, kinks don't need pattern-preservation logic.
 4. Notice that you can find the new tail easily by moving backwards along the polymer. p.pos[key][4] contains the key of the previous bead, just like p.pos[key][5] points to the next bead. you can use this to update the keys in patternTails with the keys two beads prior for an addition, and two beads after for a removal. This is O(1) and doesn't add much complexity.
 5. Yes, this is the intended behavior.
-
-# General guidelines for code editing
-
-- keep changes as frugal as you can, keeping close to the style and naming conventions of the existing code. make sure you depart as little as possible from what is necessary to implement the required changes, and avoid code bloat wherever possible. this code should still be readable and maintainable by humans

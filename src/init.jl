@@ -1,6 +1,6 @@
 
 export initHam!, initUniform!, initLine!, initBox!, initMovableSet!, 
-       initMonomers!, initShape!, init!, assignMonomerTypes!
+       initMonomers!, initShape!, init!
 
 ############# Species initialization functions #############
 
@@ -19,7 +19,7 @@ function initUniform!(pos::OrderedDict{Int32, Vector{Int32}}, boxlength::Int32, 
     pos_idxs = sample(0:(boxlength^3-1), length, replace=false)
     
     for i in 1:length
-        pos[i] = zeros(Int32, 6)
+        pos[i] = zeros(5)
         mx = mod(pos_idxs[i], boxlength^2)
         
         pos[i][1] = div(pos_idxs[i], boxlength^2) + 1 # x coordinate
@@ -27,7 +27,6 @@ function initUniform!(pos::OrderedDict{Int32, Vector{Int32}}, boxlength::Int32, 
         pos[i][3] = mod(mx, boxlength) + 1            # z coordinate
         pos[i][4] = i - 1
         pos[i][5] = i + 1
-        pos[i][6] = 1  # monomer type (default: base type 1)
     end
 
     return pos
@@ -40,13 +39,12 @@ function initLine!(pos::OrderedDict{Int32, Vector{Int32}},
 
     # line from center of one face to the other along x axis
     for i in 1:length
-        pos[i] = zeros(Int32, 6)
+        pos[i] = zeros(5)
         pos[i][1] = initPos === nothing ? i : i + initPos[1] - 1
         pos[i][2] = initPos === nothing ? div(boxlength, 2) : initPos[2]
         pos[i][3] = initPos === nothing ? div(boxlength, 2) : initPos[3]
         pos[i][4] = i - 1
         pos[i][5] = i + 1
-        pos[i][6] = 1  # monomer type (default: base type 1)
     end
 
     return pos
@@ -72,7 +70,7 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
                     break
                 end
 
-                pos[idx] = zeros(Int32, 6)
+                pos[idx] = zeros(5)
                 rawPos = [startPos[1] + Int32(x) - offset,
                           startPos[2] + Int32(y) - offset,
                           startPos[3] + Int32(z) - offset]
@@ -83,7 +81,6 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
                 pos[idx][3] = clippedPos[3]
                 pos[idx][4] = idx - 1
                 pos[idx][5] = idx + 1
-                pos[idx][6] = 1  # monomer type (default: base type 1)
                 idx += 1
             end
             if idx >= length + newIndex
@@ -139,76 +136,6 @@ end
 # MARK: -Polymer
 
 """
-    buildPatternVector(p::Polymer)
-
-Build a vector of monomer types based on p.pattern setting.
-Returns a Vector{Int32} of length p.length with monomer types for each bead position.
-"""
-function buildPatternVector(p::Polymer)
-    patternVec = zeros(Int32, p.length)
-    
-    if p.pattern == :uniform
-        # All beads are type 1
-        fill!(patternVec, 1)
-        
-    elseif p.pattern == :alternating
-        # Alternate between types
-        for i in 1:p.length
-            patternVec[i] = mod1(i, p.nMonomerTypes)
-        end
-        
-    elseif p.pattern == :block
-        # Divide into n equal blocks
-        blockSize = div(p.length, p.nMonomerTypes)
-        for i in 1:p.length
-            blockIdx = min(div(i - 1, blockSize) + 1, p.nMonomerTypes)
-            patternVec[i] = blockIdx
-        end
-        
-    elseif p.pattern == :random
-        # Random assignment
-        for i in 1:p.length
-            patternVec[i] = Int32(rand(1:p.nMonomerTypes))
-        end
-        
-    elseif p.pattern == :custom
-        if p.customPattern === nothing
-            error("pattern=:custom requires p.customPattern vector to be provided")
-        end
-        if length(p.customPattern) != p.length
-            error("p.customPattern length ($(length(p.customPattern))) must equal p.length ($(p.length))")
-        end
-        # Validate all indices are in range
-        for (i, idx) in enumerate(p.customPattern)
-            if idx < 1 || idx > p.nMonomerTypes
-                error("p.customPattern[$i] = $idx is out of range [1, $(p.nMonomerTypes)]")
-            end
-        end
-        patternVec .= p.customPattern
-    else
-        error("Unknown p.pattern: $(p.pattern). Use :uniform, :alternating, :block, :random, or :custom")
-    end
-    
-    return patternVec
-end
-
-"""
-    validateSinglePatternBlocks(patternVec::Vector{Int32})
-
-Validate that each pattern type (>= 2) appears in exactly one contiguous block.
-Type 1 (base type) can be interspersed between patterns.
-"""
-function validateSinglePatternBlocks(patternVec::Vector{Int32})
-    maxType = maximum(patternVec)
-    for t in 2:maxType
-        indices = findall(x -> x == t, patternVec)
-        if !isempty(indices) && indices != collect(indices[1]:indices[end])
-            error("Pattern type $t must appear in exactly one contiguous block")
-        end
-    end
-end
-
-"""
     initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::Float64=0.0)
 
 Initialize subspecies for a polymer with bead-dependent interactions.
@@ -219,22 +146,21 @@ Initialize subspecies for a polymer with bead-dependent interactions.
 - `defaultIntPot::Float64`: Default interaction potential for all monomers (default: 0.0)
 
 # Pattern options (set via p.pattern field):
-- `:uniform`: All beads belong to type 1 (default, backward compatible)
-- `:alternating`: Alternates between types (1, 2, 1, 2, ...)
+- `:uniform`: All beads belong to subspecies 1 (default, backward compatible)
+- `:alternating`: Alternates between subspecies (1, 2, 1, 2, ...)
 - `:block`: Divides polymer into n equal blocks
 - `:random`: Random assignment
 - `:custom`: Use p.customPattern vector to assign beads
 
 # Notes
-- Each PolyMonomer is initialized with the provided default potentials.
-- All PolyMonomers share a synchronized intSpecies list and intMat.
-- When using :custom pattern, indices should be 1-based type indices.
-- Pattern types (>= 2) must each appear in exactly one contiguous block.
-- Monomer types are stored in pos[key][6] for each bead (assigned during init!).
+- Each subspecies is initialized with the provided default potentials.
+- Use intPot!(p, subspeciesIdx, value) to set subspecies-specific potentials.
+- All subspecies share a synchronized intSpecies list and intMat (like AbstractBulk).
+- When using :custom p.pattern, indices should be 1-based subspecies indices.
 """
 function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::Float64=0.0)
     
-    # Create PolyMonomer instances with default values
+    # Create subspecies with default values
     p.monomers = Vector{PolyMonomer}(undef, p.nMonomerTypes)
     for i in 1:p.nMonomerTypes
         p.monomers[i] = PolyMonomer(
@@ -245,12 +171,13 @@ function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::F
         )
     end
     
-    # Initialize all PolyMonomers with synced interaction structures
+    # Initialize all subspecies with synced interaction structures
+    # This ensures they all share the same intSpecies and intMat
     for i in 1:p.nMonomerTypes
         _ensureIntStructures!(p.monomers[i])
     end
     
-    # Sync all PolyMonomers to share the same matrix
+    # Sync all subspecies to share the same matrix
     if p.nMonomerTypes > 1
         for i in 2:p.nMonomerTypes
             if p.monomers[1].intMat !== p.monomers[i].intMat
@@ -259,46 +186,13 @@ function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::F
         end
     end
     
-    # Note: Actual type assignment to pos[key][6] happens in assignMonomerTypes!
-    # which is called automatically during init! after pos is created.
+    # Initialize monomerIndex array for maxlength beads
+    p.monomerIndex = zeros(Int32, p.maxlength)
     
-    return p
-end
-
-"""
-    assignMonomerTypes!(p::Polymer)
-
-Assign monomer types to pos[key][6] for each bead based on the pattern setting.
-Also initializes patternTails dictionary.
-This must be called AFTER pos is initialized (typically in init!).
-"""
-function assignMonomerTypes!(p::Polymer)
-    if p.monomers === nothing || p.pos === nothing
-        return p  # Not ready yet
-    end
-    
-    # Build pattern vector based on p.pattern setting
-    patternVec = buildPatternVector(p)
-    
-    # Validate that pattern types (>= 2) are contiguous
-    validateSinglePatternBlocks(patternVec)
-    
-    # Traverse chain and assign types to pos[key][6]
-    key = p.head
-    for i in 1:p.length
-        p.pos[key][6] = patternVec[i]
-        key = p.pos[key][5]
-    end
-    
-    # Initialize patternTails dictionary (patternType -> tail key)
-    p.patternTails = Dict{Int32, Int32}()
-    key = p.head
-    for i in 1:p.length
-        currentType = p.pos[key][6]
-        nextKey = p.pos[key][5]
-        
+    # Assign beads to subspecies based on p.pattern
     if p.pattern == :uniform
-        p.monomerIndex = ones(p.maxlength)
+        # All beads are subspecies 1
+        fill!(p.monomerIndex, 1)
     
     elseif p.pattern == :alternating
         # Alternate between subspecies
@@ -555,11 +449,6 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
 
         if typeof(s) <: FastBulkMonomer
             initMovableSet!(s)
-        end
-        
-        # For polymers with monomers defined, assign types to pos[key][6]
-        if typeof(s) <: AbstractPolymer && s.monomers !== nothing
-            assignMonomerTypes!(s)
         end
     end
 

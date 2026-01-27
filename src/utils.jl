@@ -94,24 +94,23 @@ end
 
 
 """
-    getPolyMonomer(p::Polymer, beadKey::Int32)
+    getPolyMonomer(p::Polymer, beadIdx::Int32)
 
-Get the PolyMonomer for a given bead by its key in the position dictionary.
-Reads the monomer type from pos[key][6].
+Get the Subspecies for a given bead by its key in the position dictionary.
+Uses the bead's position in the chain (via traversal) to look up its subspecies.
 """
-function getPolyMonomer(p::Polymer, beadKey::Int32)
-    if p.monomers === nothing
+function getPolyMonomer(p::Polymer, beadIdx::Int32)
+    if p.monomers === nothing || p.monomerIndex === nothing
         return nothing
     end
     
-    monomerType = p.pos[beadKey][6]
-    return p.monomers[monomerType]
+    return p.monomers[p.monomerIndex[beadIdx]]
 end
 
 
-@inline function getMonomerPotentials(poly::AbstractPolymer, beadKey::Int32)
+@inline function getMonomerPotentials(poly::AbstractPolymer, beadIdx::Int32)
     # For polymers with PolyMonomers, get potentials from the appropriate PolyMonomer
-    monomer = getPolyMonomer(poly, beadKey)
+    monomer = getPolyMonomer(poly, beadIdx)
     if monomer === nothing
         # If no PolyMonomer is found, return zeros (shouldn't happen in normal usage)
         return (nothing, nothing)

@@ -32,25 +32,20 @@ function addBond!(p::Polymer)
         next_key2 = KEYCOUNT[] + 2
     end
 
-    # Get monomer type from parent bead
-    currentType = p.pos[p.ki][6]
-
     # add two new entries for the bond
-    p.pos[next_key1] = Vector{Int32}(undef, 6)
+    p.pos[next_key1] = Vector{Int32}(undef, 5)
     p.pos[next_key1][1] = p.newPosi[1]
     p.pos[next_key1][2] = p.newPosi[2]
     p.pos[next_key1][3] = p.newPosi[3]
     p.pos[next_key1][4] = p.ki
     p.pos[next_key1][5] = next_key2
-    p.pos[next_key1][6] = currentType  # inherit monomer type
 
-    p.pos[next_key2] = Vector{Int32}(undef, 6)
+    p.pos[next_key2] = Vector{Int32}(undef, 5)
     p.pos[next_key2][1] = p.newPosj[1]
     p.pos[next_key2][2] = p.newPosj[2]
     p.pos[next_key2][3] = p.newPosj[3]
     p.pos[next_key2][4] = next_key1
     p.pos[next_key2][5] = p.kj
-    p.pos[next_key2][6] = currentType  # inherit monomer type
 
     # re-route the old pointers
     p.pos[p.ki][5] = next_key1
@@ -61,25 +56,6 @@ function addBond!(p::Polymer)
     push!(p.keys_vec, next_key2)
 
     KEYCOUNT[] += 2
-
-    # If adding inside a pattern (type >= 2), swap tail beads to base type
-    if currentType >= 2 && p.patternTails !== nothing && haskey(p.patternTails, currentType)
-        tailKey = p.patternTails[currentType]
-        prevTailKey = p.pos[tailKey][4]
-        
-        # Swap last two beads of pattern to base type 1
-        p.pos[tailKey][6] = Int32(1)
-        p.pos[prevTailKey][6] = Int32(1)
-        
-        # Update patternTails: new tail is two beads back
-        newTailKey = p.pos[prevTailKey][4]
-        if newTailKey != 0 && p.pos[newTailKey][6] == currentType
-            p.patternTails[currentType] = newTailKey
-        else
-            # Pattern exhausted (shouldn't happen with proper validation)
-            delete!(p.patternTails, currentType)
-        end
-    end
 
     return p
 end
@@ -96,29 +72,23 @@ function kinkBond!(p::Polymer)
         p.latS[p.bi[1], p.bi[2], p.bi[3]] = 0
         p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = 1
 
-        # Preserve monomer type when creating new entry
-        oldType = p.pos[p.ki][6]
-        p.pos[p.ki] = Vector{Int32}(undef, 6)
+        p.pos[p.ki] = Vector{Int32}(undef, 5)
         p.pos[p.ki][1] = p.newPosj[1]
         p.pos[p.ki][2] = p.newPosj[2]
         p.pos[p.ki][3] = p.newPosj[3]
         p.pos[p.ki][4] = p.kprev
         p.pos[p.ki][5] = p.kj
-        p.pos[p.ki][6] = oldType
 
     elseif p.newPosj == p.bnext
         p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = 1
         p.latS[p.bj[1], p.bj[2], p.bj[3]] = 0
 
-        # Preserve monomer type when creating new entry
-        oldType = p.pos[p.kj][6]
-        p.pos[p.kj] = Vector{Int32}(undef, 6)
+        p.pos[p.kj] = Vector{Int32}(undef, 5)
         p.pos[p.kj][1] = p.newPosi[1]
         p.pos[p.kj][2] = p.newPosi[2]
         p.pos[p.kj][3] = p.newPosi[3]
         p.pos[p.kj][4] = p.ki
         p.pos[p.kj][5] = p.knext
-        p.pos[p.kj][6] = oldType
     end
 
     return p
@@ -130,9 +100,6 @@ function removeBond!(p::Polymer)
     @assert (p.newPosi == p.bprev) && (p.newPosj == p.bnext) begin
         "Move is not a bond removal"
     end
-    
-    # Get current type before removal for pattern handling
-    currentType = p.pos[p.ki][6]
     
     # reset old lattice sites to 0
     p.latS[p.bi...] = 0
@@ -156,26 +123,6 @@ function removeBond!(p::Polymer)
     # remove keys associated with old bond
     delete!(p.pos, p.ki)
     delete!(p.pos, p.kj)
-
-    # If removing inside a pattern (type >= 2), extend pattern at tail
-    if currentType >= 2 && p.patternTails !== nothing && haskey(p.patternTails, currentType)
-        tailKey = p.patternTails[currentType]
-        nextAfterTail = p.pos[tailKey][5]
-        
-        # Check if there are at least 2 base-type beads after the tail
-        if nextAfterTail != 0 && p.pos[nextAfterTail][6] == Int32(1)
-            nextNextAfterTail = p.pos[nextAfterTail][5]
-            if nextNextAfterTail != 0 && p.pos[nextNextAfterTail][6] == Int32(1)
-                # Swap two base-type beads to pattern type
-                p.pos[nextAfterTail][6] = currentType
-                p.pos[nextNextAfterTail][6] = currentType
-                
-                # Update patternTails: new tail is two beads forward
-                p.patternTails[currentType] = nextNextAfterTail
-            end
-            # If not enough base-type beads, the move should have been rejected earlier
-        end
-    end
 
     return p
 end
@@ -236,27 +183,6 @@ function makeMove!(p::Polymer)
     return p
 end
 
-# Check if a pattern removal move is valid (has enough base-type beads to compensate)
-function canRemoveFromPattern(p::Polymer, currentType::Int32)
-    if currentType < 2 || p.patternTails === nothing || !haskey(p.patternTails, currentType)
-        return true  # Not a pattern type, or no tracking - allow
-    end
-    
-    tailKey = p.patternTails[currentType]
-    nextAfterTail = p.pos[tailKey][5]
-    
-    if nextAfterTail == 0 || p.pos[nextAfterTail][6] != Int32(1)
-        return false
-    end
-    
-    nextNextAfterTail = p.pos[nextAfterTail][5]
-    if nextNextAfterTail == 0 || p.pos[nextNextAfterTail][6] != Int32(1)
-        return false
-    end
-    
-    return true
-end
-
 # executes a move on polymermer s inside lattice l at position p.moveIdx, of type
 # moveType (add, remove or kink) sampled according to the metropolis algorithm
 function move!(p::Polymer)
@@ -270,19 +196,8 @@ function move!(p::Polymer)
     # don't move if last bead was selected
     if p.kj != 0
         
-        # reject if bond spans type boundary (different monomer types)
-        if p.pos[p.ki][6] != p.pos[p.kj][6]
-            return false
-        end
-        
         # sample a move according to proposition probabilities
         proposeMove!(p)
-        
-        # For pattern removal moves, check if there are enough base-type beads
-        currentType = p.pos[p.ki][6]
-        if p.moveType == 3 && !canRemoveFromPattern(p, currentType)
-            return false
-        end
         
         # check for max length constraint and overlap
         if !overlap(p) && !(p.moveType == 1 && p.length == p.maxlength)
