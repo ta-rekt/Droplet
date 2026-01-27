@@ -22,11 +22,11 @@ function addBond!(p::Polymer)
     # Inherit intIdx from parent bead (ki) for new beads
     intIdx = p.pos[p.ki][6]
     
-    # Capture pattern tail info BEFORE modifying chain (only for non-base types)
+    # Capture pattern tail info BEFORE modifying chain (only for non-base types in contiguous pattern region)
     tailKey = nothing
     prevTailKey = nothing
     newTailKey = nothing
-    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx)
+    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx) && isInPatternRegion(p, p.ki, intIdx)
         tailKey = p.patternTails[intIdx]
         prevTailKey = p.pos[tailKey][4]
         newTailKey = p.pos[prevTailKey][4]
@@ -143,8 +143,8 @@ function removeBond!(p::Polymer)
     # Get the intIdx before removing (both beads have same type due to boundary check)
     intIdx = p.pos[p.ki][6]
     
-    # Extend pattern at tail BEFORE removing beads (only for non-base types)
-    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx)
+    # Extend pattern at tail BEFORE removing beads (only for non-base types in contiguous pattern region)
+    if p.patternTails !== nothing && intIdx != p.baseIntIdx && haskey(p.patternTails, intIdx) && isInPatternRegion(p, p.ki, intIdx)
         tailKey = p.patternTails[intIdx]
         nextAfterTail = p.pos[tailKey][5]
         nextNextAfterTail = nextAfterTail == 0 ? Int32(0) : p.pos[nextAfterTail][5]

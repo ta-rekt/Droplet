@@ -2,10 +2,37 @@
 export coords_equal, getLatS, getTempVec, getBoxlength, getPolyMonomer, 
        getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nnIdxs!, splitDroplet!,
        dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP,
-       setHam, setDeltaHam, setDeltaHP
+       setHam, setDeltaHam, setDeltaHP, isneighbor, isInPatternRegion
 
 ############# Generic utilities #############
 # MARK: -Generic
+
+# Check if two 3D positions are neighbors (Manhattan distance == 1)
+@inline function isneighbor(pos1::Union{SubArray{Int32}, Vector{Int32}}, 
+                            pos2::Union{SubArray{Int32}, Vector{Int32}})
+    return abs(pos1[1] - pos2[1]) + abs(pos1[2] - pos2[2]) + abs(pos1[3] - pos2[3]) == 1
+end
+
+# Check if bead at key is in the contiguous pattern region (connected to pattern tail)
+# Returns true if walking forward from key while staying in the same type reaches the tail
+function isInPatternRegion(p::Polymer, key::Integer, intIdx::Integer)
+    tailKey = p.patternTails[intIdx]
+    
+    # Walk forward from key toward tail, checking if we reach the tail
+    currentKey = key
+    while currentKey != 0
+        if currentKey == tailKey
+            return true
+        end
+        # If we hit a different type, we're not in the contiguous region
+        if p.pos[currentKey][6] != intIdx
+            return false
+        end
+        currentKey = p.pos[currentKey][5]  # next bead (forward)
+    end
+    
+    return false
+end
 
 @inline function coords_equal(a, b)
     return a[1] == b[1] && a[2] == b[2] && a[3] == b[3]

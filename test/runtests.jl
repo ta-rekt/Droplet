@@ -1,5 +1,6 @@
 using Droplet
 using Test
+using Random
 
 @testset "Droplet.jl" begin
     include("test_init.jl")
@@ -12,4 +13,5 @@ using Test
     include("test_heterogeneous_phase2.jl")
     include("test_heterogeneous_phase3.jl")
     include("test_heterogeneous_phase5.jl")
+    include("test_heterogeneous_phase6.jl")
 end
