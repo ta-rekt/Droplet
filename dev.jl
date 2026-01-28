@@ -335,7 +335,9 @@ end
 # simulation time, varied parameters, type of output data, etc.
 
 # - set up paper airplane agentic experimental pipeline (run locally for now)
-# - try it on an existing experiment for validation
+#   - run design iterations to produce description files of the experiment 
+#     design/execution pipeline. write detailed context, let it ask questions
+# - try it on a dummy experiment for validation
 # - use it to design the bulk-mediated polymer collapse experiment
 # - run bulk-mediated polymer collapse experiment
 # - implement heterogeneous polymer
