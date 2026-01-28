@@ -1,27 +1,29 @@
 ### physical parameters
+# MARK: -Phys. params
 
-global l = Lattice(;
-    boxlength = 16,
-    nspecies = 1
+l = Lattice(;
+    boxlength = 42,
+    nspecies = 2
 )
 
 # bulk species
-global b = Bulk(;
-    length = 512,
-    intPot = nothing,
-    chemPot = nothing
+bulk = FastBulkMonomer(;
+    length = 4096,
+    initShape = "uniform"
 )
 
 # list containing all species
-slist = [b]
+slist = [bulk]
 
 
 ### simulation parameters
+# MARK: -Sim. params
 
-nframes = 50000  
-step = 10000     
+t_max = 10    # runtime in minutes
+step = 10000
+t_burn_in = 0.8 * t_max
 
-vals = range(-1, stop=1, step=0.25)   # parallelized parameters (int. pot.)
+vals = range(-2, stop=0, step=0.25)   # parallelized parameters (bulkmer self-interaction)
 alphas = zeros(9)
 nrepeats = 1
 
@@ -30,76 +32,99 @@ for (i, v) in enumerate(vals)
 end
 
 # alphas = [-1.0]
-betas = [1.0]    # chemical potential
+betas = [0.0]    # placeholder
 nparams = length(alphas)
 
 
 ### functions
+# MARK: -Functions
 
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
+    t_current = 0
 
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    b = slist[1]
-    b.intPot = alpha
-    b.chemPot = beta
+    bulk = slist[1]
+    
+    # set interaction potentials
+    intPot!(bulk, alpha)       # bulk self-interaction (fixed)
 
     # initialize lattice and species
-    init!(l, [b])
+    init!(l, [bulk])
+
+    # moving species
+    movingsps = [(bulk, bulk.intIdx)]
 
     nmoves = 0
     niter = 0
     frame = 1
 
-    radii = zeros(nframes)
-    hams = zeros(nframes)
-    accs = zeros(nframes)
-    deltaH = 0
-    moveMade = false
+    radii = []
+    hams_bulk = []
+    hams_bulk = []
+    accs = []
+    deltaH = zeros(l.nspecies)
     
-    radii[frame] = radius(b)
-    hams[frame] = b.ham   # initial energy
-    accs[frame] = 0
+    # initial values
+    push!(radii, radius(bulk))
+    push!(hams_bulk, bulk.ham)
+    push!(accs, 0)
     
-    # run simluation
-    while frame <= nframes - 1
+    # run simulation
+    while t_current <= t_max
+        t_current = (time_ns() - t_start) / 6e10
+        niter += 1
 
-        if moveMade
-            deltaH += b.deltaH
-        
-            if mod(nmoves, step) == 0
-                frame += 1
-                
-                radii[frame] = radius(b)
-                hams[frame] = hams[frame-1] + deltaH
-                accs[frame] = niter == 0 ? 0 : nmoves / niter
-                
-                deltaH = 0
+        for (s, i) in movingsps
+            if move!(s)
+                nmoves += 1
+
+                # record data
+                if mod(nmoves, step) == 0
+                    deltaH[i] += getDeltaHam(s)
+
+                    # update deltaH for the partners
+                    for (p, j) in s.intSpecies
+                        if j != s.intIdx
+                            deltaH[j] += getDeltaHP(p)
+                        end
+                    end
+
+                    ham!(s)
+
+                    if s.intIdx == bulk.intIdx
+                        push!(hams_bulk, getHam(s))
+                    end
+
+                    push!(radii, radius(bulk))
+                    push!(accs, niter == 0 ? 0 : nmoves / niter)
+
+                    deltaH[i] = 0
+                    frame += 1
+                end
             end
         end
-        
-        moveMade = move!(b)
-        nmoves += moveMade
-        niter += 1
     end
 
     # collect results
-    coords = Matrix{Int32}(undef, b.length, 3)
+    coords_bulk = Matrix{Int32}(undef, bulk.length, 4)
 
-    res["species_name"] = b.name
-    res["nframes"] = nframes
+    res["species_name"] = bulk.name
+    res["nframes"] = frame
     res["step"] = step
+    res["temperature"] = 1.0
     res["alpha"] = alpha
     res["beta"] = beta
-    res["boxlength"] = b.boxlength
-    res["length"] = b.length
-    res["gyration_radius"] = radii
-    res["hamiltonian"] = hams
+    res["interaction_matrix"] = bulk.intMat
+    res["boxlength"] = bulk.boxlength
+    res["length"] = bulk.length
+    res["radius_of_gyration"] = radii
+    res["hamiltonian_bulk"] = hams_bulk
     res["acceptance_rate"] = accs
-    res["final_coordinates"] = extractCoords!(b, coords)
-    res["runtime_s"] = (time_ns() - t_start) / 1e9
+    res["final_coordinates_bulk"] = extractCoords!(bulk, coords_bulk)
+    res["runtime_min"] = (time_ns() - t_start) / 6e10
 
     return res
 end
