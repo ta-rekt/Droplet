@@ -44,19 +44,19 @@ slist = [base, pattern1, pattern2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 20    # runtime in minutes (initial test)
-step = 10000
+t_max = 0.1    # runtime in minutes (initial test)
+step = 1000
 t_burn_in = 0.8  # 12 seconds
 
-vals = range(-2.0, stop=0.0, step=0.25)   # parallelized parameters (inter-pattern interaction)
-alphas = zeros(9)
-nrepeats = 1
+# vals = range(-2.0, stop=0.0, step=0.25)   # parallelized parameters (inter-pattern interaction)
+# alphas = zeros(9)
+# nrepeats = 1
 
-for (i, v) in enumerate(vals)
-    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
-end
+# for (i, v) in enumerate(vals)
+#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+# end
 
-# alphas = [-1.0]
+alphas = [-1.0]
 betas = [0.0]    # placeholder
 nparams = length(alphas)
 
@@ -113,108 +113,17 @@ function target!(res, args...)
     accs = []
     # deltaH needs to be sized for the max intIdx, not l.nspecies
     max_intIdx = maximum([base.intIdx, pattern1.intIdx, pattern2.intIdx, bulk.intIdx])
-    deltaH = zeros(max_intIdx)
     
-    # helper function to calculate pattern center positions
-    function get_pattern_centers()
-        # pattern1: beads 29-36 (bead positions in linked list)
-        # pattern2: beads 93-100
-        
-        if poly.length < 100
-            # patterns not yet grown
-            return nothing, nothing, Inf
-        end
-        
-        # calculate center of mass for each pattern
-        center1 = [0.0, 0.0, 0.0]
-        center2 = [0.0, 0.0, 0.0]
-        
-        # iterate through polymer linked list to find pattern beads
-        key = poly.head
-        bead_num = 1
-        
-        for i in 1:poly.length
-            pos = poly.pos[key][1:3]
-            
-            # check if this bead is in pattern1 (beads 29-36)
-            if bead_num >= 29 && bead_num <= 36
-                center1 .+= pos
-            end
-            
-            # check if this bead is in pattern2 (beads 93-100)
-            if bead_num >= 93 && bead_num <= 100
-                center2 .+= pos
-            end
-            
-            key = poly.pos[key][5]  # next bead
-            bead_num += 1
-        end
-        
-        center1 ./= 8
-        center2 ./= 8
-        
-        # euclidean distance
-        dist = sqrt(sum((center1 .- center2).^2))
-        
-        return center1, center2, dist
-    end
-    
-    # helper function to check if patterns are in contact
-    function patterns_in_contact()
-        if poly.length < 100
-            return false
-        end
-        
-        # collect positions of pattern1 and pattern2 beads
-        pattern1_positions = []
-        pattern2_positions = []
-        
-        key = poly.head
-        bead_num = 1
-        
-        for i in 1:poly.length
-            pos = poly.pos[key][1:3]
-            
-            if bead_num >= 29 && bead_num <= 36
-                push!(pattern1_positions, copy(pos))
-            end
-            
-            if bead_num >= 93 && bead_num <= 100
-                push!(pattern2_positions, copy(pos))
-            end
-            
-            key = poly.pos[key][5]
-            bead_num += 1
-        end
-        
-        # check all pairs of beads between pattern1 and pattern2
-        for pos1 in pattern1_positions
-            for pos2 in pattern2_positions
-                # check if adjacent (within 1 lattice site in each dimension, periodic BC)
-                dx = abs(pos1[1] - pos2[1])
-                dy = abs(pos1[2] - pos2[2])
-                dz = abs(pos1[3] - pos2[3])
-                
-                # account for periodic boundaries
-                dx = min(dx, l.boxlength - dx)
-                dy = min(dy, l.boxlength - dy)
-                dz = min(dz, l.boxlength - dz)
-                
-                if dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0
-                    return true
-                end
-            end
-        end
-        
-        return false
-    end
+    # contact matrix: tracks contact frequency between monomer pairs
+    contact_matrix = zeros(Int, poly.length, poly.length)
+    contact_threshold = 2.0  # distance cutoff for contact
     
     # initial values
     push!(radii, radius(poly))
     push!(lengths, poly.length)
-    _, _, initial_dist = get_pattern_centers()
+    _, _, initial_dist = get_pattern_centers(poly, [(29,36),(93,100)])
     push!(pattern_dists, initial_dist)
-    push!(contact_events, patterns_in_contact() ? 1 : 0)
+    push!(contact_events, patterns_in_contact(poly, [(29,36),(93,100)]) ? 1 : 0)
     push!(hams_poly, poly.ham)  # polymer hamiltonian is stored in poly, not individual monomers
     push!(hams_bulk, bulk.ham)
     push!(accs, 0)
@@ -230,18 +139,10 @@ function target!(res, args...)
 
                 # record data
                 if mod(nmoves, step) == 0
-                    deltaH[i] += getDeltaHam(s)
-
-                    # update deltaH for the partners
-                    for (p, j) in s.intSpecies
-                        if j != s.intIdx
-                            deltaH[j] += getDeltaHP(p)
-                        end
-                    end
 
                     ham!(s)
 
-                    # compute polymer hamiltonian (stored in poly, not individual monomers)
+                    # compute polymer hamiltonian (stored in poly, not monomers)
                     if s.intIdx in [base.intIdx, pattern1.intIdx, pattern2.intIdx]
                         push!(hams_poly, poly.ham)
 
@@ -253,17 +154,20 @@ function target!(res, args...)
                     push!(lengths, poly.length)
                     
                     # calculate pattern distance
-                    _, _, dist = get_pattern_centers()
+                    _, _, dist = get_pattern_centers(poly, [(29,36),(93,100)])
                     push!(pattern_dists, dist)
                     
                     # check contact
-                    in_contact = patterns_in_contact()
+                    in_contact = patterns_in_contact(poly, [(29,36),(93,100)])
                     push!(contact_events, in_contact ? 1 : 0)
                     
                     # record first contact frame
                     if in_contact && first_contact_frame == -1
                         first_contact_frame = frame
                     end
+
+                    # update contact matrix
+                    compute_contact_matrix!(poly, contact_matrix, contact_threshold)
 
                     # acceptance rate
                     push!(accs, nmoves / (niter * length(movingsps)))
@@ -296,6 +200,7 @@ function target!(res, args...)
     res["hamiltonian_poly"] = hams_poly
     res["hamiltonian_bulk"] = hams_bulk
     res["acceptance_rate"] = accs
+    res["contact_matrix"] = contact_matrix
     
     # extract polymer coordinates into a matrix
     poly_coords = zeros(Int32, poly.length, 4)

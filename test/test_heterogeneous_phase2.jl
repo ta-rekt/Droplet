@@ -1,5 +1,8 @@
 # Test suite for Phase 2: Pattern validation and boundary tracking
 
+using Test
+using Droplet
+
 # MARK: -patternTails initialization
 @testset "patternTails and baseIntIdx initialization" begin
     l = Lattice(; boxlength = 10, nspecies = 1)

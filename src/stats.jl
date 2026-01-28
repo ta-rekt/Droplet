@@ -1,7 +1,7 @@
-
 export extractCoords!, centerMass, radius, radiusLine, radiusSphere, boxDensity, 
        axialDensity , radialDensity, extractCoords!, dfs, cc, dropletVolume, 
-       dropletDensities, diluteDensity, nspeciesBound
+       dropletDensities, diluteDensity, nspeciesBound, get_pattern_centers,
+       patterns_in_contact, compute_contact_matrix!
 
 ############### Generic #############
 # MARK: -Generic
@@ -100,7 +100,7 @@ end
 # MARK: -Poly
 
 # extracts the coordinates of a polymer's beads
-function extractCoords!(p::AbstractPolymer, coords::Matrix)
+function extractCoords!(p::Polymer, coords::Matrix)
     key = p.head           # initial bead
     k = 1
     
@@ -113,6 +113,105 @@ function extractCoords!(p::AbstractPolymer, coords::Matrix)
     end
 
     return coords
+end
+
+# helper function to calculate pattern center positions
+# patterns: vector of tuples [(start1, end1), (start2, end2), ...]
+function get_pattern_centers(poly::Polymer, patterns::Vector{Tuple{Int,Int}})
+    if length(patterns) != 2
+        error("get_pattern_centers requires exactly 2 patterns, got $(length(patterns))")
+    end
+    
+    # check if polymer is long enough for patterns
+    max_bead = maximum([p[2] for p in patterns])
+    if poly.length < max_bead
+        return nothing, nothing, Inf
+    end
+    
+    centers = [zeros(3) for _ in patterns]
+    pattern_lengths = [p[2] - p[1] + 1 for p in patterns]
+    
+    # iterate through polymer linked list
+    key = poly.head
+    bead_num = 1
+    
+    for i in 1:poly.length
+        pos = poly.pos[key][1:3]
+        
+        # check which pattern(s) this bead belongs to
+        for (pidx, (pstart, pend)) in enumerate(patterns)
+            if bead_num >= pstart && bead_num <= pend
+                centers[pidx] .+= pos
+            end
+        end
+        
+        key = poly.pos[key][5]  # next bead
+        bead_num += 1
+    end
+    
+    # normalize by pattern lengths
+    for (i, plen) in enumerate(pattern_lengths)
+        centers[i] ./= plen
+    end
+    
+    # euclidean distance between the two centers
+    dist = sqrt(sum((centers[1] .- centers[2]).^2))
+    
+    return centers[1], centers[2], dist
+end
+
+# helper function to check if patterns are in contact
+# patterns: vector of tuples [(start1, end1), (start2, end2), ...]
+function patterns_in_contact(poly::Polymer, patterns::Vector{Tuple{Int,Int}})
+    if length(patterns) != 2
+        error("patterns_in_contact requires exactly 2 patterns, got $(length(patterns))")
+    end
+    
+    # check if polymer is long enough
+    max_bead = maximum([p[2] for p in patterns])
+    if poly.length < max_bead
+        return false
+    end
+    
+    # collect positions for each pattern
+    pattern_positions = [[] for _ in patterns]
+    
+    key = poly.head
+    bead_num = 1
+    
+    for i in 1:poly.length
+        pos = poly.pos[key][1:3]
+        
+        for (pidx, (pstart, pend)) in enumerate(patterns)
+            if bead_num >= pstart && bead_num <= pend
+                push!(pattern_positions[pidx], copy(pos))
+            end
+        end
+        
+        key = poly.pos[key][5]
+        bead_num += 1
+    end
+    
+    # check all pairs of beads between pattern 1 and pattern 2
+    for pos1 in pattern_positions[1]
+        for pos2 in pattern_positions[2]
+            # check if adjacent (within 1 lattice site in each dimension, periodic BC)
+            dx = abs(pos1[1] - pos2[1])
+            dy = abs(pos1[2] - pos2[2])
+            dz = abs(pos1[3] - pos2[3])
+            
+            # account for periodic boundaries
+            dx = min(dx, poly.boxlength - dx)
+            dy = min(dy, poly.boxlength - dy)
+            dz = min(dz, poly.boxlength - dz)
+            
+            if dx <= 1 && dy <= 1 && dz <= 1 && (dx + dy + dz) > 0
+                return true
+            end
+        end
+    end
+    
+    return false
 end
 
 ########### BulkMonomer stats ###########
@@ -224,4 +323,53 @@ function nspeciesBound(sp::AbstractBulkMonomer,
         end
     end
     return n
+end
+
+# computes euclidean distance between two positions accounting for periodic boundaries
+function distance_periodic(pos1::Vector, pos2::Vector, boxlength::Int32)
+    dx = abs(pos1[1] - pos2[1])
+    dy = abs(pos1[2] - pos2[2])
+    dz = abs(pos1[3] - pos2[3])
+    
+    # account for periodic boundaries
+    dx = min(dx, boxlength - dx)
+    dy = min(dy, boxlength - dy)
+    dz = min(dz, boxlength - dz)
+    
+    return sqrt(dx^2 + dy^2 + dz^2)
+end
+
+# accumulates contacts into a matrix by traversing polymer linked list
+# contact_threshold: distance cutoff for considering beads in contact (default 2.0)
+function compute_contact_matrix!(poly::Polymer, contact_matrix::Matrix{Int}, 
+                                contact_threshold::Float64 = 2.0)
+    # traverse polymer and compute all pairwise distances
+    key_i = poly.head
+    bead_i = 1
+    
+    for i in 1:poly.length
+        pos_i = poly.pos[key_i][1:3]
+        
+        # check contacts with all subsequent beads
+        key_j = poly.pos[key_i][5]  # next bead after i
+        bead_j = bead_i + 1
+        
+        for j in bead_j:poly.length
+            pos_j = poly.pos[key_j][1:3]
+            
+            dist = distance_periodic(pos_i, pos_j, Int32(poly.boxlength))
+            
+            if dist <= contact_threshold
+                contact_matrix[bead_i, bead_j] += 1
+                contact_matrix[bead_j, bead_i] += 1
+            end
+            
+            key_j = poly.pos[key_j][5]
+        end
+        
+        key_i = poly.pos[key_i][5]
+        bead_i += 1
+    end
+
+    return contact_matrix
 end
