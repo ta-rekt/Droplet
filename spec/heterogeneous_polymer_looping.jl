@@ -2,31 +2,33 @@
 # MARK: -Phys. params
 
 l = Lattice(;
-    boxlength = 42,
+    boxlength = 64,
     nspecies = 4  # base (1), pattern1 (2), pattern2 (3), bulk (4)
 )
 
 # heterogeneous polymer with patterned regions
 poly = Polymer(;
-    length = 32,
-    maxlength = 128,
+    length = 50,
+    maxlength = 256,
     initShape = "line",
     nMonomerTypes = 3,  # base, pattern1, pattern2
-    initPos = [5, 21, 21],
+    initPos = [7, 32, 32],
     pattern = :custom
 )
 
-# define pattern: 128 beads with two patterned regions
-pattern = zeros(Int, 128)
-pattern[1:28] .= 1       # base type (28 beads)
-pattern[29:36] .= 2      # pattern 1 (8 beads)
-pattern[37:92] .= 1      # base type (56 beads separation)
-pattern[93:100] .= 3     # pattern 2 (8 beads)
-pattern[101:128] .= 1    # base type (28 beads)
+# define pattern: 256 beads with two patterned regions
+pattern = zeros(Int, 256)
+p1_start, p1_end = 41, 48
+p2_start, p2_end = 209, 216
+pattern[1:40] .= 1       # base type (40 beads)
+pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
+pattern[49:208] .= 1      # base type (160 beads separation)
+pattern[p2_start:p2_end] .= 3     # pattern 2 (8 beads)
+pattern[217:256] .= 1    # base type (40 beads)
 
 poly.customPattern = pattern
 
-initMonomers!(poly)
+initMonomers!(poly, defaultChemPot = 1.0)
 base = poly.monomers[1]
 pattern1 = poly.monomers[2]
 pattern2 = poly.monomers[3]
@@ -44,19 +46,19 @@ slist = [base, pattern1, pattern2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 0.1    # runtime in minutes (initial test)
-step = 1000
+t_max = 5    # runtime in minutes (initial test)
+step = 10000
 t_burn_in = 0.8  # 12 seconds
 
-# vals = range(-2.0, stop=0.0, step=0.25)   # parallelized parameters (inter-pattern interaction)
-# alphas = zeros(9)
-# nrepeats = 1
+vals = range(-2.0, stop=0.0, step=0.25)   # parallelized parameters (inter-pattern interaction)
+alphas = zeros(63)
+nrepeats = 7
 
-# for (i, v) in enumerate(vals)
-#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
-# end
+for (i, v) in enumerate(vals)
+    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+end
 
-alphas = [-1.0]
+# alphas = [-1.0]
 betas = [0.0]    # placeholder
 nparams = length(alphas)
 
@@ -121,9 +123,11 @@ function target!(res, args...)
     # initial values
     push!(radii, radius(poly))
     push!(lengths, poly.length)
-    _, _, initial_dist = get_pattern_centers(poly, [(29,36),(93,100)])
+    _, _, initial_dist = get_pattern_centers(poly, 
+                    [(p1_start, p1_end),(p2_start, p2_end)])
     push!(pattern_dists, initial_dist)
-    push!(contact_events, patterns_in_contact(poly, [(29,36),(93,100)]) ? 1 : 0)
+    push!(contact_events, patterns_in_contact(poly, 
+                    [(p1_start, p1_end),(p2_start, p2_end)]) ? 1 : 0)
     push!(hams_poly, poly.ham)  # polymer hamiltonian is stored in poly, not individual monomers
     push!(hams_bulk, bulk.ham)
     push!(accs, 0)
@@ -154,11 +158,13 @@ function target!(res, args...)
                     push!(lengths, poly.length)
                     
                     # calculate pattern distance
-                    _, _, dist = get_pattern_centers(poly, [(29,36),(93,100)])
+                    _, _, dist = get_pattern_centers(poly, 
+                                    [(p1_start, p1_end),(p2_start, p2_end)])
                     push!(pattern_dists, dist)
                     
                     # check contact
-                    in_contact = patterns_in_contact(poly, [(29,36),(93,100)])
+                    in_contact = patterns_in_contact(poly, 
+                                    [(p1_start, p1_end),(p2_start, p2_end)])
                     push!(contact_events, in_contact ? 1 : 0)
                     
                     # record first contact frame

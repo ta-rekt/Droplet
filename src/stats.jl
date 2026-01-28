@@ -107,7 +107,7 @@ function extractCoords!(p::Polymer, coords::Matrix)
     for (i, k) in enumerate(collect(keys(p.pos)))
         if key != 0
             coords[i, 1:3] = p.pos[key][1:3] # next position
-            coords[i, 4] = i
+            coords[i, 4] = p.pos[key][6]  # monomer type
             key = p.pos[key][5]    # next bead
         end
     end
