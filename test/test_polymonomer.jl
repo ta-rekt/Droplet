@@ -10,11 +10,11 @@
     # Initialize monomers with default potentials
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
     
-    # Check that monomers were created
+    # Check that monomers were created (keyed by intIdx)
     @test poly.monomers !== nothing
     @test length(poly.monomers) == 2
-    @test poly.monomerIndex !== nothing
-    @test length(poly.monomerIndex) == 8
+    @test haskey(poly.monomers, Int32(1))
+    @test haskey(poly.monomers, Int32(2))
     
     # Check that each monomer has the poly reference
     @test poly.monomers[1].poly === poly
@@ -37,46 +37,53 @@ end
 
 # MARK: -PolyMonomer pattern
 @testset "PolyMonomer pattern assignment" begin
+    l = Lattice(; boxlength = 10, nspecies = 1)
+    
+    # Helper to extract intIdx pattern from chain
+    function getPatternFromChain(p::Polymer)
+        result = Int32[]
+        key = p.head
+        while key != 0 && length(result) < p.length
+            push!(result, p.pos[key][6])
+            key = p.pos[key][5]
+        end
+        return result
+    end
+    
     # Test uniform pattern (default)
-    poly1 = Polymer(;
-        length = 4,
-        maxlength = 8,
-        nMonomerTypes = 2,
-        pattern = :uniform
-    )
+    poly1 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :uniform)
     initMonomers!(poly1, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test all(poly1.monomerIndex .== 1)
+    init!(l, [poly1])
+    pattern1 = getPatternFromChain(poly1)
+    @test all(pattern1 .== 1)  # All beads are monomer type 1 (intIdx=1)
     
-    # Test alternating pattern
-    poly2 = Polymer(;
-        length = 4,
-        maxlength = 8,
-        nMonomerTypes = 2,
-        pattern = :alternating
-    )
+    # Test block pattern (valid: contiguous blocks)
+    l2 = Lattice(; boxlength = 10, nspecies = 1)
+    poly2 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :block)
     initMonomers!(poly2, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test poly2.monomerIndex == [1, 2, 1, 2, 1, 2, 1, 2]
+    init!(l2, [poly2])
+    pattern2 = getPatternFromChain(poly2)
+    @test pattern2 == [1, 1, 2, 2]
     
-    # Test block pattern
-    poly3 = Polymer(;
-        length = 4,
-        maxlength = 8,
-        nMonomerTypes = 2,
-        pattern = :block
-    )
+    # Test custom contiguous pattern (valid)
+    l3 = Lattice(; boxlength = 10, nspecies = 1)
+    poly3 = Polymer(; length = 6, maxlength = 8, nMonomerTypes = 3, pattern = :custom, customPattern = [1, 2, 2, 3, 3, 1])
     initMonomers!(poly3, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test poly3.monomerIndex == [1, 1, 1, 1, 2, 2, 2, 2]
+    init!(l3, [poly3])
+    pattern3 = getPatternFromChain(poly3)
+    @test pattern3 == [1, 2, 2, 3, 3, 1]
     
-    # Test custom pattern
-    poly4 = Polymer(;
-        length = 4,
-        maxlength = 8,
-        nMonomerTypes = 3,
-        pattern = :custom,
-        customPattern = [1, 2, 3, 1, 2, 3, 1, 2]
-    )
+    # Test alternating pattern throws error (non-contiguous blocks)
+    l4 = Lattice(; boxlength = 10, nspecies = 1)
+    poly4 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :alternating)
     initMonomers!(poly4, defaultChemPot=0.0, defaultIntPot=0.0)
-    @test poly4.monomerIndex == [1, 2, 3, 1, 2, 3, 1, 2]
+    @test_throws ErrorException init!(l4, [poly4])
+    
+    # Test non-contiguous custom pattern throws error
+    l5 = Lattice(; boxlength = 10, nspecies = 1)
+    poly5 = Polymer(; length = 4, maxlength = 8, nMonomerTypes = 2, pattern = :custom, customPattern = [1, 2, 1, 2])
+    initMonomers!(poly5, defaultChemPot=0.0, defaultIntPot=0.0)
+    @test_throws ErrorException init!(l5, [poly5])
 end
 
 # MARK: -PolyMonomer intPot
@@ -169,7 +176,7 @@ end
         length = 4,
         maxlength = 8,
         nMonomerTypes = 2,
-        pattern = :alternating
+        pattern = :block
     )
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)

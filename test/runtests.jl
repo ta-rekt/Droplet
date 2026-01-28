@@ -1,5 +1,6 @@
 using Droplet
 using Test
+using Random
 
 @testset "Droplet.jl" begin
     include("test_init.jl")
@@ -8,4 +9,9 @@ using Test
     include("test_density_droplet.jl")
     include("test_interaction_potentials.jl")
     include("test_polymonomer.jl")
+    include("test_heterogeneous_phase0.jl")
+    include("test_heterogeneous_phase2.jl")
+    include("test_heterogeneous_phase3.jl")
+    include("test_heterogeneous_phase5.jl")
+    include("test_heterogeneous_phase6.jl")
 end
