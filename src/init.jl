@@ -220,7 +220,7 @@ function _validateContiguousBlocks(patternVec::Vector{Int32})
     end
 end
 
-# Initialize patternTails and baseIntIdx
+# Initialize patternTails, patternTailPos, originalPatternTailPos, and baseIntIdx
 function _initPatternTails!(p::Polymer)
     intIdxList = sort(collect(keys(p.monomers)))
     p.baseIntIdx = intIdxList[1]  # base type = first intIdx (smallest)
@@ -228,12 +228,16 @@ function _initPatternTails!(p::Polymer)
     # For uniform pattern, no tails to track
     if p.nMonomerTypes == 1 || p.pattern == :uniform
         p.patternTails = nothing
+        p.patternTailPos = nothing
+        p.originalPatternTailPos = nothing
         return
     end
     
     p.patternTails = Dict{Int32, Int32}()
+    p.patternTailPos = Dict{Int32, Int32}()
     
     key = p.head
+    chainPos = Int32(1)
     while key != 0
         currentIntIdx = p.pos[key][6]
         nextKey = p.pos[key][5]
@@ -242,10 +246,15 @@ function _initPatternTails!(p::Polymer)
         if currentIntIdx != p.baseIntIdx
             if nextKey == 0 || p.pos[nextKey][6] != currentIntIdx
                 p.patternTails[currentIntIdx] = key
+                p.patternTailPos[currentIntIdx] = chainPos
             end
         end
         key = nextKey
+        chainPos += 1
     end
+    
+    # Store original positions (immutable after init)
+    p.originalPatternTailPos = copy(p.patternTailPos)
 end
 
 # Assign monomer types to pos[key][6] based on pattern

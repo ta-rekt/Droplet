@@ -16,4 +16,5 @@ using Random
     include("test_heterogeneous_phase6.jl")
     include("test_pattern_stats.jl")
     include("test_contact_matrix.jl")
+    include("test_pattern_drift.jl")
 end

@@ -26,7 +26,7 @@ pattern[49:208] .= 1      # base type (160 beads separation)
 pattern[p2_start:p2_end] .= 3     # pattern 2 (8 beads)
 pattern[217:256] .= 1    # base type (40 beads)
 
-poly.customPattern = pattern
+poly.customPattern = ones(Int, 256)
 
 initMonomers!(poly, defaultChemPot = 1.0)
 base = poly.monomers[1]
@@ -50,15 +50,15 @@ t_max = 5    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
 
-vals = range(-2.0, stop=0.0, step=0.25)   # parallelized parameters (inter-pattern interaction)
-alphas = zeros(63)
-nrepeats = 7
+# vals = range(-2.0, stop=0.0, step=0.25)   # parallelized parameters (inter-pattern interaction)
+# alphas = zeros(63)
+# nrepeats = 7
 
-for (i, v) in enumerate(vals)
-    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
-end
+# for (i, v) in enumerate(vals)
+#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+# end
 
-# alphas = [-1.0]
+alphas = [0.0]
 betas = [0.0]    # placeholder
 nparams = length(alphas)
 
@@ -69,6 +69,7 @@ nparams = length(alphas)
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
     t_current = 0
+    reached_maxlength = false
 
     # species list and sweep parameters
     slist, alpha, beta = args
@@ -84,7 +85,7 @@ function target!(res, args...)
     
     # pattern1 (type 2)
     intPot!(pattern1, 0.5)           # pattern1 self-interaction
-    intPot!(pattern1, pattern2, alpha)  # pattern1-pattern2 (SWEEP)
+    intPot!(pattern1, pattern2, -2.0)  # pattern1-pattern2 (SWEEP)
     intPot!(pattern1, bulk, 0.0)    # pattern1-bulk (strong)
     
     # pattern2 (type 3)
@@ -92,7 +93,7 @@ function target!(res, args...)
     intPot!(pattern2, bulk, 0.0)    # pattern2-bulk (strong)
     
     # bulk (type 4)
-    intPot!(bulk, -1.5)              # bulk self-interaction
+    intPot!(bulk, alpha)              # bulk self-interaction
 
     # initialize lattice and species
     init!(l, [base, pattern1, pattern2, bulk])
@@ -113,11 +114,9 @@ function target!(res, args...)
     hams_poly = []
     hams_bulk = []
     accs = []
-    # deltaH needs to be sized for the max intIdx, not l.nspecies
-    max_intIdx = maximum([base.intIdx, pattern1.intIdx, pattern2.intIdx, bulk.intIdx])
-    
+
     # contact matrix: tracks contact frequency between monomer pairs
-    contact_matrix = zeros(Int, poly.length, poly.length)
+    contact_matrix = zeros(Int, poly.maxlength, poly.maxlength)
     contact_threshold = 2.0  # distance cutoff for contact
     
     # initial values
@@ -143,6 +142,13 @@ function target!(res, args...)
 
                 # record data
                 if mod(nmoves, step) == 0
+
+                    if poly.length == poly.maxlength && !reached_maxlength
+                        poly.customPattern = pattern
+                        initMonomers!(poly, defaultChemPot = 1.0)
+                        init!(l, [base, pattern1, pattern2, bulk])
+                        reached_maxlength = true
+                    end
 
                     ham!(s)
 
@@ -190,12 +196,7 @@ function target!(res, args...)
     res["step"] = step
     res["temperature"] = 1.0
     res["beta"] = beta
-    res["interaction_matrix"] = [
-        [0.5, 0.5, 0.5, -0.1],      # base
-        [0.5, 0.5, alpha, -1.0],    # pattern1
-        [0.5, alpha, 0.5, -1.0],    # pattern2
-        [-0.1, -1.0, -1.0, -1.5]    # bulk
-    ]
+    res["interaction_matrix"] = bulk.intMat
     res["boxlength"] = l.boxlength
     res["length_poly"] = lengths
     res["length_bulk"] = bulk.length
