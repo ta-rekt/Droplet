@@ -1,3 +1,11 @@
+"""
+Description:
+
+How do two strongly interacting regions of a polymer separated by a large
+number of beads find each other and form a loop, with and without interaction with bulk
+"""
+
+
 ### physical parameters
 # MARK: -Phys. params
 

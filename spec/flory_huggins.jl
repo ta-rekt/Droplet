@@ -1,36 +1,44 @@
+"""
+Description: 
+
+Trying to understand phase separation of a single species of bulk monomers
+Building an empirical phase diagram, attempting to make it agree with 
+Flory-Huggins theory. 
+"""
+
 ### physical parameters
 
 l = Lattice(;
-    boxlength = 16,
+    boxlength = 42,
     nspecies = 1
 )
 
 # bulk species
-b = FastBulk(;
-    length = 2048
+bulk = FastBulkMonomer(;
+    length = 4096
 )
 
 # list containing all species
-slist = [b]
+slist = [bulk]
 
 # minimum size of a droplet for detection
-minsize = 50
+minsize = 10
 
 ### simulation parameters
 
-t_max = 10    # runtime in minutes
-step = 1000
+t_max = 2    # runtime in minutes
+step = 10000
 
-vals = range(0.1, stop=1.6, step=0.1)   # parallelized parameters (int. pot.)
-alphas = zeros(16)
+vals = range(0.1, stop=1.6, length=32)   # parallelized parameters (int. pot.)
+alphas = zeros(32)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-# alphas = [1.0]   # temperatures
-betas = [0.0]    # (physical) chemical and interaction potentials
+# alphas = [0.6]   # temperatures
+betas = [0.0]    # ignored
 nparams = length(alphas)
 
 
@@ -43,19 +51,19 @@ function target!(res, args...)
     # species list and sweep parameters
     slist, temp, beta = args
 
-    b = slist[1]
-    intPot!(b, - 1.0 / temp)
+    bulk = slist[1]
+    intPot!(bulk, - 1.0 / temp)
 
     # initialize lattice and species
-    init!(l, [b])
+    init!(l, [bulk])
 
     nmoves = 0
     iter = 0
     frame = 1
 
     ndroplets = []
-    droplet_sizes = []
-    droplet_density = []
+    largest_droplet_size = []
+    largest_droplet_density = []
     dilute_density = []
     hams = []
     accs = []
@@ -63,14 +71,13 @@ function target!(res, args...)
     deltaH = 0
     moveMade = false
 
-    droplets = filter(x -> length(x) >= minsize, cc(b))
-    ddens = dropletDensities(b, droplets)
+    droplets = filter(x -> length(x) >= minsize, cc(bulk))
 
     push!(ndroplets, length(droplets))
-    push!(droplet_sizes, map(x -> length(x), droplets))
-    push!(droplet_density, mean(ddens))
-    push!(dilute_density, diluteDensity(b, droplets))
-    push!(hams, b.ham)   # initial energy
+    push!(largest_droplet_size, 1)
+    push!(largest_droplet_density, 0)
+    push!(dilute_density, diluteDensity(bulk, droplets))
+    push!(hams, bulk.ham)   # initial energy
     push!(accs, 0)
     
     # run simulation
@@ -78,19 +85,28 @@ function target!(res, args...)
         t_current = (time_ns() - t_start) / 6e10
 
         if moveMade
-            deltaH += b.deltaH
+            deltaH += bulk.deltaH
         
             if mod(nmoves, step) == 0
                 frame += 1
 
-                ccs = cc(b)
+                ccs = cc(bulk)
                 droplets = filter(x -> length(x) >= minsize, ccs)
-                ddens = dropletDensities(b, droplets)
+
+                if isempty(droplets)
+                    maxsize = 1
+                    dens = 0.0
+                else
+                    sizes = map(length, droplets)
+                    maxsize, idx = findmax(sizes)   # returns (value, index)
+                    dmax = droplets[idx]
+                    dens = maxsize / dropletVolume(bulk, dmax)
+                end
                 
                 push!(ndroplets, length(droplets))
-                push!(droplet_sizes, map(x -> length(x), droplets))
-                push!(droplet_density, mean(ddens))
-                push!(dilute_density, diluteDensity(b, droplets))
+                push!(largest_droplet_size, maxsize)
+                push!(largest_droplet_density, dens)
+                push!(dilute_density, diluteDensity(bulk, droplets))
                 push!(hams, hams[end] + deltaH)
                 push!(accs, iter == 0 ? 0 : nmoves / iter)
                 
@@ -98,28 +114,28 @@ function target!(res, args...)
             end
         end
         
-        moveMade = move!(b)
+        moveMade = move!(bulk)
         nmoves += moveMade
         iter += 1
     end
 
     # collect results
-    coords = Matrix{Int32}(undef, b.length, 4)
+    coords = Matrix{Int32}(undef, bulk.length, 4)
 
-    res["species_name"] = b.name
+    res["species_name"] = bulk.name
     res["nframes"] = frame
     res["step"] = step
     res["temperature"] = temp
     res["beta"] = beta
-    res["boxlength"] = b.boxlength
-    res["length"] = b.length
+    res["boxlength"] = bulk.boxlength
+    res["length"] = bulk.length
     res["ndroplets"] = ndroplets
-    res["droplet_sizes"] = droplet_sizes
-    res["droplet_density"] = droplet_density
+    res["largest_droplet_size"] = largest_droplet_size
+    res["largest_droplet_density"] = largest_droplet_density
     res["dilute_density"] = dilute_density
     res["hamiltonian"] = hams
     res["acceptance_rate"] = accs
-    res["final_coordinates"] = extractCoords!(b, coords)
+    res["final_coordinates"] = extractCoords!(bulk, coords)
     res["runtime_min"] = (time_ns() - t_start) / 6e10
 
     return res

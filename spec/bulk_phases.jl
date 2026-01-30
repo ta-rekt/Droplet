@@ -1,3 +1,10 @@
+"""
+Description: 
+
+Trying to understand phase separation of a single species of bulk monomers
+Plotting mean radius of gyration of the species versus self-interaction
+"""
+
 ### physical parameters
 # MARK: -Phys. params
 
@@ -23,7 +30,7 @@ t_max = 10    # runtime in minutes
 step = 10000
 t_burn_in = 0.8 * t_max
 
-vals = range(-2, stop=0, step=0.25)   # parallelized parameters (bulkmer self-interaction)
+vals = range(-2, stop=0, step=0.25)   # parallelized parameters (bulk self-interaction)
 alphas = zeros(9)
 nrepeats = 1
 

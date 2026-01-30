@@ -1,3 +1,10 @@
+"""
+Description:
+
+How do two bulk species (RNAP and TF) combine to increase the presence
+of one at a site with strong affinity for the other
+"""
+
 ### physical parameters
 # MARK: -Phys. params
 

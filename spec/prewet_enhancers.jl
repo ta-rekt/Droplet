@@ -1,3 +1,10 @@
+"""
+Description:
+
+Measuring the attractive force from a prewet droplet around two
+nearby filaments
+"""
+
 ### physical parameters
 # MARK: -Phys. params
 

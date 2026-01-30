@@ -1,13 +1,21 @@
+"""
+Description:
+
+What is the spatial density profile around a prewet filament as a function
+of concentration in the bulk, and where is the prewetting transition on
+the flory-huggins phase diagram
+"""
+
 ### physical parameters
 # MARK: -Phys. params
 
 l = Lattice(;
-    boxlength = 32,
+    boxlength = 42,
     nspecies = 3
 )
 
 c = FastBulk(;
-    length = 2,
+    length = 1,
     initShape = "uniform"
 )
 
