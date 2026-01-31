@@ -1,7 +1,7 @@
 export extractCoords!, centerMass, radius, radiusLine, radiusSphere, boxDensity, 
        axialDensity , radialDensity, extractCoords!, dfs, cc, dropletVolume, 
        dropletDensities, diluteDensity, nspeciesBound, get_pattern_centers,
-       patterns_in_contact, compute_contact_matrix!
+       patterns_in_contact, compute_contact_matrix!, find_patterns
 
 ############### Generic #############
 # MARK: -Generic
@@ -152,6 +152,115 @@ function get_pattern_centers(poly::Polymer, patterns::Vector{Tuple{Int,Int}})
     # normalize by pattern lengths
     for (i, plen) in enumerate(pattern_lengths)
         centers[i] ./= plen
+    end
+    
+    # euclidean distance between the two centers
+    dist = sqrt(sum((centers[1] .- centers[2]).^2))
+    
+    return centers[1], centers[2], dist
+end
+
+# find patterns in a polymer based on monomer type (intIdx)
+# Returns a Dict mapping each intIdx to a vector of (start_bead, end_bead) tuples
+# where start_bead and end_bead are 1-based indices counting from the polymer's head
+#
+# Example:
+#   If polymer has pattern: [1,1,2,2,2,1,3,3,1,1]
+#   Returns: Dict(
+#       1 => [(1,2), (6,6), (9,10)],
+#       2 => [(3,5)],
+#       3 => [(7,8)]
+#   )
+function find_patterns(poly::Polymer)
+    patterns = Dict{Int32, Vector{Tuple{Int,Int}}}()
+    
+    # Edge case: empty polymer
+    if poly.length == 0 || poly.head === nothing
+        return patterns
+    end
+    
+    # Traverse the polymer linked list
+    key = poly.head
+    bead_num = 1
+    
+    current_intIdx = poly.pos[key][6]
+    pattern_start = 1
+    
+    # Initialize dict entry for first monomer type
+    if !haskey(patterns, current_intIdx)
+        patterns[current_intIdx] = Vector{Tuple{Int,Int}}()
+    end
+    
+    for i in 1:poly.length
+        next_key = poly.pos[key][5]
+        
+        # Check if we're at the end or if the monomer type changes
+        if next_key == 0 || i == poly.length
+            # Close current pattern
+            push!(patterns[current_intIdx], (pattern_start, bead_num))
+            break
+        else
+            next_intIdx = poly.pos[next_key][6]
+            
+            if next_intIdx != current_intIdx
+                # Close current pattern
+                push!(patterns[current_intIdx], (pattern_start, bead_num))
+                
+                # Start new pattern
+                current_intIdx = next_intIdx
+                pattern_start = bead_num + 1
+                
+                # Initialize dict entry if needed
+                if !haskey(patterns, current_intIdx)
+                    patterns[current_intIdx] = Vector{Tuple{Int,Int}}()
+                end
+            end
+        end
+        
+        key = next_key
+        bead_num += 1
+    end
+    
+    return patterns
+end
+
+
+# ->>> new dispatch
+function get_pattern_centers(poly1::Polymer, poly2::Polymer, patterns::Vector{Tuple{Int,Int}})
+    if length(patterns) != 2
+        error("get_pattern_centers requires exactly 2 patterns, got $(length(patterns))")
+    end
+    
+    centers = [zeros(3), zeros(3)]
+    polymers = [poly1, poly2]
+    
+    # compute center for each polymer's pattern
+    for (pidx, (poly, (pstart, pend))) in enumerate(zip(polymers, patterns))
+        # check if polymer is long enough for its pattern
+        if poly.length < pend
+            return nothing, nothing, Inf
+        end
+        
+        pattern_length = pend - pstart + 1
+        
+        # iterate through polymer linked list
+        key = poly.head
+        bead_num = 1
+        
+        for i in 1:poly.length
+            pos = poly.pos[key][1:3]
+            
+            # check if this bead belongs to the pattern
+            if bead_num >= pstart && bead_num <= pend
+                centers[pidx] .+= pos
+            end
+            
+            key = poly.pos[key][5]  # next bead
+            bead_num += 1
+        end
+        
+        # normalize by pattern length
+        centers[pidx] ./= pattern_length
     end
     
     # euclidean distance between the two centers
