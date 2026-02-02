@@ -26,7 +26,7 @@ minsize = 10
 
 ### simulation parameters
 
-t_max = 2    # runtime in minutes
+t_max = 5    # runtime in minutes
 step = 10000
 
 vals = range(0.1, stop=1.6, length=32)   # parallelized parameters (int. pot.)

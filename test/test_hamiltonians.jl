@@ -313,7 +313,7 @@ end
     #### Time evolution test - track each species separately
     nmoves = 0
     frame = 1
-    nframes = 5000
+    nframes = 10000
     
     # Track hamiltonians per species
     p_hams = Vector{Float64}(undef, 0)

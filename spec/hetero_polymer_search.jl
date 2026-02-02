@@ -33,10 +33,10 @@ poly2 = Polymer(;
     pattern = :custom
 )
 
-# define pattern: 256 beads with two patterned regions
 pattern = zeros(Int, 256)
 p1_start, p1_end = 124, 134
-pattern[1:p1_start-1] .= 1       # base type (40 beads)
+p2_start, p2_end = 124, 134
+pattern[1:p1_start-1] .= 1         # base type (40 beads)
 pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
 pattern[p1_end+1:256] .= 1
 
@@ -64,8 +64,8 @@ slist = [base1, pattern1, base2, pattern2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 720    # runtime in minutes (initial test)
-step = 10000
+t_max = 0.3    # runtime in minutes (initial test)
+step = 1000
 t_burn_in = 0.8  # 12 seconds
 
 vals = range(0.005, stop=0.05, length=32)  # parallelized parameters (concentration)
@@ -76,7 +76,7 @@ for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-# alphas = [0.03]    # concentration
+alphas = [0.03]    # concentration
 betas = [0.66]    # temperature
 nparams = length(alphas)
 
@@ -180,15 +180,19 @@ function target!(res, args...)
 
                     pattern = zeros(Int, 256)
                     p1_start, p1_end = 124, 134
+                    p2_start, p2_end = 124, 134
                     pattern[1:p1_start-1] .= 1         # base type (40 beads)
                     pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
                     pattern[p1_end+1:256] .= 1
-
+                    
                     if poly1.length == poly1.maxlength && !p1_reached_maxlength
                         poly1.customPattern = pattern
                         initMonomers!(poly1, defaultChemPot = 1.0)
                         init!(l, [base1, pattern1, base2, pattern2, bulk])
                         p1_reached_maxlength = true
+
+                        pattern_poly1 = find_patterns(poly1)
+                        p1_start, p1_end = pattern_poly1[2][1]
                     end
 
                     if poly2.length == poly2.maxlength && !p2_reached_maxlength
@@ -196,6 +200,9 @@ function target!(res, args...)
                         initMonomers!(poly2, defaultChemPot = 1.0)
                         init!(l, [base1, pattern1, base2, pattern2, bulk])
                         p2_reached_maxlength = true
+
+                        pattern_poly2 = find_patterns(poly2)
+                        p2_start, p2_end = pattern_poly2[2][1]
                     end
 
                     ham!(s)
@@ -214,12 +221,6 @@ function target!(res, args...)
                     elseif s.intIdx == bulk.intIdx
                         push!(hams_bulk, getHam(s))
                     end
-
-                    pattern_poly1 = find_patterns(poly1)
-                    pattern_poly2 = find_patterns(poly2)
-
-                    p1_start, p1_end = pattern_poly1[2][1]
-                    p2_start, p2_end = pattern_poly2[2][1]
 
                     _, _, dist = get_pattern_centers(poly1, poly2, 
                                     [(p1_start, p1_end),(p2_start, p2_end)])

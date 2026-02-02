@@ -83,13 +83,11 @@ function addBond!(p::Polymer)
         p.latS[p.pos[tailKey][1], p.pos[tailKey][2], p.pos[tailKey][3]] = p.baseIntIdx
         p.latS[p.pos[prevTailKey][1], p.pos[prevTailKey][2], p.pos[prevTailKey][3]] = p.baseIntIdx
         
-        # Update patternTails and patternTailPos
+        # Update patternTails
         if newTailKey != 0 && p.pos[newTailKey][6] == intIdx
             p.patternTails[intIdx] = newTailKey
-            p.patternTailPos[intIdx] -= 2  # tail moved backward by 2
         else
             delete!(p.patternTails, intIdx)
-            delete!(p.patternTailPos, intIdx)
         end
     end
 
@@ -160,9 +158,8 @@ function removeBond!(p::Polymer)
         p.latS[p.pos[nextAfterTail][1], p.pos[nextAfterTail][2], p.pos[nextAfterTail][3]] = intIdx
         p.latS[p.pos[nextNextAfterTail][1], p.pos[nextNextAfterTail][2], p.pos[nextNextAfterTail][3]] = intIdx
         
-        # Update patternTails and patternTailPos: new tail is two beads forward
+        # Update patternTails: new tail is two beads forward
         p.patternTails[intIdx] = nextNextAfterTail
-        p.patternTailPos[intIdx] += 2  # tail moved forward by 2
     end
     
     # reset old lattice sites to 0
@@ -273,39 +270,29 @@ function move!(p::Polymer)
         # Validate pattern swap is possible for non-base types
         if p.patternTails !== nothing && !isempty(p.patternTails)
             currentIntIdx = p.pos[p.ki][6]
-            if currentIntIdx != p.baseIntIdx
-                # Compute drift limit inline
-                driftLimit = p.length < 8 ? Int32(-1) : p.length < 32 ? Int32(2) : p.length < 64 ? Int32(4) : Int32(8)
+            if currentIntIdx != p.baseIntIdx && haskey(p.patternTails, currentIntIdx)
+                tailKey = p.patternTails[currentIntIdx]
+                prevTailKey = p.pos[tailKey][4]
                 
                 if p.moveType == 1  # addBond: pattern shrinks at tail
                     # Need at least 4 beads in pattern (2 will be swapped)
-                    tailKey = p.patternTails[currentIntIdx]
-                    prevTailKey = p.pos[tailKey][4]
                     newTailKey = p.pos[prevTailKey][4]
                     if newTailKey == 0 || p.pos[newTailKey][6] != currentIntIdx
                         return false  # Pattern too small
                     end
-                    # Check drift: addBond moves tail backward by 2
-                    if driftLimit > 0
-                        newTailPos = p.patternTailPos[currentIntIdx] - 2
-                        if abs(newTailPos - p.originalPatternTailPos[currentIntIdx]) > driftLimit
-                            return false
-                        end
+                    
+                    # CRITICAL: Reject if bond includes tail or prevTail
+                    # Adding at tail/prevTail would create fragmentation
+                    if p.ki == tailKey || p.kj == tailKey || p.ki == prevTailKey || p.kj == prevTailKey
+                        return false  # Cannot add at tail position
                     end
+                    
                 elseif p.moveType == 3  # removeBond: need base-type beads after tail
-                    tailKey = p.patternTails[currentIntIdx]
                     nextAfterTail = p.pos[tailKey][5]
                     nextNextAfterTail = nextAfterTail == 0 ? Int32(0) : p.pos[nextAfterTail][5]
                     if nextAfterTail == 0 || p.pos[nextAfterTail][6] != p.baseIntIdx ||
                        nextNextAfterTail == 0 || p.pos[nextNextAfterTail][6] != p.baseIntIdx
                         return false  # Insufficient base-type beads
-                    end
-                    # Check drift: removeBond moves tail forward by 2
-                    if driftLimit > 0
-                        newTailPos = p.patternTailPos[currentIntIdx] + 2
-                        if abs(newTailPos - p.originalPatternTailPos[currentIntIdx]) > driftLimit
-                            return false
-                        end
                     end
                 end
             end

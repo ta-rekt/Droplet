@@ -16,35 +16,42 @@ bulk = FastBulkMonomer(;
     length = 1
 )
 
-site = FastBulkMonomer(;
-    length = 10,
+site2 = FastBulkMonomer(;
+    length = 5,
     initShape = "line",
     initParams = 1,
-    initPos = [16,21,21]
+    initPos = [12,21,21]
+)
+
+site1 = FastBulkMonomer(;
+    length = 5,
+    initShape = "line",
+    initParams = 1,
+    initPos = [25,21,21]
 )
 
 # list containing all species
-slist = [bulk, site]
+slist = [bulk, site1, site2]
 
 # minimum size of a droplet for detection
 minsize = 10
 
 ### simulation parameters
 
-t_max = 480    # runtime in minutes
+t_max = 2    # runtime in minutes
 t_burn_in = 0.8 * t_max
 step = 10000
 
 # vals = range(0.4, stop=0.7, length=16)   
-vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
-alphas = zeros(32)
-nrepeats = 1
+# vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
+# alphas = zeros(32)
+# nrepeats = 1
 
-for (i, v) in enumerate(vals)
-    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
-end
+# for (i, v) in enumerate(vals)
+#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+# end
 
-# alphas = [0.03]   # concentration
+alphas = [0.03]   # concentration
 betas = [0.66]    # temperature
 nparams = length(alphas)
 
@@ -57,15 +64,17 @@ function target!(res, args...)
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    bulk = slist[1]
+    bulk, site1, site2 = slist
     intPot!(bulk, -1.0 / beta)
-    intPot!(bulk, site, -2.0)
-    intPot!(site, 0.0)
+    intPot!(bulk, site1, -2.0)
+    intPot!(bulk, site2, -2.0)
+    intPot!(site1, 0.0)
+    intPot!(site2, 0.0)
 
     bulk.length = Int32(round(l.boxlength^3 * alpha))
 
     # initialize lattice and species
-    init!(l, [bulk, site])
+    init!(l, [bulk, site1, site2])
 
     nmoves = 0
     iter = 0

@@ -101,8 +101,6 @@ Base.@kwdef mutable struct Polymer <: AbstractPolymer
     pattern::Symbol=:uniform
     customPattern::Union{Nothing, Vector{Int}}=nothing
     patternTails::Union{Nothing, Dict{Int32, Int32}} = nothing  # intIdx -> tail key for non-base types
-    patternTailPos::Union{Nothing, Dict{Int32, Int32}} = nothing  # intIdx -> current tail chain position
-    originalPatternTailPos::Union{Nothing, Dict{Int32, Int32}} = nothing  # intIdx -> original tail chain position (immutable)
     baseIntIdx::Union{Nothing, Int32} = nothing                  # intIdx of base type (can grow/shrink)
     
     # addBond!, removeBond!, identifyBond! variables

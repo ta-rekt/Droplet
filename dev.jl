@@ -451,47 +451,33 @@ end
     ############ droplet boundary ############
 
     l = Lattice(;
-        boxlength = 4,
+        boxlength = 42,
         nspecies = 3
     )
-    
-    tf = FastBulkMonomer(;
-        length = 12,
-        initShape = "uniform"
+
+    # heterogeneous polymer with patterned regions
+    poly = Polymer(;
+        length = 32,
+        maxlength = 256,
+        initShape = "line",
+        nMonomerTypes = 2,  # base, pattern1
+        initPos = [5, 12, 12],
+        pattern = :custom
     )
 
-    poly = Polymer(;
-        length = l.boxlength,
-        maxlength = 8,
-        nMonomerTypes = 3
-    )
+    # define pattern: 256 beads with two patterned regions
+    pattern = zeros(Int, 32)
+    p1_start, p1_end = 12, 16
+    pattern[1:p1_start-1] .= 1         # base type (40 beads)
+    pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
+    pattern[p1_end+1:32] .= 1
+
+    poly.customPattern = pattern
     
     initMonomers!(poly, defaultChemPot=0.0, defaultIntPot=0.0)
 
-    dna = poly.monomers[1]
-    promoter = poly.monomers[2]
+    init!(l, [poly])
 
-    dna.name = "dna"
-    promoter.name = "promoter"
-
-    intPot!(tf, dna, 0.3)
-    intPot!(tf, promoter, 2.0)
-
-    intPot!(tf, 1.0)
-    intPot!(dna, 0.5)
-    intPot!(promoter, 0.5)
-
-    # map(p -> (p.name, p.intPot, getIntPot(tf, p)), poly.monomers)
-
-    # add all species here, including polymonomers
-    # let init initialize them
-    # let ham use a mono's parent poly's position, or a bulk mono's position
-    species = [tf, dna, promoter]
-
-    init!(l, species)
-
-    @show getIntPot(tf, dna)
-    @show getIntPot(tf, promoter)
-    @show getIntPot(tf, tf)
+    find_patterns(poly)
 
 end

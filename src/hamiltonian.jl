@@ -134,8 +134,11 @@ function _addSwapEnergy!(p::Polymer, mPattern::PolyMonomer)
         nnpTailBulk = nnp(mPattern, sp, tailPos)
         nnpPrevTailBulk = nnp(mPattern, sp, prevTailPos)
         # Remove old pattern-bulk, add new base-bulk
-        p.deltaH -= mPattern.intMat[mPattern.intIdx, idx] * (nnpTailBulk + nnpPrevTailBulk)
-        p.deltaH += mBase.intMat[mBase.intIdx, idx] * (nnpTailBulk + nnpPrevTailBulk)
+        energy_change = -mPattern.intMat[mPattern.intIdx, idx] * (nnpTailBulk + nnpPrevTailBulk) +
+                         mBase.intMat[mBase.intIdx, idx] * (nnpTailBulk + nnpPrevTailBulk)
+        p.deltaH += energy_change
+        # Notify bulk species of energy change
+        setDeltaHP(sp, getDeltaHP(sp) + energy_change)
     end
     
     # Chemical potential change: 2 beads go from pattern to base type
@@ -223,8 +226,11 @@ function _removeSwapEnergy!(p::Polymer, mPattern::PolyMonomer)
         nnpAfterBulk = nnp(mBase, sp, afterTailPos)
         nnpAfterAfterBulk = nnp(mBase, sp, afterAfterTailPos)
         # Remove old base-bulk, add new pattern-bulk
-        p.deltaH -= mBase.intMat[mBase.intIdx, idx] * (nnpAfterBulk + nnpAfterAfterBulk)
-        p.deltaH += mPattern.intMat[mPattern.intIdx, idx] * (nnpAfterBulk + nnpAfterAfterBulk)
+        energy_change = -mBase.intMat[mBase.intIdx, idx] * (nnpAfterBulk + nnpAfterAfterBulk) +
+                         mPattern.intMat[mPattern.intIdx, idx] * (nnpAfterBulk + nnpAfterAfterBulk)
+        p.deltaH += energy_change
+        # Notify bulk species of energy change
+        setDeltaHP(sp, getDeltaHP(sp) + energy_change)
     end
     
     # Chemical potential change: 2 beads go from base to pattern type
