@@ -16,7 +16,7 @@ l = Lattice(;
 # heterogeneous polymer with patterned regions
 poly1 = Polymer(;
     length = 32,
-    maxlength = 256,
+    maxlength = 32,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
     initPos = [5, 12, 12],
@@ -26,22 +26,22 @@ poly1 = Polymer(;
 # heterogeneous polymer with patterned regions
 poly2 = Polymer(;
     length = 32,
-    maxlength = 256,
+    maxlength = 32,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
     initPos = [5, 30, 30],
     pattern = :custom
 )
 
-pattern = zeros(Int, 256)
-p1_start, p1_end = 124, 134
-p2_start, p2_end = 124, 134
+pattern = zeros(Int, 42)
+p1_start, p1_end = 15, 24
+p2_start, p2_end = 15, 24
 pattern[1:p1_start-1] .= 1         # base type (40 beads)
 pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
-pattern[p1_end+1:256] .= 1
+pattern[p1_end+1:42] .= 1
 
-poly1.customPattern = ones(Int, 256)
-poly2.customPattern = ones(Int, 256)
+poly1.customPattern = ones(Int, 42)
+poly2.customPattern = ones(Int, 42)
 
 initMonomers!(poly1, defaultChemPot = 1.0)
 initMonomers!(poly2, defaultChemPot = 1.0)
@@ -64,8 +64,8 @@ slist = [base1, pattern1, base2, pattern2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 0.3    # runtime in minutes (initial test)
-step = 1000
+t_max = 45    # runtime in minutes (initial test)
+step = 10000
 t_burn_in = 0.8  # 12 seconds
 
 vals = range(0.005, stop=0.05, length=32)  # parallelized parameters (concentration)
@@ -99,7 +99,7 @@ function target!(res, args...)
     # base (type 1)
     intPot!(base1, 0.5)              # base self-interaction
     intPot!(base1, pattern1, 0.5)    # base-pattern1
-    intPot!(base1, bulk, 0.0)       # base-bulk (weak)
+    intPot!(base1, bulk, 0.0)        # base-bulk (weak)
     
     # pattern1 (type 2)
     intPot!(pattern1, 0.5)           # pattern1 self-interaction
@@ -108,7 +108,7 @@ function target!(res, args...)
     # base (type 2)
     intPot!(base2, 0.5)              # base self-interaction
     intPot!(base2, pattern2, 0.5)    # base-pattern1
-    intPot!(base2, bulk, 0.0)       # base-bulk (weak)
+    intPot!(base2, bulk, 0.0)        # base-bulk (weak)
     
     # pattern1 (type 2)
     intPot!(pattern2, 0.5)           # pattern1 self-interaction
@@ -148,6 +148,8 @@ function target!(res, args...)
     pattern_dists = []
     max_droplet_size = []
     accs = []
+    density_lat = zeros(Float64, (l.boxlength, l.boxlength, l.boxlength))
+    total = 0.0
 
     # contact matrix: tracks contact frequency between monomer pairs
     contact_matrix = zeros(Int, poly1.maxlength, poly1.maxlength)
@@ -178,34 +180,40 @@ function target!(res, args...)
                 # record data
                 if mod(nmoves, step) == 0
 
-                    pattern = zeros(Int, 256)
-                    p1_start, p1_end = 124, 134
-                    p2_start, p2_end = 124, 134
+                    pattern = zeros(Int, 42)
+                    p1_start, p1_end = 15, 24
+                    p2_start, p2_end = 15, 24
                     pattern[1:p1_start-1] .= 1         # base type (40 beads)
                     pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
-                    pattern[p1_end+1:256] .= 1
+                    pattern[p1_end+1:42] .= 1
                     
                     if poly1.length == poly1.maxlength && !p1_reached_maxlength
+                        p1_reached_maxlength = true
                         poly1.customPattern = pattern
                         initMonomers!(poly1, defaultChemPot = 1.0)
                         init!(l, [base1, pattern1, base2, pattern2, bulk])
-                        p1_reached_maxlength = true
 
                         pattern_poly1 = find_patterns(poly1)
                         p1_start, p1_end = pattern_poly1[2][1]
                     end
 
                     if poly2.length == poly2.maxlength && !p2_reached_maxlength
+                        p2_reached_maxlength = true
                         poly2.customPattern = pattern
                         initMonomers!(poly2, defaultChemPot = 1.0)
                         init!(l, [base1, pattern1, base2, pattern2, bulk])
-                        p2_reached_maxlength = true
 
                         pattern_poly2 = find_patterns(poly2)
                         p2_start, p2_end = pattern_poly2[2][1]
                     end
 
                     ham!(s)
+                    println("bulk", map(x -> x[2], bulk.intSpecies))
+                    println("pattern1", map(x -> x[2], pattern1.intSpecies))
+                    println("pattern2", map(x -> x[2], pattern2.intSpecies))
+                    println("base1", map(x -> x[2], base1.intSpecies))
+                    println("base2", map(x -> x[2], base2.intSpecies))
+                    t_current = t_max + 1
 
                     ccs = cc(bulk)
                     droplets = filter(x -> length(x) >= minsize, ccs)
@@ -238,11 +246,20 @@ function target!(res, args...)
                     # acceptance rate
                     push!(accs, nmoves / (niter * length(movingsps)))
 
+                    if t_current >= t_burn_in
+                        for (_, val) in bulk.pos
+                            density_lat[val[1], val[2], val[3]] += 1.0
+                            total += 1.0
+                        end
+                    end
+
                     frame += 1
                 end
             end
         end
     end
+
+    density_lat = density_lat ./ total
 
     # save results
     res["species_name"] = "poly"
@@ -261,6 +278,7 @@ function target!(res, args...)
     res["pattern1_location"] = p1_start
     res["pattern2_location"] = p2_start
     res["max_droplet_size"] = max_droplet_size
+    res["density_lattice"] = density_lat
     res["hamiltonian_poly1"] = hams_poly1
     res["hamiltonian_poly2"] = hams_poly2
     res["hamiltonian_bulk"] = hams_bulk
