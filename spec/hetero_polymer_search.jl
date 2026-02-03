@@ -49,7 +49,7 @@ slist = [poly1, poly2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 5    # runtime in minutes (initial test)
+t_max = 1    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
 
@@ -72,8 +72,6 @@ nparams = length(alphas)
 function target!(res, args...)
     t_start = time_ns()  # start timer (monotonic)
     t_current = 0
-    p1_reached_maxlength = false
-    p2_reached_maxlength = false
 
     # species list and sweep parameters
     slist, alpha, beta = args
@@ -157,8 +155,9 @@ function target!(res, args...)
     push!(hams_bulk, bulk.ham)
     push!(accs, 0)
 
-    patternVec1 = zeros(Int, 32)
-    patternVec2 = zeros(Int, 32)
+    # build polymer patterns
+    patternVec1 = zeros(Int32, 32)
+    patternVec2 = zeros(Int32, 32)
     p1_start, p1_end = 11, 20
     p2_start, p2_end = 11, 20
 
@@ -169,6 +168,12 @@ function target!(res, args...)
     patternVec2[1:p1_start-1] .= base2.intIdx         # base type (40 beads)
     patternVec2[p1_start:p1_end] .= pattern2.intIdx      # pattern 1 (8 beads)
     patternVec2[p1_end+1:32] .= base2.intIdx
+
+    growPolymer!(poly1)
+    growPolymer!(poly2)
+
+    updatePattern!(l, poly1, patternVec1)
+    updatePattern!(l, poly2, patternVec2)
 
     # run simulation
     while t_current <= t_max
@@ -181,18 +186,6 @@ function target!(res, args...)
 
                 # record data
                 if mod(nmoves, step) == 0
-                    
-                    if poly1.length == poly1.maxlength && !p1_reached_maxlength
-                        poly1.pattern = :custom
-                        p1_reached_maxlength = true
-                        poly1.customPattern = patternVec1
-                    end
-
-                    if poly2.length == poly2.maxlength && !p2_reached_maxlength
-                        poly2.pattern = :custom
-                        p2_reached_maxlength = true
-                        poly2.customPattern = patternVec2
-                    end
 
                     ham!(s)
 
@@ -211,16 +204,11 @@ function target!(res, args...)
                         push!(hams_bulk, getHam(s))
                     end
 
-                    if p1_reached_maxlength
-                        pattern_poly1 = find_patterns(poly1)
-                        p1_start, p1_end = pattern_poly1[pattern1.intIdx][1]
-                        t_current = t_max + 1
-                    end
+                    pattern_poly1 = find_patterns(poly1)
+                    p1_start, p1_end = pattern_poly1[pattern1.intIdx][1]
 
-                    if p2_reached_maxlength
-                        pattern_poly2 = find_patterns(poly2)
-                        p2_start, p2_end = pattern_poly2[pattern2.intIdx][1]
-                    end
+                    pattern_poly2 = find_patterns(poly2)
+                    p2_start, p2_end = pattern_poly2[pattern2.intIdx][1]
 
                     _, _, dist = get_pattern_centers(poly1, poly2, 
                                     [(p1_start, p1_end),(p2_start, p2_end)])
