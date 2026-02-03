@@ -139,12 +139,9 @@ function target!(res, args...)
     pattern_dists = []
     max_droplet_size = []
     accs = []
+    contact_probs = []
     # density_lat = zeros(Float64, (l.boxlength, l.boxlength, l.boxlength))
     total = 0.0
-
-    # contact matrix: tracks contact frequency between monomer pairs
-    contact_matrix = zeros(Int, poly1.maxlength, poly1.maxlength)
-    contact_threshold = 2.0  # distance cutoff for contact
     
     # initial values
     push!(radii1, radius(poly1))
@@ -156,6 +153,7 @@ function target!(res, args...)
     push!(hams_poly2, poly2.ham)
     push!(hams_bulk, bulk.ham)
     push!(accs, 0)
+    push!(contact_probs, 0.0)
 
     # build polymer patterns
     patternVec1 = zeros(Int32, poly1.maxlength)
@@ -211,6 +209,31 @@ function target!(res, args...)
                     pattern_poly2 = find_patterns(poly2)
                     p2_start, p2_end = pattern_poly2[pattern2.intIdx][1]
 
+                    # compute contact probability between pattern1 and bulk
+                    pattern_length = p1_end - p1_start + 1
+                    contacts = 0
+                    
+                    # get tail key for pattern1
+                    if haskey(poly1.patternTails, pattern1.intIdx)
+                        tail_key = poly1.patternTails[pattern1.intIdx]
+                        
+                        # walk backwards from tail to count contacts
+                        current_key = tail_key
+                        while current_key != 0
+                            # check if this bead is pattern1 type
+                            if poly1.pos[current_key][6] == pattern1.intIdx
+                                # count nearest neighbors with bulk
+                                contacts += nnp(pattern1, bulk, poly1.pos[current_key][1:3]) / 4
+                                # move to previous bead
+                                current_key = poly1.pos[current_key][4]
+                            else
+                                break  # reached end of pattern region
+                            end
+                        end
+                    end
+                    
+                    push!(contact_probs, contacts / pattern_length)
+
                     _, _, dist = get_pattern_centers(poly1, poly2, 
                                     [(p1_start, p1_end),(p2_start, p2_end)])
                     push!(pattern_dists, dist)
@@ -220,9 +243,6 @@ function target!(res, args...)
                     push!(lengths1, poly1.length)
                     push!(radii2, radius(poly2))
                     push!(lengths2, poly2.length)
-
-                    # update contact matrix
-                    compute_contact_matrix!(poly1, contact_matrix, contact_threshold)
 
                     # acceptance rate
                     push!(accs, nmoves / (niter * length(movingsps)))
@@ -264,7 +284,7 @@ function target!(res, args...)
     res["hamiltonian_poly2"] = hams_poly2
     res["hamiltonian_bulk"] = hams_bulk
     res["acceptance_rate"] = accs
-    res["contact_matrix"] = contact_matrix
+    res["contact_probability"] = contact_probs
     
     # extract polymer coordinates into a matrix
     poly1_coords = zeros(Int32, poly1.length, 4)
