@@ -1,6 +1,6 @@
 
 export initHam!, initUniform!, initLine!, initBox!, initMovableSet!, 
-       initMonomers!, initShape!, init!
+       initMonomers!, initShape!, initSpecies!, init!, updateMonomers!
 
 ############# Species initialization functions #############
 
@@ -209,6 +209,52 @@ function initMonomers!(p::Polymer; defaultChemPot::Float64=0.0, defaultIntPot::F
     return p
 end
 
+"""
+    updateMonomers!(p::Polymer, baseIntIdx::Int32)
+
+Re-key the polymer's monomers dictionary after intIdx values have been finalized
+by intPot! calls. This ensures poly.monomers keys match the global intIdx values
+of each monomer.
+
+# Arguments
+- `p::Polymer`: The polymer whose monomers dictionary needs updating
+- `baseIntIdx::Int32`: The intIdx of the base monomer type for this polymer
+
+This function should be called after all intPot! calls and before init!.
+
+# Example
+```julia
+poly1 = Polymer(length=32, nMonomerTypes=2, pattern=:custom)
+initMonomers!(poly1, defaultChemPot=1.0)
+
+base1 = poly1.monomers[1]
+pattern1 = poly1.monomers[2]
+
+# Set interaction potentials (changes intIdx values)
+intPot!(base1, 0.5)
+intPot!(pattern1, -2.0)
+
+# Re-key monomers dictionary with new intIdx values
+updateMonomers!(poly1, base1.intIdx)
+```
+"""
+function updateMonomers!(p::Polymer, baseIntIdx::Int32)
+    # Create new dictionary with current intIdx values as keys
+    new_monomers = Dict{Int32, PolyMonomer}()
+    
+    for (old_key, monomer) in p.monomers
+        new_monomers[monomer.intIdx] = monomer
+    end
+    
+    # Replace old dictionary
+    p.monomers = new_monomers
+    
+    # Update baseIntIdx to the specified value
+    p.baseIntIdx = baseIntIdx
+    
+    return p
+end
+
 # Validate that each non-base pattern type (2+) appears in exactly one contiguous block
 function _validateContiguousBlocks(patternVec::Vector{Int32})
     maxType = maximum(patternVec)
@@ -300,7 +346,7 @@ function _buildPatternVector(p::Polymer)::Vector{Int32}
         @assert p.customPattern !== nothing "pattern=:custom requires customPattern"
         @assert length(p.customPattern) >= p.length "customPattern too short"
         for i in 1:p.length
-            @assert 1 <= p.customPattern[i] <= p.nMonomerTypes "customPattern[$i] out of range"
+            @assert p.customPattern[i] in keys(p.monomers) "customPattern[$i] out of range"
             patternVec[i] = p.customPattern[i]
         end
         

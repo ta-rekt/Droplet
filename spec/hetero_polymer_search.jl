@@ -33,23 +33,11 @@ poly2 = Polymer(;
     pattern = :custom
 )
 
-pattern = zeros(Int, 42)
-p1_start, p1_end = 15, 24
-p2_start, p2_end = 15, 24
-pattern[1:p1_start-1] .= 1         # base type (40 beads)
-pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
-pattern[p1_end+1:42] .= 1
-
-poly1.customPattern = ones(Int, 42)
-poly2.customPattern = ones(Int, 42)
+poly1.customPattern = ones(Int, 32)
+poly2.customPattern = ones(Int, 32)
 
 initMonomers!(poly1, defaultChemPot = 1.0)
 initMonomers!(poly2, defaultChemPot = 1.0)
-
-base1 = poly1.monomers[1]
-base2 = poly2.monomers[1]
-pattern1 = poly1.monomers[2]
-pattern2 = poly2.monomers[2]
 
 # bulk species
 bulk = FastBulkMonomer(;
@@ -58,13 +46,13 @@ bulk = FastBulkMonomer(;
 )
 
 # list containing all species
-slist = [base1, pattern1, base2, pattern2, bulk]
+slist = [poly1, poly2, bulk]
 
 
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 45    # runtime in minutes (initial test)
+t_max = 3    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
 
@@ -93,7 +81,12 @@ function target!(res, args...)
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    base1, pattern1, base2, pattern2, bulk = slist
+    poly1, poly2, bulk = slist
+
+    base1 = poly1.monomers[1]
+    base2 = poly2.monomers[1]
+    pattern1 = poly1.monomers[2]
+    pattern2 = poly2.monomers[2]
     
     # set interaction potentials (4x4 interaction matrix)
     # base (type 1)
@@ -119,18 +112,31 @@ function target!(res, args...)
 
     bulk.length = Int32(round(l.boxlength^3 * alpha))
 
+    println("pattern1 ", pattern1.intIdx)
+    println("pattern2 ", pattern2.intIdx)
+    println("base1 ", base1.intIdx)
+    println("base2 ", base2.intIdx)
+    println("bulk ", bulk.intIdx)
+    
+    @show keys(poly1.monomers)
+    @show keys(poly2.monomers)
+
+    updateMonomers!(poly1)
+    updateMonomers!(poly2)
+
+    @show keys(poly1.monomers)
+    @show keys(poly2.monomers)
+
     # initialize lattice and species
-    init!(l, [base1, pattern1, base2, pattern2, bulk])
+    init!(l, [poly1, poly2, bulk])
 
     # Initialize deltaHP for both polymers (needed for multi-polymer interactions)
     poly1.deltaHP = 0.0
     poly2.deltaHP = 0.0
 
     # moving species
-    movingsps = [(base2, base2.intIdx), 
-                 (pattern2, pattern2.intIdx), 
-                 (base1, base1.intIdx), 
-                 (pattern1, pattern1.intIdx), 
+    movingsps = [(poly1, bulk.intIdx + 1),
+                 (poly2, bulk.intIdx + 2), 
                  (bulk, bulk.intIdx)]
 
     nmoves = 0
@@ -160,14 +166,23 @@ function target!(res, args...)
     push!(radii2, radius(poly2))
     push!(lengths1, poly1.length)
     push!(lengths2, poly2.length)
-    _, _, initial_dist = get_pattern_centers(poly1, poly2, 
-                    [(p1_start, p1_end),(p1_start, p1_end)])
-    push!(pattern_dists, initial_dist)
+    push!(pattern_dists, 42)
     push!(hams_poly1, poly1.ham)
     push!(hams_poly2, poly2.ham)
     push!(hams_bulk, bulk.ham)
     push!(accs, 0)
-    
+
+    patternVec1 = zeros(Int, 32)
+    patternVec2 = zeros(Int, 32)
+    p1_start, p1_end = 11, 20
+    p2_start, p2_end = 11, 20
+    patternVec1[1:p1_start-1] .= base1.intIdx         # base type (40 beads)
+    patternVec1[p1_start:p1_end] .= pattern1.intIdx      # pattern 1 (8 beads)
+    patternVec1[p1_end+1:32] .= base1.intIdx
+    patternVec2[1:p1_start-1] .= base2.intIdx         # base type (40 beads)
+    patternVec2[p1_start:p1_end] .= pattern2.intIdx      # pattern 1 (8 beads)
+    patternVec2[p1_end+1:32] .= base2.intIdx
+
     # run simulation
     while t_current <= t_max
         t_current = (time_ns() - t_start) / 6e10
@@ -179,41 +194,21 @@ function target!(res, args...)
 
                 # record data
                 if mod(nmoves, step) == 0
-
-                    pattern = zeros(Int, 42)
-                    p1_start, p1_end = 15, 24
-                    p2_start, p2_end = 15, 24
-                    pattern[1:p1_start-1] .= 1         # base type (40 beads)
-                    pattern[p1_start:p1_end] .= 2      # pattern 1 (8 beads)
-                    pattern[p1_end+1:42] .= 1
                     
                     if poly1.length == poly1.maxlength && !p1_reached_maxlength
                         p1_reached_maxlength = true
-                        poly1.customPattern = pattern
-                        initMonomers!(poly1, defaultChemPot = 1.0)
-                        init!(l, [base1, pattern1, base2, pattern2, bulk])
-
-                        pattern_poly1 = find_patterns(poly1)
-                        p1_start, p1_end = pattern_poly1[2][1]
+                        poly1.customPattern = patternVec1
+                        @show keys(poly1.monomers)
+                        initSpecies!(poly1)
                     end
 
                     if poly2.length == poly2.maxlength && !p2_reached_maxlength
                         p2_reached_maxlength = true
-                        poly2.customPattern = pattern
-                        initMonomers!(poly2, defaultChemPot = 1.0)
-                        init!(l, [base1, pattern1, base2, pattern2, bulk])
-
-                        pattern_poly2 = find_patterns(poly2)
-                        p2_start, p2_end = pattern_poly2[2][1]
+                        poly2.customPattern = patternVec2
+                        initSpecies!(poly2)
                     end
 
                     ham!(s)
-                    println("bulk", map(x -> x[2], bulk.intSpecies))
-                    println("pattern1", map(x -> x[2], pattern1.intSpecies))
-                    println("pattern2", map(x -> x[2], pattern2.intSpecies))
-                    println("base1", map(x -> x[2], base1.intSpecies))
-                    println("base2", map(x -> x[2], base2.intSpecies))
-                    t_current = t_max + 1
 
                     ccs = cc(bulk)
                     droplets = filter(x -> length(x) >= minsize, ccs)
@@ -228,6 +223,21 @@ function target!(res, args...)
 
                     elseif s.intIdx == bulk.intIdx
                         push!(hams_bulk, getHam(s))
+                    end
+
+                    if p1_reached_maxlength
+                        pattern_poly1 = find_patterns(poly1)
+                        @show poly1.customPattern
+                        @show poly1.pos
+                        @show pattern_poly1
+                        p1_start, p1_end = pattern_poly1[pattern1.intIdx][1]
+                        t_current = t_max + 1
+                    end
+
+                    if p2_reached_maxlength
+                        pattern_poly2 = find_patterns(poly2)
+                        @show pattern_poly2
+                        p2_start, p2_end = pattern_poly2[pattern2.intIdx][1]
                     end
 
                     _, _, dist = get_pattern_centers(poly1, poly2, 

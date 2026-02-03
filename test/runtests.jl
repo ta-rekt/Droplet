@@ -14,6 +14,7 @@ using Random
     include("test_heterogeneous_phase3.jl")
     include("test_heterogeneous_phase5.jl")
     include("test_heterogeneous_phase6.jl")
+    include("test_updateMonomers.jl")
     include("test_pattern_stats.jl")
     include("test_contact_matrix.jl")
     include("test_find_patterns.jl")
