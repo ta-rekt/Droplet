@@ -16,7 +16,7 @@ DATA_DIR = Path("/home/tohme/.julia/dev/Droplet/data")
 TEMPERATURES = [0.56, 0.58, 0.60, 0.62, 0.64, 0.66]
 NCPU = 32  # Number of CPU runs per temperature (32 concentrations)
 
-def load_and_aggregate_data(date_folders):
+def load_and_aggregate_data(date_folders, data_key="largest_droplet_size"):
     """
     Load JSON data from all date/temperature combinations and aggregate.
     
@@ -71,7 +71,7 @@ def load_and_aggregate_data(date_folders):
                     sim_data = data[first_key][second_key]
                     
                     # Extract necessary fields
-                    largest_droplet_size = sim_data['largest_droplet_size']
+                    largest_droplet_size = sim_data[data_key]
                     nframes = sim_data['nframes']
                     concentration = sim_data['concentration']
                     
@@ -109,7 +109,7 @@ def load_and_aggregate_data(date_folders):
             if values:
                 # Average across dates
                 avg_across_dates = np.mean([v['avg_size'] for v in values])
-                heatmap_data[temp_idx, cpu_idx - 1] = np.log(avg_across_dates)
+                heatmap_data[temp_idx, cpu_idx - 1] = avg_across_dates
                 
                 # Store concentration (should be same for all dates)
                 if cpu_idx not in concentrations_by_cpu:
@@ -144,7 +144,7 @@ def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name
     im = ax.imshow(heatmap_data, aspect='auto', cmap='viridis', origin='lower',
                    extent=[concentrations[0], concentrations[-1], 
                           temperatures[0], temperatures[-1]],
-                   interpolation='nearest', vmin=0, vmax=7)
+                   interpolation='nearest')
     
     # Labels and title
     ax.set_xlabel('Concentration (α)', fontsize=12, fontweight='bold')
@@ -157,7 +157,7 @@ def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name
     
     # Set tick positions
     ax.set_yticks(temperatures)
-    ax.set_xticks(np.linspace(concentrations[0], concentrations[-1], 5))
+    ax.set_xticks(np.arange(0.005, 0.035, step=0.005))
     
     # Formatting
     ax.grid(False)
@@ -184,9 +184,10 @@ def main():
     
     date_folders = [sys.argv[1]]
     file_name = sys.argv[2]
+    data_key = sys.argv[3]
     
     # Load and aggregate data
-    heatmap_data, concentrations = load_and_aggregate_data(date_folders)
+    heatmap_data, concentrations = load_and_aggregate_data(date_folders, data_key)
     
     # Print statistics
     print(f"\nData statistics:")
