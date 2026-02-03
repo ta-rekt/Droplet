@@ -728,11 +728,6 @@ function updatePattern!(l::Lattice, p::Polymer, newPattern::Union{Nothing, Vecto
         error("No pattern provided and p.customPattern is nothing")
     end
     
-    # Validation 2: Pattern length must match polymer length
-    if length(patternToUse) != p.length
-        error("Pattern length ($(length(patternToUse))) must match polymer length ($(p.length))")
-    end
-    
     # Validation 3: All intIdx values must exist in p.monomers
     validIntIdxs = Set(keys(p.monomers))
     for intIdx in patternToUse

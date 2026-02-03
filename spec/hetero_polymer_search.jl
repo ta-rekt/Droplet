@@ -1,8 +1,8 @@
 """
 Description:
 
-Understanding the effects of prewetting on a strongly interacting region
-of a free-floating polymer in the extended phase.
+Understanding the effects of prewetting on the time it takes two strongly
+interacting regions of a polymer to come into contact.
 """
 
 ### physical parameters
@@ -16,7 +16,7 @@ l = Lattice(;
 # heterogeneous polymer with patterned regions
 poly1 = Polymer(;
     length = 32,
-    maxlength = 32,
+    maxlength = 256,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
     initPos = [5, 12, 12],
@@ -26,7 +26,7 @@ poly1 = Polymer(;
 # heterogeneous polymer with patterned regions
 poly2 = Polymer(;
     length = 32,
-    maxlength = 32,
+    maxlength = 256,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
     initPos = [5, 30, 30],
@@ -49,7 +49,7 @@ slist = [poly1, poly2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 1    # runtime in minutes (initial test)
+t_max = 2    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
 
@@ -91,7 +91,7 @@ function target!(res, args...)
     
     # pattern1 (type 2)
     intPot!(pattern1, 0.5)           # pattern1 self-interaction
-    intPot!(pattern1, bulk, -2.0)    # pattern1-bulk (strong)
+    intPot!(pattern1, bulk, 0.0)    # pattern1-bulk (strong)
 
     # base (type 2)
     intPot!(base2, 0.5)              # base self-interaction
@@ -100,7 +100,9 @@ function target!(res, args...)
     
     # pattern1 (type 2)
     intPot!(pattern2, 0.5)           # pattern1 self-interaction
-    intPot!(pattern2, bulk, -2.0)    # pattern1-bulk (strong)
+    intPot!(pattern2, bulk, 0.0)    # pattern1-bulk (strong)
+
+    intPot!(pattern1, pattern2, -5.0)    # inter-pattern attraction
     
     # bulk (type 4)
     intPot!(bulk, -1.0 / beta)              # bulk self-interaction
@@ -137,7 +139,7 @@ function target!(res, args...)
     pattern_dists = []
     max_droplet_size = []
     accs = []
-    density_lat = zeros(Float64, (l.boxlength, l.boxlength, l.boxlength))
+    # density_lat = zeros(Float64, (l.boxlength, l.boxlength, l.boxlength))
     total = 0.0
 
     # contact matrix: tracks contact frequency between monomer pairs
@@ -156,18 +158,18 @@ function target!(res, args...)
     push!(accs, 0)
 
     # build polymer patterns
-    patternVec1 = zeros(Int32, 32)
-    patternVec2 = zeros(Int32, 32)
-    p1_start, p1_end = 11, 20
-    p2_start, p2_end = 11, 20
+    patternVec1 = zeros(Int32, poly1.maxlength)
+    patternVec2 = zeros(Int32, poly2.maxlength)
+    p1_start, p1_end = 151, 160
+    p2_start, p2_end = 151, 160
 
     patternVec1[1:p1_start-1] .= base1.intIdx         # base type (40 beads)
     patternVec1[p1_start:p1_end] .= pattern1.intIdx      # pattern 1 (8 beads)
-    patternVec1[p1_end+1:32] .= base1.intIdx
+    patternVec1[p1_end+1:poly1.maxlength] .= base1.intIdx
 
     patternVec2[1:p1_start-1] .= base2.intIdx         # base type (40 beads)
     patternVec2[p1_start:p1_end] .= pattern2.intIdx      # pattern 1 (8 beads)
-    patternVec2[p1_end+1:32] .= base2.intIdx
+    patternVec2[p1_end+1:poly2.maxlength] .= base2.intIdx
 
     growPolymer!(poly1)
     growPolymer!(poly2)
@@ -186,7 +188,6 @@ function target!(res, args...)
 
                 # record data
                 if mod(nmoves, step) == 0
-
                     ham!(s)
 
                     ccs = cc(bulk)
@@ -194,10 +195,10 @@ function target!(res, args...)
                     droplet_sizes = map(x -> length(x), droplets)
 
                     # compute polymer hamiltonian (stored in poly, not monomers)
-                    if s.intIdx in [base1.intIdx, pattern1.intIdx]
+                    if i == bulk.intIdx + 1
                         push!(hams_poly1, poly1.ham)
 
-                    elseif s.intIdx in [base2.intIdx, pattern2.intIdx]
+                    elseif i == bulk.intIdx + 2
                         push!(hams_poly2, poly2.ham)
 
                     elseif s.intIdx == bulk.intIdx
@@ -226,12 +227,12 @@ function target!(res, args...)
                     # acceptance rate
                     push!(accs, nmoves / (niter * length(movingsps)))
 
-                    if t_current >= t_burn_in
-                        for (_, val) in bulk.pos
-                            density_lat[val[1], val[2], val[3]] += 1.0
-                            total += 1.0
-                        end
-                    end
+                    # if t_current >= t_burn_in
+                    #     for (_, val) in bulk.pos
+                    #         density_lat[val[1], val[2], val[3]] += 1.0
+                    #         total += 1.0
+                    #     end
+                    # end
 
                     frame += 1
                 end
@@ -239,7 +240,7 @@ function target!(res, args...)
         end
     end
 
-    density_lat = density_lat ./ total
+    # density_lat = density_lat ./ total
 
     # save results
     res["species_name"] = "poly"
@@ -258,7 +259,7 @@ function target!(res, args...)
     res["pattern1_location"] = p1_start
     res["pattern2_location"] = p2_start
     res["max_droplet_size"] = max_droplet_size
-    res["density_lattice"] = density_lat
+    # res["density_lattice"] = density_lat
     res["hamiltonian_poly1"] = hams_poly1
     res["hamiltonian_poly2"] = hams_poly2
     res["hamiltonian_bulk"] = hams_bulk
