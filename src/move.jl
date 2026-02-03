@@ -299,7 +299,8 @@ function move!(p::Polymer)
         end
         
         # check for max length constraint and overlap
-        if !overlap(p) && !(p.moveType == 1 && p.length == p.maxlength)
+        # Note: addBond (moveType==1) adds 2 beads, so reject when length >= maxlength - 1
+        if !overlap(p) && !(p.moveType == 1 && p.length >= p.maxlength - 1)
             
             # accept move with metropolis criterion
             if acceptMove(p)

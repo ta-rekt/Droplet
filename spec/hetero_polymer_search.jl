@@ -20,7 +20,7 @@ poly1 = Polymer(;
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
     initPos = [5, 12, 12],
-    pattern = :custom
+    pattern = :uniform
 )
 
 # heterogeneous polymer with patterned regions
@@ -30,11 +30,8 @@ poly2 = Polymer(;
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
     initPos = [5, 30, 30],
-    pattern = :custom
+    pattern = :uniform
 )
-
-poly1.customPattern = ones(Int, 32)
-poly2.customPattern = ones(Int, 32)
 
 initMonomers!(poly1, defaultChemPot = 1.0)
 initMonomers!(poly2, defaultChemPot = 1.0)
@@ -52,7 +49,7 @@ slist = [poly1, poly2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 3    # runtime in minutes (initial test)
+t_max = 5    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
 
@@ -112,20 +109,8 @@ function target!(res, args...)
 
     bulk.length = Int32(round(l.boxlength^3 * alpha))
 
-    println("pattern1 ", pattern1.intIdx)
-    println("pattern2 ", pattern2.intIdx)
-    println("base1 ", base1.intIdx)
-    println("base2 ", base2.intIdx)
-    println("bulk ", bulk.intIdx)
-    
-    @show keys(poly1.monomers)
-    @show keys(poly2.monomers)
-
-    updateMonomers!(poly1)
-    updateMonomers!(poly2)
-
-    @show keys(poly1.monomers)
-    @show keys(poly2.monomers)
+    updateMonomers!(poly1, base1.intIdx)
+    updateMonomers!(poly2, base2.intIdx)
 
     # initialize lattice and species
     init!(l, [poly1, poly2, bulk])
@@ -176,9 +161,11 @@ function target!(res, args...)
     patternVec2 = zeros(Int, 32)
     p1_start, p1_end = 11, 20
     p2_start, p2_end = 11, 20
+
     patternVec1[1:p1_start-1] .= base1.intIdx         # base type (40 beads)
     patternVec1[p1_start:p1_end] .= pattern1.intIdx      # pattern 1 (8 beads)
     patternVec1[p1_end+1:32] .= base1.intIdx
+
     patternVec2[1:p1_start-1] .= base2.intIdx         # base type (40 beads)
     patternVec2[p1_start:p1_end] .= pattern2.intIdx      # pattern 1 (8 beads)
     patternVec2[p1_end+1:32] .= base2.intIdx
@@ -196,16 +183,15 @@ function target!(res, args...)
                 if mod(nmoves, step) == 0
                     
                     if poly1.length == poly1.maxlength && !p1_reached_maxlength
+                        poly1.pattern = :custom
                         p1_reached_maxlength = true
                         poly1.customPattern = patternVec1
-                        @show keys(poly1.monomers)
-                        initSpecies!(poly1)
                     end
 
                     if poly2.length == poly2.maxlength && !p2_reached_maxlength
+                        poly2.pattern = :custom
                         p2_reached_maxlength = true
                         poly2.customPattern = patternVec2
-                        initSpecies!(poly2)
                     end
 
                     ham!(s)
@@ -227,16 +213,12 @@ function target!(res, args...)
 
                     if p1_reached_maxlength
                         pattern_poly1 = find_patterns(poly1)
-                        @show poly1.customPattern
-                        @show poly1.pos
-                        @show pattern_poly1
                         p1_start, p1_end = pattern_poly1[pattern1.intIdx][1]
                         t_current = t_max + 1
                     end
 
                     if p2_reached_maxlength
                         pattern_poly2 = find_patterns(poly2)
-                        @show pattern_poly2
                         p2_start, p2_end = pattern_poly2[pattern2.intIdx][1]
                     end
 

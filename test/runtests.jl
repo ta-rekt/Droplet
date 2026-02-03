@@ -18,4 +18,5 @@ using Random
     include("test_pattern_stats.jl")
     include("test_contact_matrix.jl")
     include("test_find_patterns.jl")
+    include("test_grow_pattern.jl")
 end

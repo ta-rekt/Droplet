@@ -1,6 +1,7 @@
 
 export initHam!, initUniform!, initLine!, initBox!, initMovableSet!, 
-       initMonomers!, initShape!, initSpecies!, init!, updateMonomers!
+       initMonomers!, initShape!, initSpecies!, init!, updateMonomers!,
+       growPolymer!, updatePattern!
 
 ############# Species initialization functions #############
 
@@ -223,19 +224,19 @@ of each monomer.
 This function should be called after all intPot! calls and before init!.
 
 # Example
-```julia
-poly1 = Polymer(length=32, nMonomerTypes=2, pattern=:custom)
-initMonomers!(poly1, defaultChemPot=1.0)
+    ```julia
+    poly1 = Polymer(length=32, nMonomerTypes=2, pattern=:custom)
+    initMonomers!(poly1, defaultChemPot=1.0)
 
-base1 = poly1.monomers[1]
-pattern1 = poly1.monomers[2]
+    base1 = poly1.monomers[1]
+    pattern1 = poly1.monomers[2]
 
-# Set interaction potentials (changes intIdx values)
-intPot!(base1, 0.5)
-intPot!(pattern1, -2.0)
+    # Set interaction potentials (changes intIdx values)
+    intPot!(base1, 0.5)
+    intPot!(pattern1, -2.0)
 
-# Re-key monomers dictionary with new intIdx values
-updateMonomers!(poly1, base1.intIdx)
+    # Re-key monomers dictionary with new intIdx values
+    updateMonomers!(poly1, base1.intIdx)
 ```
 """
 function updateMonomers!(p::Polymer, baseIntIdx::Int32)
@@ -251,14 +252,25 @@ function updateMonomers!(p::Polymer, baseIntIdx::Int32)
     
     # Update baseIntIdx to the specified value
     p.baseIntIdx = baseIntIdx
+
+    if p.pos !== nothing
+        _assignPattern!(p)
+    end
     
     return p
 end
 
 # Validate that each non-base pattern type (2+) appears in exactly one contiguous block
-function _validateContiguousBlocks(patternVec::Vector{Int32})
-    maxType = maximum(patternVec)
-    for t in 2:maxType
+function _validateContiguousBlocks(patternVec::Vector{Int32}, baseIntIdx::Int32)
+    patternTypes = []
+
+    for k in patternVec
+        if k != baseIntIdx && !(k in patternTypes)
+            push!(patternTypes, k)
+        end
+    end
+
+    for t in patternTypes
         indices = findall(x -> x == t, patternVec)
         if !isempty(indices) && indices != collect(indices[1]:indices[end])
             error("Pattern type $t must appear in exactly one contiguous block")
@@ -268,9 +280,6 @@ end
 
 # Initialize patternTails and baseIntIdx
 function _initPatternTails!(p::Polymer)
-    intIdxList = sort(collect(keys(p.monomers)))
-    p.baseIntIdx = intIdxList[1]  # base type = first intIdx (smallest)
-    
     # For uniform pattern, no tails to track
     if p.nMonomerTypes == 1 || p.pattern == :uniform
         p.patternTails = nothing
@@ -296,21 +305,23 @@ end
 
 # Assign monomer types to pos[key][6] based on pattern
 function _assignPattern!(p::Polymer)
+    if p.baseIntIdx === nothing
+        intIdxList = sort(collect(keys(p.monomers)))
+        p.baseIntIdx = intIdxList[1]  # base type = first intIdx (smallest)
+    end
+
     # Build pattern vector (1-based type indices)
     patternVec = _buildPatternVector(p)
     
     # Validate contiguous blocks for non-base types
-    _validateContiguousBlocks(patternVec)
-    
-    # Map 1-based type indices to intIdx values
-    intIdxList = sort(collect(keys(p.monomers)))
+    _validateContiguousBlocks(patternVec, p.baseIntIdx)
     
     # Traverse chain and assign intIdx to pos[key][6]
     key = p.head
     chainPos = 1
     while key != 0 && chainPos <= p.length
         typeIdx = patternVec[chainPos]
-        p.pos[key][6] = intIdxList[typeIdx]
+        p.pos[key][6] = typeIdx
         key = p.pos[key][5]
         chainPos += 1
     end
@@ -319,27 +330,33 @@ function _assignPattern!(p::Polymer)
     _initPatternTails!(p)
 end
 
-# Build pattern vector of 1-based type indices
+# Build pattern vector using intIdx values
 function _buildPatternVector(p::Polymer)::Vector{Int32}
     patternVec = zeros(Int32, p.length)
     
+    # Get sorted list of intIdx values for mapping
+    intIdxList = sort(collect(keys(p.monomers)))
+    
     if p.pattern == :uniform
-        fill!(patternVec, 1)
+        fill!(patternVec, p.baseIntIdx)
         
     elseif p.pattern == :alternating
         for i in 1:p.length
-            patternVec[i] = mod1(i, p.nMonomerTypes)
+            typeIndex = mod1(i, p.nMonomerTypes)
+            patternVec[i] = intIdxList[typeIndex]
         end
         
     elseif p.pattern == :block
         blockSize = div(p.length, p.nMonomerTypes)
         for i in 1:p.length
-            patternVec[i] = min(div(i - 1, blockSize) + 1, p.nMonomerTypes)
+            typeIndex = min(div(i - 1, blockSize) + 1, p.nMonomerTypes)
+            patternVec[i] = intIdxList[typeIndex]
         end
         
     elseif p.pattern == :random
         for i in 1:p.length
-            patternVec[i] = rand(1:p.nMonomerTypes)
+            typeIndex = rand(1:p.nMonomerTypes)
+            patternVec[i] = intIdxList[typeIndex]
         end
         
     elseif p.pattern == :custom
@@ -399,6 +416,9 @@ function initSpecies!(p::Polymer)
     p.moveTypeProbs = [0,PKINK,0]
     p.nTypes = zeros(Int32, 3)
     p.hastingsFactor = 1.0
+    
+    # Initialize deltaHP for partner energy accumulation
+    p.deltaHP = 0.0
 
     return p
 end
@@ -594,4 +614,162 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
     end
 
     return l
+end
+
+############# Polymer growth and pattern update functions #############
+# MARK: -Growth and Pattern Update
+
+"""
+    growPolymer!(p::Polymer; maxAttempts::Int=1000000)
+
+Grow a polymer to its maximum length using Monte Carlo moves.
+Temporarily sets chemical potential to favor growth, then restores original value.
+
+# Arguments
+- `p::Polymer`: The polymer to grow
+- `maxAttempts::Int`: Maximum number of move attempts (default: 1,000,000)
+
+# Returns
+- `p::Polymer`: The grown polymer
+
+# Throws
+- `ErrorException`: If polymer cannot reach maxlength within maxAttempts
+
+# Example
+```julia
+poly = Polymer(length=10, maxlength=50, nMonomerTypes=2, pattern=:uniform)
+initMonomers!(poly)
+# ... set interaction potentials ...
+init!(l, [poly])
+
+# Grow polymer to maxlength
+growPolymer!(poly)
+@assert poly.length == poly.maxlength
+```
+"""
+function growPolymer!(p::Polymer; maxAttempts::Int=1000000)
+    if p.length >= p.maxlength
+        return p  # Already at max length
+    end
+    
+    # Save original chemical potentials
+    originalChemPots = Dict{Int32, Float64}()
+    for (intIdx, monomer) in p.monomers
+        originalChemPots[intIdx] = monomer.chemPot
+        # Set high chemical potential to strongly favor growth
+        monomer.chemPot = 5.0
+    end
+    
+    attempts = 0
+    while p.length < p.maxlength && attempts < maxAttempts
+        move!(p)
+        attempts += 1
+    end
+    
+    # Restore original chemical potentials
+    for (intIdx, monomer) in p.monomers
+        monomer.chemPot = originalChemPots[intIdx]
+    end
+    
+    if p.length < p.maxlength
+        error("Failed to grow polymer to maxlength=$(p.maxlength) after $maxAttempts attempts. Current length=$(p.length)")
+    end
+    
+    return p
+end
+
+"""
+    updatePattern!(l::Lattice, p::Polymer, newPattern::Union{Nothing, Vector{Int32}}=nothing)
+
+Update the pattern of a polymer and synchronize pos and lattice structures.
+Must be called after the polymer has reached its target length.
+
+# Arguments
+- `l::Lattice`: The lattice containing the polymer
+- `p::Polymer`: The polymer whose pattern to update
+- `newPattern::Union{Nothing, Vector{Int32}}`: New pattern vector with intIdx values.
+  If `nothing`, uses `p.customPattern` (default: nothing)
+
+# Validations
+- Verifies polymer is at maxlength
+- Verifies pattern length matches polymer length
+- Verifies all intIdx values in pattern exist in p.monomers
+
+# Updates
+- `p.pos[key][6]` for each bead (sets intIdx)
+- `l.lat[x,y,z]` at each bead position
+- `p.patternTails` (recalculated)
+- `p.customPattern` (if newPattern provided)
+
+# Example
+```julia
+# After growing polymer to maxlength
+growPolymer!(poly)
+
+# Define pattern with intIdx values
+base = poly.monomers[1]
+pattern = poly.monomers[2]
+newPattern = vcat(fill(base.intIdx, 10), fill(pattern.intIdx, 10), fill(base.intIdx, 10))
+
+# Update pattern
+updatePattern!(l, poly, newPattern)
+```
+"""
+function updatePattern!(l::Lattice, p::Polymer, newPattern::Union{Nothing, Vector{Int32}}=nothing)
+    # Validation 1: Polymer must be at maxlength
+    if p.length != p.maxlength
+        error("Polymer must be at maxlength before updating pattern. Current length=$(p.length), maxlength=$(p.maxlength)")
+    end
+    
+    # Determine which pattern to use
+    patternToUse = newPattern === nothing ? p.customPattern : newPattern
+    
+    if patternToUse === nothing
+        error("No pattern provided and p.customPattern is nothing")
+    end
+    
+    # Validation 2: Pattern length must match polymer length
+    if length(patternToUse) != p.length
+        error("Pattern length ($(length(patternToUse))) must match polymer length ($(p.length))")
+    end
+    
+    # Validation 3: All intIdx values must exist in p.monomers
+    validIntIdxs = Set(keys(p.monomers))
+    for intIdx in patternToUse
+        if !(intIdx in validIntIdxs)
+            error("Pattern contains intIdx=$intIdx which does not exist in p.monomers (valid: $(sort(collect(validIntIdxs))))")
+        end
+    end
+    
+    # Update p.customPattern if new pattern provided
+    if newPattern !== nothing
+        p.customPattern = copy(newPattern)
+        p.pattern = :custom  # Mark as custom pattern
+    end
+    
+    # Update pos[key][6] and lattice for each bead
+    key = p.head
+    position = 1
+    while key != 0
+        newIntIdx = patternToUse[position]
+        oldIntIdx = p.pos[key][6]
+        
+        # Update pos
+        p.pos[key][6] = newIntIdx
+        
+        # Update main lattice layer
+        x, y, z = p.pos[key][1], p.pos[key][2], p.pos[key][3]
+        l.lat[1, x, y, z] = newIntIdx
+        
+        # Update polymer's latS view
+        p.latS[x, y, z] = newIntIdx
+        
+        key = p.pos[key][5]
+        position += 1
+    end
+    
+    # Recalculate patternTails
+    _initPatternTails!(p)
+    
+    return p
 end
