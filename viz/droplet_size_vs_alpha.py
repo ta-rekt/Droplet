@@ -57,7 +57,7 @@ def load_and_process_data(date_folder, temp_folder):
             # Extract necessary fields
             largest_droplet_size = sim_data['largest_droplet_size']
             nframes = sim_data['nframes']
-            alpha = sim_data['concentration']
+            alpha = sim_data['site_length']
             
             # Calculate threshold for final 20% of frames
             threshold_frame = int(0.8 * nframes)
@@ -92,10 +92,11 @@ def plot_droplet_size_vs_alpha(alphas, avg_max_sizes, temperature, conc, date_fo
         date_folder: date folder name for output filename
     """
     
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(7, 5))
     
     # Plot
     ax.plot(alphas, avg_max_sizes, 'o-', linewidth=2, markersize=8, color='steelblue')
+    ax.set_ylim(0, 2*np.mean(avg_max_sizes))
     
     # Labels and title
     ax.set_xlabel('Nucleation Site Size (α)', fontsize=12, fontweight='bold')
@@ -112,7 +113,7 @@ def plot_droplet_size_vs_alpha(alphas, avg_max_sizes, temperature, conc, date_fo
     # Save figure
     output_dir = Path(f"/home/tohme/.julia/dev/Droplet/media/figures/{date_folder}")
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"droplet_size_vs_alpha_T_{temperature:.2f}.png"
+    output_path = output_dir / f"droplet_size_vs_alpha_c_{conc:.3f}_T_{temperature:.2f}.png"
     
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"\nPlot saved to: {output_path}")
