@@ -31,7 +31,7 @@ let
         for (keyb, beta) in enumerate(betas)
 
             res = Dict{String, Any}()
-            args = [slist, alpha, beta]
+            args = [slist, alpha, beta, blurb]
 
             results[keya][keyb] = target!(res, args...)
         end

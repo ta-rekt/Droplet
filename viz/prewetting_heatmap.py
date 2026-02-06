@@ -127,7 +127,81 @@ def load_and_aggregate_data(date_folders, data_key="largest_droplet_size"):
     
     return heatmap_data_sorted, concentrations_sorted
 
-def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name):
+def compute_staircase_boundary(heatmap_data, concentrations, temperatures, threshold):
+    """
+    Compute the staircase boundary where values transition above/below threshold.
+    Returns points that form a true staircase aligned with grid cell boundaries.
+    
+    Parameters:
+        heatmap_data: (n_temps, n_concs) array
+        concentrations: array of concentration values
+        temperatures: list of temperature values
+        threshold: value to threshold at
+    
+    Returns:
+        staircase_concs: concentration values for staircase points
+        staircase_temps: temperature values for staircase points
+    """
+    
+    # For each temperature, find the first concentration where value exceeds threshold
+    crossing_concs = {}  # temp_idx -> conc_idx
+    
+    for temp_idx, temp in enumerate(temperatures):
+        row = heatmap_data[temp_idx, :]
+        above_threshold = row > threshold
+        
+        if np.any(above_threshold):
+            crossing_concs[temp_idx] = np.argmax(above_threshold)
+    
+    if not crossing_concs:
+        return np.array([]), np.array([])
+    
+    # Build staircase by connecting crossings at grid boundaries
+    final_concs = []
+    final_temps = []
+    
+    sorted_temp_indices = sorted(crossing_concs.keys())
+    
+    for i, temp_idx in enumerate(sorted_temp_indices):
+        conc_idx = crossing_concs[temp_idx]
+        temp = temperatures[temp_idx]
+        
+        # Cell boundary between conc_idx-1 and conc_idx
+        if conc_idx > 0:
+            conc_boundary = (concentrations[conc_idx - 1] + concentrations[conc_idx]) / 2
+        else:
+            conc_boundary = concentrations[0]
+        
+        if i == 0:
+            # First point
+            final_concs.append(conc_boundary)
+            final_temps.append(temp)
+        else:
+            # Previous temperature index
+            prev_temp_idx = sorted_temp_indices[i - 1]
+            prev_temp = temperatures[prev_temp_idx]
+            prev_conc_idx = crossing_concs[prev_temp_idx]
+            
+            if prev_conc_idx > 0:
+                prev_conc_boundary = (concentrations[prev_conc_idx - 1] + concentrations[prev_conc_idx]) / 2
+            else:
+                prev_conc_boundary = concentrations[0]
+            
+            # Temperature boundary between prev_temp_idx and temp_idx
+            temp_boundary = (prev_temp + temp) / 2
+            
+            # Horizontal segment at temp_boundary
+            final_concs.append(conc_boundary)
+            final_temps.append(temp_boundary)
+            
+            # Vertical segment
+            final_concs.append(conc_boundary)
+            final_temps.append(temp)
+    
+    return np.array(final_concs), np.array(final_temps)
+
+def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name, 
+                staircase_concs=None, staircase_temps=None):
     """
     Create and save heatmap visualization.
     
@@ -136,6 +210,9 @@ def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name
         concentrations: array of concentration values
         temperatures: list of temperature values
         date_str: date folder name to append to filename
+        file_name: output filename
+        staircase_concs: optional concentration values for staircase overlay
+        staircase_temps: optional temperature values for staircase overlay
     """
     
     fig, ax = plt.subplots(figsize=(14, 6))
@@ -145,6 +222,11 @@ def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name
                    extent=[concentrations[0], concentrations[-1], 
                           temperatures[0], temperatures[-1]],
                    interpolation='nearest')
+    
+    # Overlay staircase if provided
+    if staircase_concs is not None and staircase_temps is not None:
+        ax.plot(staircase_concs, staircase_temps, 'k-', linewidth=2.5, label='Control Threshold')
+        ax.legend(loc='upper left', fontsize=10)
     
     # Labels and title
     ax.set_xlabel('Concentration (α)', fontsize=12, fontweight='bold')
@@ -164,7 +246,7 @@ def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name
     fig.tight_layout()
     
     # Save figure
-    output_path = Path(f"/home/tohme/.julia/dev/Droplet/media/figures/{date_str}/{file_name}.png")
+    output_path = Path(f"/home/tohme/.julia/dev/Droplet/media/figures/{date_str}/{file_name}.pdf")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"\nHeatmap saved to: {output_path}")
@@ -176,18 +258,34 @@ def main():
     print("Flory-Huggins Prewetting Transition Visualization")
     print("=" * 70)
     
-    # Get date folder from command-line argument
-    if len(sys.argv) < 2:
-        print("Usage: python prewetting_heatmap.py <date_folder>")
-        print("Example: python prewetting_heatmap.py 20260131")
+    # Get arguments from command-line
+    if len(sys.argv) < 4:
+        print("Usage: python prewetting_heatmap.py <date_folder> <file_name> <data_key> [control_folder] [threshold]")
+        print("Example: python prewetting_heatmap.py 20260131 output largest_droplet_size")
+        print("Example with control: python prewetting_heatmap.py 20260131 output largest_droplet_size 20260130 3.5")
         sys.exit(1)
     
     date_folders = [sys.argv[1]]
     file_name = sys.argv[2]
     data_key = sys.argv[3]
+    control_folder = sys.argv[4] if len(sys.argv) > 4 else None
+    threshold = float(sys.argv[5]) if len(sys.argv) > 5 else None
     
-    # Load and aggregate data
+    # Load and aggregate main data
     heatmap_data, concentrations = load_and_aggregate_data(date_folders, data_key)
+    
+    # Load control data if provided
+    staircase_concs = None
+    staircase_temps = None
+    
+    if control_folder is not None and threshold is not None:
+        print(f"\nLoading control data from: {control_folder}")
+        print(f"Threshold value: {threshold}")
+        control_data, control_concs = load_and_aggregate_data([control_folder], data_key)
+        staircase_concs, staircase_temps = compute_staircase_boundary(
+            control_data, control_concs, TEMPERATURES, threshold
+        )
+        print(f"Staircase boundary computed with {len(staircase_temps)} points")
     
     # Print statistics
     print(f"\nData statistics:")
@@ -200,7 +298,8 @@ def main():
     print(f"  Max droplet size: {np.nanmax(heatmap_data):.2f}")
     
     # Create and save heatmap
-    plot_heatmap(heatmap_data, concentrations, TEMPERATURES, date_folders[0], file_name)
+    plot_heatmap(heatmap_data, concentrations, TEMPERATURES, date_folders[0], file_name,
+                staircase_concs, staircase_temps)
     
     print("\n" + "=" * 70)
     print("Visualization complete!")

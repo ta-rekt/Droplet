@@ -1,10 +1,3 @@
-"""
-Description:
-
-Understanding the effects of prewetting on the time it takes two strongly
-interacting regions of a polymer to come into contact.
-"""
-
 ### physical parameters
 # MARK: -Phys. params
 
@@ -16,20 +9,20 @@ l = Lattice(;
 # heterogeneous polymer with patterned regions
 poly1 = Polymer(;
     length = 32,
-    maxlength = 256,
+    maxlength = 42,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
-    initPos = [5, 12, 12],
+    initPos = [5, 18, 21],
     pattern = :uniform
 )
 
 # heterogeneous polymer with patterned regions
 poly2 = Polymer(;
     length = 32,
-    maxlength = 256,
+    maxlength = 42,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern1
-    initPos = [5, 30, 30],
+    initPos = [5, 24, 21],
     pattern = :uniform
 )
 
@@ -49,11 +42,20 @@ slist = [poly1, poly2, bulk]
 ### simulation parameters
 # MARK: -Sim. params
 
-t_max = 2    # runtime in minutes (initial test)
+blurb = """
+Understanding the effects of prewetting on the way in which two strongly
+interacting regions of a polymer come into contact.\n
+
+Looking at inter-pattern contacts of two short polymers under tension
+as a function of separation, in the presence of wetting
+"""
+
+t_max = 5    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
 
-vals = range(0.005, stop=0.05, length=32)  # parallelized parameters (concentration)
+# vals = range(0.005, stop=0.05, length=32)  # parallelized parameters (concentration)
+vals = range(6, step=1, length=9)
 alphas = zeros(32)
 nrepeats = 1
 
@@ -74,7 +76,7 @@ function target!(res, args...)
     t_current = 0
 
     # species list and sweep parameters
-    slist, alpha, beta = args
+    slist, alpha, beta, blurb = args
 
     poly1, poly2, bulk = slist
 
@@ -91,7 +93,7 @@ function target!(res, args...)
     
     # pattern1 (type 2)
     intPot!(pattern1, 0.5)           # pattern1 self-interaction
-    intPot!(pattern1, bulk, 0.0)    # pattern1-bulk (strong)
+    intPot!(pattern1, bulk, -2.0)    # pattern1-bulk (strong)
 
     # base (type 2)
     intPot!(base2, 0.5)              # base self-interaction
@@ -100,9 +102,9 @@ function target!(res, args...)
     
     # pattern1 (type 2)
     intPot!(pattern2, 0.5)           # pattern1 self-interaction
-    intPot!(pattern2, bulk, 0.0)    # pattern1-bulk (strong)
+    intPot!(pattern2, bulk, -2.0)    # pattern1-bulk (strong)
 
-    intPot!(pattern1, pattern2, -5.0)    # inter-pattern attraction
+    intPot!(pattern1, pattern2, 0.0)    # inter-pattern attraction
     
     # bulk (type 4)
     intPot!(bulk, -1.0 / beta)              # bulk self-interaction
@@ -158,8 +160,8 @@ function target!(res, args...)
     # build polymer patterns
     patternVec1 = zeros(Int32, poly1.maxlength)
     patternVec2 = zeros(Int32, poly2.maxlength)
-    p1_start, p1_end = 151, 160
-    p2_start, p2_end = 151, 160
+    p1_start, p1_end = 15, 26
+    p2_start, p2_end = 15, 26
 
     patternVec1[1:p1_start-1] .= base1.intIdx         # base type (40 beads)
     patternVec1[p1_start:p1_end] .= pattern1.intIdx      # pattern 1 (8 beads)
@@ -247,13 +249,6 @@ function target!(res, args...)
                     # acceptance rate
                     push!(accs, nmoves / (niter * length(movingsps)))
 
-                    # if t_current >= t_burn_in
-                    #     for (_, val) in bulk.pos
-                    #         density_lat[val[1], val[2], val[3]] += 1.0
-                    #         total += 1.0
-                    #     end
-                    # end
-
                     frame += 1
                 end
             end
@@ -263,6 +258,7 @@ function target!(res, args...)
     # density_lat = density_lat ./ total
 
     # save results
+    res["blurb"] = blurb
     res["species_name"] = "poly"
     res["nframes"] = length(radii1)
     res["step"] = step
@@ -279,7 +275,6 @@ function target!(res, args...)
     res["pattern1_location"] = p1_start
     res["pattern2_location"] = p2_start
     res["max_droplet_size"] = max_droplet_size
-    # res["density_lattice"] = density_lat
     res["hamiltonian_poly1"] = hams_poly1
     res["hamiltonian_poly2"] = hams_poly2
     res["hamiltonian_bulk"] = hams_bulk

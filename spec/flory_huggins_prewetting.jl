@@ -1,9 +1,3 @@
-"""
-Description: 
-
-Understanding the prewetting transition, situating it on the FH phase diagram
-"""
-
 ### physical parameters
 
 l = Lattice(;
@@ -16,13 +10,6 @@ bulk = FastBulkMonomer(;
     length = 1
 )
 
-site2 = FastBulkMonomer(;
-    length = 5,
-    initShape = "line",
-    initParams = 1,
-    initPos = [12,21,21]
-)
-
 site1 = FastBulkMonomer(;
     length = 5,
     initShape = "line",
@@ -31,12 +18,16 @@ site1 = FastBulkMonomer(;
 )
 
 # list containing all species
-slist = [bulk, site1, site2]
+slist = [bulk, site1]
 
 # minimum size of a droplet for detection
 minsize = 10
 
 ### simulation parameters
+
+blurb = """
+Understanding the prewetting transition, situating it on the FH phase diagram.
+"""
 
 t_max = 2    # runtime in minutes
 t_burn_in = 0.8 * t_max
@@ -64,17 +55,15 @@ function target!(res, args...)
     # species list and sweep parameters
     slist, alpha, beta = args
 
-    bulk, site1, site2 = slist
+    bulk, site1 = slist
     intPot!(bulk, -1.0 / beta)
     intPot!(bulk, site1, -2.0)
-    intPot!(bulk, site2, -2.0)
     intPot!(site1, 0.0)
-    intPot!(site2, 0.0)
 
     bulk.length = Int32(round(l.boxlength^3 * alpha))
 
     # initialize lattice and species
-    init!(l, [bulk, site1, site2])
+    init!(l, [bulk, site1])
 
     nmoves = 0
     iter = 0
@@ -151,6 +140,7 @@ function target!(res, args...)
     coords = Matrix{Int32}(undef, bulk.length, 4)
     density_lat = density_lat ./ total
 
+    res["blurb"] = blurb
     res["species_name"] = bulk.name
     res["nframes"] = frame
     res["step"] = step
