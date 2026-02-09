@@ -720,12 +720,16 @@ function updatePattern!(l::Lattice, p::Polymer, newPattern::Union{Nothing, Vecto
     if p.length != p.maxlength
         error("Polymer must be at maxlength before updating pattern. Current length=$(p.length), maxlength=$(p.maxlength)")
     end
-    
+
     # Determine which pattern to use
     patternToUse = newPattern === nothing ? p.customPattern : newPattern
     
     if patternToUse === nothing
         error("No pattern provided and p.customPattern is nothing")
+    end
+    
+    if length(patternToUse) != p.maxlength
+        error("New pattern length must equal maxlength. Current length=$(length(newPattern)), maxlength=$(p.maxlength)")
     end
     
     # Validation 3: All intIdx values must exist in p.monomers
