@@ -19,4 +19,9 @@ using Random
     include("test_contact_matrix.jl")
     include("test_find_patterns.jl")
     include("test_grow_pattern.jl")
+    include("test_checkpoint.jl")
+    include("test_restore_species.jl")
+    include("test_rebuild_lattice.jl")
+    include("test_restore.jl")
+    include("test_integration_checkpoint.jl")
 end
