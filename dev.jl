@@ -5,6 +5,7 @@ let
     using Plots
     using Profile
     using OrderedCollections
+    using Base.Filesystem
 end
 
 ## 1010011111110000100000101010111100010100001100101110000

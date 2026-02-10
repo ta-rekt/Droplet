@@ -1,6 +1,8 @@
 ### physical parameters
 # MARK: -Phys. params
 
+checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
+
 l = Lattice(;
     boxlength = 42,
     nspecies = 3  # base (1), pattern (2), bulk (3)
@@ -19,7 +21,7 @@ poly = Polymer(;
 initMonomers!(poly, defaultChemPot = 1.0)
 
 # bulk species
-bulk = BulkMonomer(;
+bulk = FastBulkMonomer(;
     length = 1,
     initShape = "uniform"
 )
@@ -41,7 +43,9 @@ swept parameters: concentration, bulk-pattern coupling strength
 output metrics: bulk contact probability at TI site
 """
 
-t_max = 600    # runtime in minutes (initial test)
+init_from_checkpoint = true
+
+t_max = 2    # runtime in minutes (initial test)
 step = 10000
 
 vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
@@ -52,8 +56,8 @@ for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-# alphas = [0.01]    # concentration
-betas = [-0.5]    # bulk-pattern interaction energy
+alphas = [0.02]    # concentration
+betas = [-0.0]    # bulk-pattern interaction energy
 nparams = length(alphas)
 
 
@@ -65,15 +69,15 @@ function target!(res, args...)
     t_current = 0
 
     # species list and sweep parameters
-    slist, alpha, beta, blurb = args
+    slist, keya, alpha, beta, blurb = args
 
     poly, bulk = slist
 
     base = poly.monomers[1]
     pattern = poly.monomers[2]
 
-    concentration = alpha
     temperature = 0.66
+    concentration = alpha
     pattern_bulk_intpot = beta
     
     # set interaction potentials (4x4 interaction matrix)
@@ -94,7 +98,12 @@ function target!(res, args...)
     updateMonomers!(poly, base.intIdx)
 
     # initialize lattice and species
-    init!(l, [poly, bulk])
+    if init_from_checkpoint
+        checkpoint_at_param = string(checkpoint_path, "_keya", keya)
+        restore!(checkpoint_at_param, l, slist)
+    else
+        init!(l, [poly, bulk])
+    end
 
     # Initialize deltaHP for both polymers (needed for multi-polymer interactions)
     poly.deltaHP = 0.0

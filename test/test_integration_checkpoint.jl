@@ -4,20 +4,30 @@ using Droplet
 @testset "Full simulation round-trip integration" begin
 
     @testset "Hamiltonian continuity across checkpoint" begin
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l = Lattice(boxlength=32, nspecies=2)
-        poly = Polymer(length=20, maxlength=20, nMonomerTypes=2, pattern=:uniform, initShape="line")
+        poly = Polymer(length=20, maxlength=20, nMonomerTypes=2, 
+                        pattern=:uniform, initShape="line")
         bulk = FastBulkMonomer(length=100, initShape="uniform")
         initMonomers!(poly, defaultChemPot=1.0)
-        base = poly.monomers[1]; pat = poly.monomers[2]
-        intPot!(base, -0.5); intPot!(pat, -0.3); intPot!(bulk, -0.5)
-        intPot!(base, bulk, -0.1); intPot!(pat, bulk, -0.2)
+        base = poly.monomers[1] 
+        pat = poly.monomers[2]
+        intPot!(base, -0.5) 
+        intPot!(pat, -0.3) 
+        intPot!(bulk, -0.5)
+        intPot!(base, bulk, -0.1) 
+        intPot!(pat, bulk, -0.2)
         updateMonomers!(poly, base.intIdx)
         init!(l, [poly, bulk])
 
-        for _ in 1:10000; move!(poly); move!(bulk); end
+        for _ in 1:10000 
+            move!(poly) 
+            move!(bulk) 
+        end
 
-        ham!(poly); ham!(bulk)
+        ham!(poly) 
+        ham!(bulk)
         ham_poly_end = poly.ham
         ham_bulk_end = bulk.ham
 
@@ -25,14 +35,20 @@ using Droplet
         checkpoint!(tmpfile, [poly, bulk])
 
         # Restore with SAME parameters
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l2 = Lattice(boxlength=32, nspecies=2)
-        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=2, pattern=:uniform, initShape="line")
+        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=2, 
+                        pattern=:uniform, initShape="line")
         bulk2 = FastBulkMonomer(length=100, initShape="uniform")
         initMonomers!(poly2, defaultChemPot=1.0)
-        base2 = poly2.monomers[1]; pat2 = poly2.monomers[2]
-        intPot!(base2, -0.5); intPot!(pat2, -0.3); intPot!(bulk2, -0.5)
-        intPot!(base2, bulk2, -0.1); intPot!(pat2, bulk2, -0.2)
+        base2 = poly2.monomers[1] 
+        pat2 = poly2.monomers[2]
+        intPot!(base2, -0.5) 
+        intPot!(pat2, -0.3) 
+        intPot!(bulk2, -0.5)
+        intPot!(base2, bulk2, -0.1) 
+        intPot!(pat2, bulk2, -0.2)
         updateMonomers!(poly2, base2.intIdx)
 
         restore!(tmpfile, l2, [poly2, bulk2])
@@ -44,29 +60,38 @@ using Droplet
     end
 
     @testset "deltaHam consistency after restore" begin
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l = Lattice(boxlength=32, nspecies=2)
-        poly = Polymer(length=20, maxlength=20, nMonomerTypes=1, pattern=:uniform, initShape="line")
+        poly = Polymer(length=20, maxlength=20, nMonomerTypes=1, 
+                        pattern=:uniform, initShape="line")
         bulk = FastBulkMonomer(length=50, initShape="uniform")
         initMonomers!(poly, defaultChemPot=1.0)
         base = poly.monomers[1]
-        intPot!(base, -0.5); intPot!(bulk, -0.5)
+        intPot!(base, -0.5) 
+        intPot!(bulk, -0.5)
         intPot!(base, bulk, -0.2)
         updateMonomers!(poly, base.intIdx)
         init!(l, [poly, bulk])
 
-        for _ in 1:3000; move!(poly); move!(bulk); end
+        for _ in 1:3000 
+            move!(poly) 
+            move!(bulk) 
+        end
 
         tmpfile = tempname()
         checkpoint!(tmpfile, [poly, bulk])
 
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l2 = Lattice(boxlength=32, nspecies=2)
-        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=1, pattern=:uniform, initShape="line")
+        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=1, 
+                        pattern=:uniform, initShape="line")
         bulk2 = FastBulkMonomer(length=50, initShape="uniform")
         initMonomers!(poly2, defaultChemPot=1.0)
         base2 = poly2.monomers[1]
-        intPot!(base2, -0.5); intPot!(bulk2, -0.5)
+        intPot!(base2, -0.5) 
+        intPot!(bulk2, -0.5)
         intPot!(base2, bulk2, -0.2)
         updateMonomers!(poly2, base2.intIdx)
 
@@ -88,36 +113,52 @@ using Droplet
     end
 
     @testset "Lattice self-consistency after restore + moves" begin
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l = Lattice(boxlength=32, nspecies=2)
-        poly = Polymer(length=20, maxlength=30, nMonomerTypes=2, pattern=:uniform, initShape="line")
+        poly = Polymer(length=20, maxlength=30, nMonomerTypes=2, 
+                        pattern=:uniform, initShape="line")
         bulk = FastBulkMonomer(length=50, initShape="uniform")
         initMonomers!(poly, defaultChemPot=1.0)
-        base = poly.monomers[1]; pat = poly.monomers[2]
-        intPot!(base, -0.5); intPot!(pat, -0.3); intPot!(bulk, -0.5)
+        base = poly.monomers[1] 
+        pat = poly.monomers[2]
+        intPot!(base, -0.5) 
+        intPot!(pat, -0.3) 
+        intPot!(bulk, -0.5)
         intPot!(base, bulk, -0.1)
         updateMonomers!(poly, base.intIdx)
         init!(l, [poly, bulk])
 
-        for _ in 1:3000; move!(poly); move!(bulk); end
+        for _ in 1:3000 
+            move!(poly) 
+            move!(bulk) 
+        end
 
         tmpfile = tempname()
         checkpoint!(tmpfile, [poly, bulk])
 
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l2 = Lattice(boxlength=32, nspecies=2)
-        poly2 = Polymer(length=20, maxlength=30, nMonomerTypes=2, pattern=:uniform, initShape="line")
+        poly2 = Polymer(length=20, maxlength=30, nMonomerTypes=2, 
+                        pattern=:uniform, initShape="line")
         bulk2 = FastBulkMonomer(length=50, initShape="uniform")
         initMonomers!(poly2, defaultChemPot=1.0)
-        base2 = poly2.monomers[1]; pat2 = poly2.monomers[2]
-        intPot!(base2, -0.5); intPot!(pat2, -0.3); intPot!(bulk2, -0.5)
+        base2 = poly2.monomers[1] 
+        pat2 = poly2.monomers[2]
+        intPot!(base2, -0.5) 
+        intPot!(pat2, -0.3) 
+        intPot!(bulk2, -0.5)
         intPot!(base2, bulk2, -0.1)
         updateMonomers!(poly2, base2.intIdx)
 
         restore!(tmpfile, l2, [poly2, bulk2])
 
         # Run more moves
-        for _ in 1:5000; move!(poly2); move!(bulk2); end
+        for _ in 1:5000 
+            move!(poly2) 
+            move!(bulk2) 
+        end
 
         # Verify polymer lattice consistency
         key = poly2.head
@@ -137,13 +178,16 @@ using Droplet
     end
 
     @testset "Multiple checkpoint-restore cycles" begin
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l = Lattice(boxlength=32, nspecies=2)
-        poly = Polymer(length=20, maxlength=20, nMonomerTypes=1, pattern=:uniform, initShape="line")
+        poly = Polymer(length=20, maxlength=20, nMonomerTypes=1, 
+                        pattern=:uniform, initShape="line")
         bulk = FastBulkMonomer(length=50, initShape="uniform")
         initMonomers!(poly, defaultChemPot=1.0)
         base = poly.monomers[1]
-        intPot!(base, -0.5); intPot!(bulk, -0.5)
+        intPot!(base, -0.5) 
+        intPot!(bulk, -0.5)
         intPot!(base, bulk, -0.1)
         updateMonomers!(poly, base.intIdx)
         init!(l, [poly, bulk])
@@ -151,21 +195,29 @@ using Droplet
         tmpfile = tempname()
 
         for cycle in 1:3
-            for _ in 1:2000; move!(poly); move!(bulk); end
+            for _ in 1:2000 
+                move!(poly) 
+                move!(bulk) 
+            end
 
-            ham!(poly); ham!(bulk)
-            ham_poly = poly.ham; ham_bulk = bulk.ham
+            ham!(poly) 
+            ham!(bulk)
+            ham_poly = poly.ham 
+            ham_bulk = bulk.ham
 
             checkpoint!(tmpfile, [poly, bulk])
 
             # Fresh restore
-            Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+            Droplet.SPECIES_ID_COUNTER[] = 0 
+            Droplet.KEYCOUNT[] = 0
             l = Lattice(boxlength=32, nspecies=2)
-            poly = Polymer(length=20, maxlength=20, nMonomerTypes=1, pattern=:uniform, initShape="line")
+            poly = Polymer(length=20, maxlength=20, nMonomerTypes=1, 
+                            pattern=:uniform, initShape="line")
             bulk = FastBulkMonomer(length=50, initShape="uniform")
             initMonomers!(poly, defaultChemPot=1.0)
             base = poly.monomers[1]
-            intPot!(base, -0.5); intPot!(bulk, -0.5)
+            intPot!(base, -0.5) 
+            intPot!(bulk, -0.5)
             intPot!(base, bulk, -0.1)
             updateMonomers!(poly, base.intIdx)
 
@@ -188,19 +240,28 @@ using Droplet
     end
 
     @testset "Parameter change across checkpoint preserves positions" begin
-        # Simulate: run with weak interactions → checkpoint → restore with strong interactions
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        # Simulate: run with weak interactions → checkpoint → restore with 
+        # strong interactions
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l = Lattice(boxlength=32, nspecies=2)
-        poly = Polymer(length=20, maxlength=20, nMonomerTypes=2, pattern=:uniform, initShape="line")
+        poly = Polymer(length=20, maxlength=20, nMonomerTypes=2, 
+                        pattern=:uniform, initShape="line")
         bulk = FastBulkMonomer(length=80, initShape="uniform")
         initMonomers!(poly, defaultChemPot=1.0)
-        base = poly.monomers[1]; pat = poly.monomers[2]
-        intPot!(base, -0.2); intPot!(pat, -0.1); intPot!(bulk, -0.2)
+        base = poly.monomers[1] 
+        pat = poly.monomers[2]
+        intPot!(base, -0.2) 
+        intPot!(pat, -0.1) 
+        intPot!(bulk, -0.2)
         intPot!(base, bulk, -0.05)
         updateMonomers!(poly, base.intIdx)
         init!(l, [poly, bulk])
 
-        for _ in 1:5000; move!(poly); move!(bulk); end
+        for _ in 1:5000 
+            move!(poly) 
+            move!(bulk) 
+        end
 
         saved_poly_pos = deepcopy(poly.pos)
         saved_bulk_pos = deepcopy(bulk.pos)
@@ -209,13 +270,18 @@ using Droplet
         checkpoint!(tmpfile, [poly, bulk])
 
         # Restore with STRONG interactions
-        Droplet.SPECIES_ID_COUNTER[] = 0; Droplet.KEYCOUNT[] = 0
+        Droplet.SPECIES_ID_COUNTER[] = 0 
+        Droplet.KEYCOUNT[] = 0
         l2 = Lattice(boxlength=32, nspecies=2)
-        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=2, pattern=:uniform, initShape="line")
+        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=2, 
+                        pattern=:uniform, initShape="line")
         bulk2 = FastBulkMonomer(length=80, initShape="uniform")
         initMonomers!(poly2, defaultChemPot=1.0)
-        base2 = poly2.monomers[1]; pat2 = poly2.monomers[2]
-        intPot!(base2, -2.0); intPot!(pat2, -1.5); intPot!(bulk2, -2.0)  # 10x stronger
+        base2 = poly2.monomers[1] 
+        pat2 = poly2.monomers[2]
+        intPot!(base2, -2.0) 
+        intPot!(pat2, -1.5) 
+        intPot!(bulk2, -2.0)  # 10x stronger
         intPot!(base2, bulk2, -0.5)
         updateMonomers!(poly2, base2.intIdx)
 

@@ -2,6 +2,7 @@ import Pkg
 using JSON
 using Statistics
 using Droplet
+using Base.Filesystem
 
 let
     ### command-line arguments
@@ -31,12 +32,18 @@ let
         for (keyb, beta) in enumerate(betas)
 
             res = Dict{String, Any}()
-            args = [slist, alpha, beta, blurb]
+            args = [slist, keya, alpha, beta, blurb]
 
             results[keya][keyb] = target!(res, args...)
         end
-    end
 
+        ### save checkpoint
+        if !isnothing(checkpoint_path)
+            checkpoint_at_param = string(checkpoint_path, "_keya", keya)
+            checkpoint!(checkpoint_at_param, slist)
+        end
+
+    end
     
     ### write data
     file = string(outdir, "/output_cpu$(cpukey).json")
