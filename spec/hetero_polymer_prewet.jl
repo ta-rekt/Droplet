@@ -178,7 +178,7 @@ function target!(res, args...)
                             # check if this bead is pattern type
                             if poly.pos[current_key][6] == base.intIdx
                                 # count nearest neighbors with bulk
-                                contacts += nnp(pattern, bulk, poly.pos[current_key][1:3]) / 4
+                                contacts += nnp(pattern, bulk, poly.pos[current_key][1:3]) / 6
                                 # move to previous bead
                                 current_key = poly.pos[current_key][5]
                                 count += 1
