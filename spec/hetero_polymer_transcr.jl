@@ -1,6 +1,8 @@
 ### physical parameters
 # MARK: -Phys. params
 
+checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
+
 l = Lattice(;
     boxlength = 42,
     nspecies = 4  # base (1), pattern (2), tf (3), rnap (4)
@@ -47,10 +49,13 @@ swept parameters: concentration, tf-rnap coupling strength
 output metrics: rnap contact probability at TI site
 """
 
-t_max = 5    # runtime in minutes (initial test)
-step = 10000
+init_from_checkpoint = false
 
-vals = range(0.005, stop=0.02, length=32)  # parallelized parameters (concentration)
+t_max = 0.2    # runtime in minutes (initial test)
+step = 10000
+smallstep = 1000
+
+vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
 alphas = zeros(32)
 nrepeats = 1
 
@@ -58,7 +63,7 @@ for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-alphas = [0.015]    # concentration
+alphas = [0.01]    # concentration
 betas = [-0.5]    # tf-rnap coupling energy
 nparams = length(alphas)
 
@@ -71,7 +76,7 @@ function target!(res, args...)
     t_current = 0
 
     # species list and sweep parameters
-    slist, alpha, beta, blurb = args
+    slist, keya, alpha, beta, blurb = args
 
     poly, tf, rnap = slist
 
@@ -82,6 +87,7 @@ function target!(res, args...)
     tf_rnap_intpot = beta
     temperature = 0.66
     pattern_tf_intpot = -0.5
+    transcription_threshold = 0.1  # threshold for transcription activity
     
     # set interaction potentials (4x4 interaction matrix)
     # base (type 1)
@@ -108,7 +114,12 @@ function target!(res, args...)
     updateMonomers!(poly, base.intIdx)
 
     # initialize lattice and species
-    init!(l, [poly, tf, rnap])
+    if init_from_checkpoint
+        checkpoint_at_param = string(checkpoint_path, "_keya", keya)
+        restore!(checkpoint_at_param, l, slist)
+    else
+        init!(l, slist)
+    end
 
     # Initialize deltaHP for both polymers (needed for multi-polymer interactions)
     poly.deltaHP = 0.0
@@ -120,7 +131,6 @@ function target!(res, args...)
 
     nmoves = 0
     niter = 0
-    frame = 1
     minsize = 10
 
     radii = []
@@ -132,6 +142,12 @@ function target!(res, args...)
     accs = []
     binding_activity = []
     transcription_activity = []
+    on_times = []
+    off_times = []
+    
+    # transcription state tracking
+    is_transcribing = false
+    moves_in_state = 0
     
     # initial values
     push!(radii, radius(poly))
@@ -183,6 +199,15 @@ function target!(res, args...)
                         push!(hams_tf, getHam(s))
                     end
 
+                    push!(max_droplet_size, maximum(droplet_sizes, init=1))
+                    push!(radii, radius(poly))
+                    push!(lengths, poly.length)
+
+                    # acceptance rate
+                    push!(accs, nmoves / (niter * length(movingsps)))
+                end
+
+                if mod(nmoves, smallstep) == 0
                     pattern_poly = find_patterns(poly)
                     p_start, p_end = pattern_poly[pattern.intIdx][1]
 
@@ -213,15 +238,26 @@ function target!(res, args...)
                     end
                     
                     push!(binding_activity, contacts_tf / transcr_init_site_length)
-                    push!(transcription_activity, contacts_rnap / transcr_init_site_length)
-                    push!(max_droplet_size, maximum(droplet_sizes, init=1))
-                    push!(radii, radius(poly))
-                    push!(lengths, poly.length)
-
-                    # acceptance rate
-                    push!(accs, nmoves / (niter * length(movingsps)))
-
-                    frame += 1
+                    current_transcription_activity = contacts_rnap / transcr_init_site_length
+                    push!(transcription_activity, current_transcription_activity)
+                    
+                    # track on/off transitions
+                    was_transcribing = is_transcribing
+                    is_transcribing = current_transcription_activity >= transcription_threshold
+                    
+                    if is_transcribing != was_transcribing
+                        # state transition occurred
+                        if was_transcribing
+                            # transitioned from ON to OFF
+                            push!(on_times, moves_in_state)
+                        else
+                            # transitioned from OFF to ON
+                            push!(off_times, moves_in_state)
+                        end
+                        moves_in_state = 1
+                    else
+                        moves_in_state += 1
+                    end
                 end
             end
         end
@@ -232,6 +268,7 @@ function target!(res, args...)
     res["species_name"] = "poly"
     res["nframes"] = length(radii)
     res["step"] = step
+    res["smallstep"] = smallstep
     res["temperature"] = temperature
     res["concentration"] = concentration
     res["interaction_matrix"] = tf.intMat
@@ -247,6 +284,8 @@ function target!(res, args...)
     res["acceptance_rate"] = accs
     res["binding_activity"] = binding_activity
     res["transcription_activity"] = transcription_activity
+    res["on_times"] = on_times
+    res["off_times"] = off_times
     
     # extract polymer coordinates into a matrix
     poly_coords = zeros(Int32, poly.length, 4)
