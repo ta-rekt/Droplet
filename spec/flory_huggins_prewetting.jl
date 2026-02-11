@@ -1,5 +1,7 @@
 ### physical parameters
 
+checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
+
 l = Lattice(;
     boxlength = 42,
     nspecies = 2
@@ -10,15 +12,15 @@ bulk = FastBulkMonomer(;
     length = 1
 )
 
-site1 = FastBulkMonomer(;
-    length = 5,
-    initShape = "line",
+site = FastBulkMonomer(;
+    length = 64,
+    initShape = "box",
     initParams = 1,
-    initPos = [25,21,21]
+    initPos = [21,21,21]
 )
 
 # list containing all species
-slist = [bulk, site1]
+slist = [bulk, site]
 
 # minimum size of a droplet for detection
 minsize = 10
@@ -26,23 +28,25 @@ minsize = 10
 ### simulation parameters
 
 blurb = """
-Understanding the prewetting transition, situating it on the FH phase diagram.
+Understanding the prewetting transition.
+Turning off interaction with the nucleation site to check droplet persistence.
 """
 
-t_max = 2    # runtime in minutes
+init_from_checkpoint = false
+
+t_max = 5    # runtime in minutes
 t_burn_in = 0.8 * t_max
 step = 10000
 
-# vals = range(0.4, stop=0.7, length=16)   
-# vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
-# alphas = zeros(32)
-# nrepeats = 1
+vals = range(0.01, stop=0.03, length=16)  # parallelized parameters (concentration)
+alphas = zeros(16)
+nrepeats = 1
 
-# for (i, v) in enumerate(vals)
-#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
-# end
+for (i, v) in enumerate(vals)
+    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+end
 
-alphas = [0.03]   # concentration
+# alphas = [0.02]   # concentration
 betas = [0.66]    # temperature
 nparams = length(alphas)
 
@@ -53,17 +57,22 @@ function target!(res, args...)
     t_current = 0
 
     # species list and sweep parameters
-    slist, alpha, beta = args
+    slist, keya, alpha, beta = args
 
-    bulk, site1 = slist
+    bulk, site = slist
     intPot!(bulk, -1.0 / beta)
-    intPot!(bulk, site1, -2.0)
-    intPot!(site1, 0.0)
+    intPot!(bulk, site, -2.0)
+    intPot!(site, 0.0)
 
     bulk.length = Int32(round(l.boxlength^3 * alpha))
 
     # initialize lattice and species
-    init!(l, [bulk, site1])
+    if init_from_checkpoint
+        checkpoint_at_param = string(checkpoint_path, "_keya", keya)
+        restore!(checkpoint_at_param, l, slist)
+    else
+        init!(l, slist)
+    end
 
     nmoves = 0
     iter = 0

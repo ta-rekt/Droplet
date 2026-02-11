@@ -38,10 +38,8 @@ let
         end
 
         ### save checkpoint
-        if !isnothing(checkpoint_path)
-            checkpoint_at_param = string(checkpoint_path, "_keya", keya)
-            checkpoint!(checkpoint_at_param, slist)
-        end
+        checkpoint_at_param = string(checkpoint_path, "_keya", keya)
+        checkpoint!(checkpoint_at_param, slist)
 
     end
     

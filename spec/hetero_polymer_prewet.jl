@@ -11,7 +11,7 @@ l = Lattice(;
 # heterogeneous polymer with patterned regions
 poly = Polymer(;
     length = 32,
-    maxlength = 150,
+    maxlength = 120,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern
     initPos = [5, 21, 21],
@@ -43,13 +43,13 @@ swept parameters: concentration, bulk-pattern coupling strength
 output metrics: bulk contact probability at TI site
 """
 
-init_from_checkpoint = true
+init_from_checkpoint = false
 
-t_max = 2    # runtime in minutes (initial test)
+t_max = 1    # runtime in minutes (initial test)
 step = 10000
 
-vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
-alphas = zeros(32)
+vals = range(0.003, stop=0.03, length=16)  # parallelized parameters (concentration)
+alphas = zeros(16)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
@@ -57,7 +57,7 @@ for (i, v) in enumerate(vals)
 end
 
 alphas = [0.02]    # concentration
-betas = [-0.0]    # bulk-pattern interaction energy
+betas = [-0.7]    # bulk-pattern interaction energy
 nparams = length(alphas)
 
 
@@ -102,7 +102,7 @@ function target!(res, args...)
         checkpoint_at_param = string(checkpoint_path, "_keya", keya)
         restore!(checkpoint_at_param, l, slist)
     else
-        init!(l, [poly, bulk])
+        init!(l, slist)
     end
 
     # Initialize deltaHP for both polymers (needed for multi-polymer interactions)
@@ -135,7 +135,7 @@ function target!(res, args...)
 
     # build polymer patterns
     patternVec = zeros(Int32, poly.maxlength)
-    p_start, p_end = 1, 50
+    p_start, p_end = 1, 20
     transcr_init_site_length = 10
 
     patternVec[1:p_start-1] .= base.intIdx         # base type (40 beads)
