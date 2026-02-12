@@ -103,6 +103,13 @@ function _addSwapEnergy!(p::Polymer, mPattern::PolyMonomer)
     crossBondsCreated = (nnpTailPattern - 1) + (nnpPrevTailPattern - 1)
     p.deltaH += crossInteraction * crossBondsCreated
     
+    # New cross bonds created: remaining pattern neighbors of swapped beads
+    # - Tail had (nnpTailPattern - 1) pattern neighbors (excluding prev_tail)
+    # - Prev_tail had (nnpPrevTailPattern - 1) pattern neighbors (excluding tail)
+    # These become base-pattern cross bonds (counted bidirectionally → ×2)
+    crossBondsCreated = (nnpTailPattern - 1) + (nnpPrevTailPattern - 1)
+    p.deltaH += 2 * crossInteraction * crossBondsCreated
+
     # Correction for bonds between new beads (newPosi/newPosj) and swapped tail beads
     # The main deltaHam! already added pattern-pattern energy for these bonds,
     # but after the swap, these bonds become pattern-base cross bonds.
@@ -121,6 +128,7 @@ function _addSwapEnergy!(p::Polymer, mPattern::PolyMonomer)
         bondsToCorrect += 1
     end
     # Subtract the pattern-pattern energy that was over-counted, add cross energy
+
     p.deltaH -= mPattern.intPot * bondsToCorrect
     p.deltaH += crossInteraction * bondsToCorrect
     
@@ -216,6 +224,14 @@ function _removeSwapEnergy!(p::Polymer, mPattern::PolyMonomer)
     crossBondsCreated = (nnpAfterBase - 1) + (nnpAfterAfterBase - 1)
     p.deltaH += crossInteraction * crossBondsCreated
     
+    # Base-pattern cross bonds created
+    # - after had (nnpAfterBase - 1) base neighbors (excluding afterAfter)
+    # - afterAfter had (nnpAfterAfterBase - 1) base neighbors (excluding after)
+    # These become base-pattern cross bonds
+    # Multiply by 2 because ham! counts cross bonds from BOTH sides (no /2)
+    crossBondsCreated = (nnpAfterBase - 1) + (nnpAfterAfterBase - 1)
+    p.deltaH += 2 * crossInteraction * crossBondsCreated
+
     # Bulk interactions: swapped beads change their bulk interaction type
     for (sp, idx) in mPattern.intSpecies
         # Skip self-interactions (already handled above)
@@ -236,6 +252,7 @@ function _removeSwapEnergy!(p::Polymer, mPattern::PolyMonomer)
     # Chemical potential change: 2 beads go from base to pattern type
     p.deltaH -= 2 * (mPattern.chemPot - mBase.chemPot)
 end
+
 # Energy increment of a proposed move. Requires proposeMove! to be called
 # which sets moveType and newPosi/j. 
 function deltaHam!(p::Polymer)
@@ -261,13 +278,18 @@ function deltaHam!(p::Polymer)
                 
                 energy_change = m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosi) + 
                                 m.intMat[m.intIdx, idx] * nnp(p, sp, p.newPosj)
-                
-                # For PolyMonomers of the same polymer, just add to p.deltaH
-                # (cross-type polymer interactions don't affect partner deltaHP)
+
+                # For PolyMonomers of the same polymer, use nnp(m, sp, ...) to count
+                # only matching intIdx, and multiply by 2 because ham! counts each
+                # cross bond from BOTH sides (no /2 for cross terms).
                 if sp isa PolyMonomer && sp.poly === p
+                    energy_change = 2 * m.intMat[m.intIdx, idx] * (nnp(m, sp, p.newPosi) + 
+                                                                    nnp(m, sp, p.newPosj))
                     p.deltaH += energy_change
                 else
-                    # For external species (bulk monomers), set their deltaHP
+                    # For external species (bulk monomers), use nnp(p, sp, ...)
+                    energy_change = m.intMat[m.intIdx, idx] * (nnp(p, sp, p.newPosi) + 
+                                                               nnp(p, sp, p.newPosj))
                     setDeltaHP(sp, energy_change)
                     p.deltaH += getDeltaHP(sp)
                 end
@@ -301,12 +323,13 @@ function deltaHam!(p::Polymer)
                 # cross-species interactions
                 if m.intIdx != idx  
 
-                    energy_change = m.intMat[m.intIdx, idx] * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi))
-
-                    # For PolyMonomers of the same polymer, just add to p.deltaH
+                    # For PolyMonomers of the same polymer, use nnp(m, sp, ...) 
+                    # and multiply by 2 for bidirectional counting
                     if sp isa PolyMonomer && sp.poly === p
+                        energy_change = 2 * m.intMat[m.intIdx, idx] * (nnp(m, sp, p.newPosj) - nnp(m, sp, p.bi))
                         p.deltaH += energy_change
                     else
+                        energy_change = m.intMat[m.intIdx, idx] * (nnp(p, sp, p.newPosj) - nnp(p, sp, p.bi))
                         setDeltaHP(sp, energy_change)
                         p.deltaH += getDeltaHP(sp)
                     end
@@ -325,12 +348,13 @@ function deltaHam!(p::Polymer)
                 # cross-species interactions
                 if m.intIdx != idx  
 
-                    energy_change = m.intMat[m.intIdx, idx] * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj))
-
-                    # For PolyMonomers of the same polymer, just add to p.deltaH
+                    # For PolyMonomers of the same polymer, use nnp(m, sp, ...)
+                    # and multiply by 2 for bidirectional counting
                     if sp isa PolyMonomer && sp.poly === p
+                        energy_change = 2 * m.intMat[m.intIdx, idx] * (nnp(m, sp, p.newPosi) - nnp(m, sp, p.bj))
                         p.deltaH += energy_change
                     else
+                        energy_change = m.intMat[m.intIdx, idx] * (nnp(p, sp, p.newPosi) - nnp(p, sp, p.bj))
                         setDeltaHP(sp, energy_change)
                         p.deltaH += getDeltaHP(sp)
                     end
@@ -358,10 +382,15 @@ function deltaHam!(p::Polymer)
                 energy_change = -(m.intMat[m.intIdx, idx] * nnp(p, sp, p.bi) + 
                                   m.intMat[m.intIdx, idx] * nnp(p, sp, p.bj))
 
-                # For PolyMonomers of the same polymer, just add to p.deltaH
+                # For PolyMonomers of the same polymer, use nnp(m, sp, ...)
+                # and multiply by 2 for bidirectional counting
                 if sp isa PolyMonomer && sp.poly === p
+                    energy_change = -2 * (m.intMat[m.intIdx, idx] * (nnp(m, sp, p.bi) + 
+                                                                      nnp(m, sp, p.bj)))
                     p.deltaH += energy_change
                 else
+                    energy_change = -(m.intMat[m.intIdx, idx] * (nnp(p, sp, p.bi) + 
+                                                                  nnp(p, sp, p.bj)))
                     setDeltaHP(sp, energy_change)
                     p.deltaH += getDeltaHP(sp)
                 end

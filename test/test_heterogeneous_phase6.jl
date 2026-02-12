@@ -969,3 +969,36 @@ end
     end  # round loop
     @test totalSuccess > 0
 end
+
+Random.seed!(42)
+
+@testset "deltaHam! consistency - specific seed exposing cross-energy bug" begin
+    l = Lattice(; boxlength = 20, nspecies = 1)
+    poly = Polymer(;
+        length = 10,
+        maxlength = 30,
+        nMonomerTypes = 2,
+        initPos = [1,10,10],
+        pattern = :custom,
+        customPattern = [1,1,1,1,2,2,2,2,1,1]
+    )
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=-0.3)
+    intPot!(poly.monomers[1], -0.3)
+    intPot!(poly.monomers[2], -0.5)
+    init!(l, [poly])
+
+    frame = 0
+
+    for i in 1:10000
+        ham!(poly)
+        initialHam = poly.ham
+
+        if move!(poly)
+            frame += 1
+            ham!(poly)
+            
+            @test isapprox(poly.ham, initialHam + poly.deltaH, atol=1e-10)
+            
+        end
+    end
+end
