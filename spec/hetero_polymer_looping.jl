@@ -1,16 +1,10 @@
-"""
-Description:
-
-How do two strongly interacting regions of a polymer separated by a large
-number of beads find each other and form a loop, with and without interaction with bulk
-"""
-
-
 ### physical parameters
 # MARK: -Phys. params
 
+checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
+
 l = Lattice(;
-    boxlength = 64,
+    boxlength = 42,
     nspecies = 4  # base (1), pattern1 (2), pattern2 (3), bulk (4)
 )
 
@@ -43,7 +37,7 @@ pattern2 = poly.monomers[3]
 
 # bulk species
 bulk = FastBulkMonomer(;
-    length = 4096,
+    length = 1,
     initShape = "uniform"
 )
 
@@ -53,6 +47,13 @@ slist = [base, pattern1, pattern2, bulk]
 
 ### simulation parameters
 # MARK: -Sim. params
+
+blurb = """
+How do two strongly interacting regions of a polymer separated by a large
+number of beads find each other and form a loop, with and without interaction with bulk
+"""
+
+init_from_checkpoint = false
 
 t_max = 5    # runtime in minutes (initial test)
 step = 10000
@@ -80,7 +81,7 @@ function target!(res, args...)
     reached_maxlength = false
 
     # species list and sweep parameters
-    slist, alpha, beta = args
+    slist, keya, alpha, beta, blurb = args
 
     base, pattern1, pattern2, bulk = slist
     
@@ -103,8 +104,13 @@ function target!(res, args...)
     # bulk (type 4)
     intPot!(bulk, alpha)              # bulk self-interaction
 
-    # initialize lattice and species
-    init!(l, [base, pattern1, pattern2, bulk])
+        # initialize lattice and species
+    if init_from_checkpoint
+        checkpoint_at_param = string(checkpoint_path, "_keya", keya)
+        restore!(checkpoint_at_param, l, slist)
+    else
+        init!(l, slist)
+    end
 
     # moving species
     movingsps = [(base, base.intIdx), (pattern1, pattern1.intIdx), 
@@ -199,6 +205,7 @@ function target!(res, args...)
     end
 
     # save results
+    res["blurb"] = blurb
     res["species_name"] = "poly"
     res["nframes"] = length(radii)
     res["step"] = step

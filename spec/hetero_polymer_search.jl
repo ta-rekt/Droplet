@@ -1,28 +1,30 @@
 ### physical parameters
 # MARK: -Phys. params
 
+checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
+
 l = Lattice(;
     boxlength = 42,
-    nspecies = 3  # base (1), pattern1 (2), pattern2 (3), bulk (4)
+    nspecies = 2  # number of layered species
 )
 
 # heterogeneous polymer with patterned regions
 poly1 = Polymer(;
     length = 32,
-    maxlength = 42,
+    maxlength = 100,
     initShape = "line",
-    nMonomerTypes = 2,  # base, pattern1
-    initPos = [5, 18, 21],
+    nMonomerTypes = 4,  # base, patternA1, pattern A2
+    initPos = [5, 14, 14],
     pattern = :uniform
 )
 
 # heterogeneous polymer with patterned regions
 poly2 = Polymer(;
     length = 32,
-    maxlength = 42,
+    maxlength = 100,
     initShape = "line",
-    nMonomerTypes = 2,  # base, pattern1
-    initPos = [5, 24, 21],
+    nMonomerTypes = 4,  # base, patternB1, patternB2
+    initPos = [5, 28, 28],
     pattern = :uniform
 )
 
@@ -50,6 +52,8 @@ Looking at inter-pattern contacts of two short polymers under tension
 as a function of separation, in the presence of wetting
 """
 
+init_from_checkpoint = false
+
 t_max = 5    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
@@ -63,7 +67,7 @@ for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-alphas = [0.03]    # concentration
+alphas = [0.01]    # concentration
 betas = [0.66]    # temperature
 nparams = length(alphas)
 
@@ -76,35 +80,53 @@ function target!(res, args...)
     t_current = 0
 
     # species list and sweep parameters
-    slist, alpha, beta, blurb = args
+    slist, keya, alpha, beta, blurb = args
 
     poly1, poly2, bulk = slist
 
     base1 = poly1.monomers[1]
+    mainPattern1 = poly1.monomers[2]
+    headPattern1 = poly1.monomers[3]
+    tailPattern1 = poly1.monomers[4]
+
     base2 = poly2.monomers[1]
-    pattern1 = poly1.monomers[2]
-    pattern2 = poly2.monomers[2]
+    mainPattern2 = poly2.monomers[2]
+    headPattern2 = poly2.monomers[3]
+    tailPattern2 = poly2.monomers[4]
+    
     
     # set interaction potentials (4x4 interaction matrix)
     # base (type 1)
     intPot!(base1, 0.5)              # base self-interaction
-    intPot!(base1, pattern1, 0.5)    # base-pattern1
+    intPot!(base1, mainPattern1, 0.5)    # base-mainPattern1
+    intPot!(base1, headPattern1, 0.5)    # base-mainPattern1
+    intPot!(base1, tailPattern1, 0.5)    # base-mainPattern1
     intPot!(base1, bulk, 0.0)        # base-bulk (weak)
     
-    # pattern1 (type 2)
-    intPot!(pattern1, 0.5)           # pattern1 self-interaction
-    intPot!(pattern1, bulk, -2.0)    # pattern1-bulk (strong)
+    # mainPattern1 (type 2)
+    intPot!(mainPattern1, 0.5)           # mainPattern1 self-interaction
+    intPot!(headPattern1, 0.5)           # mainPattern1 self-interaction
+    intPot!(tailPattern1, 0.5)           # mainPattern1 self-interaction
+    intPot!(mainPattern1, bulk, 0.0)    # mainPattern1-bulk (strong)
+    intPot!(headPattern1, bulk, 0.0)    # mainPattern1-bulk (strong)
+    intPot!(tailPattern1, bulk, 0.0)    # mainPattern1-bulk (strong)
 
     # base (type 2)
     intPot!(base2, 0.5)              # base self-interaction
-    intPot!(base2, pattern2, 0.5)    # base-pattern1
+    intPot!(base2, mainPattern2, 0.5)    # base-mainPattern1
+    intPot!(base2, headPattern2, 0.5)    # base-mainPattern1
+    intPot!(base2, tailPattern2, 0.5)    # base-mainPattern1
     intPot!(base2, bulk, 0.0)        # base-bulk (weak)
     
-    # pattern1 (type 2)
-    intPot!(pattern2, 0.5)           # pattern1 self-interaction
-    intPot!(pattern2, bulk, -2.0)    # pattern1-bulk (strong)
+    # mainPattern1 (type 2)
+    intPot!(mainPattern2, 0.5)           # mainPattern1 self-interaction
+    intPot!(headPattern2, 0.5)           # mainPattern1 self-interaction
+    intPot!(tailPattern2, 0.5)           # mainPattern1 self-interaction
+    intPot!(mainPattern2, bulk, 0.0)    # mainPattern1-bulk (strong)
+    intPot!(headPattern2, bulk, 0.0)    # mainPattern1-bulk (strong)
+    intPot!(tailPattern2, bulk, 0.0)    # mainPattern1-bulk (strong)
 
-    intPot!(pattern1, pattern2, 0.0)    # inter-pattern attraction
+    intPot!(mainPattern1, mainPattern2, -5.0)    # inter-pattern attraction
     
     # bulk (type 4)
     intPot!(bulk, -1.0 / beta)              # bulk self-interaction
@@ -115,7 +137,12 @@ function target!(res, args...)
     updateMonomers!(poly2, base2.intIdx)
 
     # initialize lattice and species
-    init!(l, [poly1, poly2, bulk])
+    if init_from_checkpoint
+        checkpoint_at_param = string(checkpoint_path, "_keya", keya)
+        restore!(checkpoint_at_param, l, slist)
+    else
+        init!(l, slist)
+    end
 
     # Initialize deltaHP for both polymers (needed for multi-polymer interactions)
     poly1.deltaHP = 0.0
@@ -142,8 +169,8 @@ function target!(res, args...)
     max_droplet_size = []
     accs = []
     contact_probs = []
-    # density_lat = zeros(Float64, (l.boxlength, l.boxlength, l.boxlength))
-    total = 0.0
+    pattern1_position = []
+    pattern2_position = []
     
     # initial values
     push!(radii1, radius(poly1))
@@ -156,20 +183,25 @@ function target!(res, args...)
     push!(hams_bulk, bulk.ham)
     push!(accs, 0)
     push!(contact_probs, 0.0)
-
+    
     # build polymer patterns
     patternVec1 = zeros(Int32, poly1.maxlength)
     patternVec2 = zeros(Int32, poly2.maxlength)
-    p1_start, p1_end = 15, 26
-    p2_start, p2_end = 15, 26
+    p1_start, p1_end = 45, 56
+    p2_start, p2_end = 45, 56
 
-    patternVec1[1:p1_start-1] .= base1.intIdx         # base type (40 beads)
-    patternVec1[p1_start:p1_end] .= pattern1.intIdx      # pattern 1 (8 beads)
-    patternVec1[p1_end+1:poly1.maxlength] .= base1.intIdx
+    push!(pattern1_position, p1_start)
+    push!(pattern2_position, p2_start)
 
-    patternVec2[1:p1_start-1] .= base2.intIdx         # base type (40 beads)
-    patternVec2[p1_start:p1_end] .= pattern2.intIdx      # pattern 1 (8 beads)
-    patternVec2[p1_end+1:poly2.maxlength] .= base2.intIdx
+    patternVec1[1:p1_start-1] .= headPattern1.intIdx         # base type (40 beads)
+    patternVec1[p1_start:p1_end] .= mainPattern1.intIdx      # pattern 1 (8 beads)
+    patternVec1[p1_end+1:poly1.maxlength-3] .= tailPattern1.intIdx
+    patternVec1[poly1.maxlength-2:poly1.maxlength] .= base1.intIdx
+
+    patternVec2[1:p2_start-1] .= headPattern2.intIdx         # base type (40 beads)
+    patternVec2[p2_start:p2_end] .= mainPattern2.intIdx      # pattern 1 (8 beads)
+    patternVec2[p2_end+1:poly2.maxlength-3] .= tailPattern2.intIdx
+    patternVec2[poly2.maxlength-2:poly2.maxlength] .= base2.intIdx
 
     growPolymer!(poly1)
     growPolymer!(poly2)
@@ -206,26 +238,29 @@ function target!(res, args...)
                     end
 
                     pattern_poly1 = find_patterns(poly1)
-                    p1_start, p1_end = pattern_poly1[pattern1.intIdx][1]
+                    p1_start, p1_end = pattern_poly1[mainPattern1.intIdx][1]
 
                     pattern_poly2 = find_patterns(poly2)
-                    p2_start, p2_end = pattern_poly2[pattern2.intIdx][1]
+                    p2_start, p2_end = pattern_poly2[mainPattern2.intIdx][1]
 
-                    # compute contact probability between pattern1 and bulk
+                    push!(pattern1_position, p1_start)
+                    push!(pattern2_position, p2_start)
+
+                    # compute contact probability between mainPattern1 and bulk
                     pattern_length = p1_end - p1_start + 1
                     contacts = 0
                     
-                    # get tail key for pattern1
-                    if haskey(poly1.patternTails, pattern1.intIdx)
-                        tail_key = poly1.patternTails[pattern1.intIdx]
+                    # get tail key for mainPattern1
+                    if haskey(poly1.patternTails, mainPattern1.intIdx)
+                        tail_key = poly1.patternTails[mainPattern1.intIdx]
                         
                         # walk backwards from tail to count contacts
                         current_key = tail_key
                         while current_key != 0
-                            # check if this bead is pattern1 type
-                            if poly1.pos[current_key][6] == pattern1.intIdx
+                            # check if this bead is mainPattern1 type
+                            if poly1.pos[current_key][6] == mainPattern1.intIdx
                                 # count nearest neighbors with bulk
-                                contacts += nnp(pattern1, bulk, poly1.pos[current_key][1:3]) / 4
+                                contacts += nnp(mainPattern1, bulk, poly1.pos[current_key][1:3]) / 4
                                 # move to previous bead
                                 current_key = poly1.pos[current_key][4]
                             else
@@ -272,8 +307,8 @@ function target!(res, args...)
     res["radius_of_gyration1"] = radii1
     res["radius_of_gyration2"] = radii2
     res["pattern_distances"] = pattern_dists
-    res["pattern1_location"] = p1_start
-    res["pattern2_location"] = p2_start
+    res["mainPattern1_position"] = pattern1_position
+    res["mainPattern2_position"] = pattern2_position
     res["max_droplet_size"] = max_droplet_size
     res["hamiltonian_poly1"] = hams_poly1
     res["hamiltonian_poly2"] = hams_poly2
