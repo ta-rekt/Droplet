@@ -54,16 +54,16 @@ function manualHam(p::Polymer)
     return totalEnergy
 end
 
-# Helper to get pattern as vector
-function getPatternVector(p::Polymer)
-    result = Int32[]
-    key = p.head
-    while key != 0
-        push!(result, p.pos[key][6])
-        key = p.pos[key][5]
-    end
-    return result
-end
+# # Helper to get pattern as vector
+# function getPatternVector(p::Polymer)
+#     result = Int32[]
+#     key = p.head
+#     while key != 0
+#         push!(result, p.pos[key][6])
+#         key = p.pos[key][5]
+#     end
+#     return result
+# end
 
 # MARK: -Manual ham! small polymer
 @testset "ham! matches manual computation - small homogeneous polymer" begin
