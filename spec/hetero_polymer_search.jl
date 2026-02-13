@@ -11,7 +11,7 @@ l = Lattice(;
 # heterogeneous polymer with patterned regions
 poly1 = Polymer(;
     length = 32,
-    maxlength = 100,
+    maxlength = 250,
     initShape = "line",
     nMonomerTypes = 4,  # base, patternA1, pattern A2
     initPos = [5, 14, 14],
@@ -21,7 +21,7 @@ poly1 = Polymer(;
 # heterogeneous polymer with patterned regions
 poly2 = Polymer(;
     length = 32,
-    maxlength = 100,
+    maxlength = 250,
     initShape = "line",
     nMonomerTypes = 4,  # base, patternB1, patternB2
     initPos = [5, 28, 28],
@@ -58,16 +58,16 @@ t_max = 5    # runtime in minutes (initial test)
 step = 10000
 t_burn_in = 0.8  # 12 seconds
 
-# vals = range(0.005, stop=0.05, length=32)  # parallelized parameters (concentration)
-vals = range(6, step=1, length=9)
+# vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
+vals = [0.02]
 alphas = zeros(32)
-nrepeats = 1
+nrepeats = 32
 
 for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-alphas = [0.01]    # concentration
+# alphas = [0.02]    # concentration
 betas = [0.66]    # temperature
 nparams = length(alphas)
 
@@ -107,7 +107,7 @@ function target!(res, args...)
     intPot!(mainPattern1, 0.5)           # mainPattern1 self-interaction
     intPot!(headPattern1, 0.5)           # mainPattern1 self-interaction
     intPot!(tailPattern1, 0.5)           # mainPattern1 self-interaction
-    intPot!(mainPattern1, bulk, 0.0)    # mainPattern1-bulk (strong)
+    intPot!(mainPattern1, bulk, -0.5)    # mainPattern1-bulk (strong)
     intPot!(headPattern1, bulk, 0.0)    # mainPattern1-bulk (strong)
     intPot!(tailPattern1, bulk, 0.0)    # mainPattern1-bulk (strong)
 
@@ -122,7 +122,7 @@ function target!(res, args...)
     intPot!(mainPattern2, 0.5)           # mainPattern1 self-interaction
     intPot!(headPattern2, 0.5)           # mainPattern1 self-interaction
     intPot!(tailPattern2, 0.5)           # mainPattern1 self-interaction
-    intPot!(mainPattern2, bulk, 0.0)    # mainPattern1-bulk (strong)
+    intPot!(mainPattern2, bulk, -0.5)    # mainPattern1-bulk (strong)
     intPot!(headPattern2, bulk, 0.0)    # mainPattern1-bulk (strong)
     intPot!(tailPattern2, bulk, 0.0)    # mainPattern1-bulk (strong)
 
@@ -187,8 +187,8 @@ function target!(res, args...)
     # build polymer patterns
     patternVec1 = zeros(Int32, poly1.maxlength)
     patternVec2 = zeros(Int32, poly2.maxlength)
-    p1_start, p1_end = 45, 56
-    p2_start, p2_end = 45, 56
+    p1_start, p1_end = 101, 150
+    p2_start, p2_end = 101, 150
 
     push!(pattern1_position, p1_start)
     push!(pattern2_position, p2_start)
