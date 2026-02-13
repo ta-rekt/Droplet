@@ -53,7 +53,7 @@ init_from_checkpoint = false
 
 t_max = 0.2    # runtime in minutes (initial test)
 step = 10000
-smallstep = 1000
+smallstep = step
 
 vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
 alphas = zeros(32)

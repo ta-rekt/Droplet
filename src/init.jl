@@ -647,10 +647,12 @@ growPolymer!(poly)
 @assert poly.length == poly.maxlength
 ```
 """
-function growPolymer!(p::Polymer; maxAttempts::Int=1000000)
+function growPolymer!(p::Polymer; maxAttempts::Int=1000000, minAttempts::Int=1000)
     if p.length >= p.maxlength
         return p  # Already at max length
     end
+
+    @assert minAttempts < maxAttempts "Careful, minAttempts >= maxAttempts"
     
     # Save original chemical potentials
     originalChemPots = Dict{Int32, Float64}()
@@ -661,7 +663,7 @@ function growPolymer!(p::Polymer; maxAttempts::Int=1000000)
     end
     
     attempts = 0
-    while p.length < p.maxlength && attempts < maxAttempts
+    while p.length < p.maxlength && attempts < maxAttempts || attempts < minAttempts
         move!(p)
         attempts += 1
     end
