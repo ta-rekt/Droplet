@@ -1,6 +1,8 @@
 ### physical parameters
 # MARK: -Phys. params
 
+checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
+
 l = Lattice(;
     boxlength = 42,
     nspecies = 2
@@ -32,8 +34,10 @@ slist = [poly, bulk]
 # MARK: -Sim. params
 
 blurb = """
-Prewetting phase diagram with a crumpled polymer as the nucleating site.
+Crumpling polymer as the nucleating site of a droplet.
 """
+
+init_from_checkpoint = false
 
 t_max = 60    # runtime in minutes (initial test)
 step = 10000

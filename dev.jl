@@ -482,3 +482,77 @@ end
     find_patterns(poly)
 
 end
+
+## 1010011111110000100000101010111100010100001100101110000
+# Generate sphere and test histogram
+
+@time let
+    date = "20251208"
+    outdir = "data/$(date)/"
+    Base.Filesystem.mkpath(outdir)
+    outfile = "sphere_test"
+    outpath = string(outdir, outfile)
+
+    # create lattice
+    l = Lattice(;
+        boxlength = 40,
+        nspecies = 1
+    )
+
+    # create sphere with specified radius
+    sphere_radius = 8
+    sphere_length = Int32(floor(4/3 * π * sphere_radius^3))
+    
+    sphere = FastBulkMonomer(;
+        length = sphere_length,
+        initShape = "sphere",
+        initParams = sphere_radius,
+        initPos = [20, 20, 20]
+    )
+
+    # set up interactions (optional)
+    intPot!(sphere, -1.0)
+
+    # initialize
+    init!(l, [sphere])
+
+    # compute center of mass
+    cm = centerMass(sphere)
+    println("Sphere center of mass: ", cm)
+    println("Sphere has $(sphere.length) particles")
+
+    # extract coordinates for plotting
+    coords = zeros(sphere.length, 4)
+    extractCoords!(sphere, coords)
+    
+    # save coordinates to CSV
+    using DelimitedFiles
+    coord_file = string(outpath, "_coords.csv")
+    writedlm(coord_file, 
+             vcat(["x" "y" "z" "idx"], coords), 
+             ',')
+    println("Coordinates saved to: ", coord_file)
+
+    # compute distance histogram from center of mass
+    max_distance = Float64(sphere_radius * 2)
+    nbins = 50
+    hist = zeros(Float64, nbins)
+    
+    updateNormalHistogram!(sphere, hist, cm, max_distance)
+    
+    # create bin edges for plotting
+    bin_edges = range(0, max_distance, length=nbins+1)
+    bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in 1:nbins]
+    
+    # save histogram to CSV
+    hist_file = string(outpath, "_histogram.csv")
+    writedlm(hist_file, 
+             vcat(["distance" "count"], hcat(bin_centers, hist)), 
+             ',')
+    println("Histogram saved to: ", hist_file)
+
+    # also export to the standard format
+    exportSpecies!([sphere], string(outpath, "_frame1"))
+    
+    println("Done! Files saved to: ", outdir)
+end

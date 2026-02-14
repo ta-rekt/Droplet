@@ -5,16 +5,16 @@ checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 l = Lattice(;
     boxlength = 42,
-    nspecies = 3  # base (1), pattern (2), bulk (3)
+    nspecies = 2  # base (1), pattern (2), bulk (3)
 )
 
 # heterogeneous polymer with patterned regions
 poly = Polymer(;
-    length = 32,
-    maxlength = 120,
+    length = 18,
+    maxlength = 150,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern
-    initPos = [5, 21, 21],
+    initPos = [21, 21, 21],
     pattern = :uniform
 )
 
@@ -45,21 +45,21 @@ output metrics: bulk contact probability at TI site
 
 init_from_checkpoint = false
 
-t_max = 1    # runtime in minutes (initial test)
+t_max = 30    # runtime in minutes (initial test)
+t_burn_in = 0.6*t_max
 step = 10000
 
-vals = range(0.003, stop=0.03, length=16)  # parallelized parameters (concentration)
-alphas = zeros(16)
+vals = range(0.003, stop=0.05, length=32)  # parallelized parameters (concentration)
+alphas = zeros(32)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-alphas = [0.02]    # concentration
-betas = [-0.7]    # bulk-pattern interaction energy
+# alphas = [0.02]    # concentration
+betas = [-0.5]    # bulk-pattern interaction energy
 nparams = length(alphas)
-
 
 ### functions
 # MARK: -Functions
@@ -124,6 +124,12 @@ function target!(res, args...)
     max_droplet_size = []
     accs = []
     binding_activity = []
+    centers_of_mass = []
+    normalHist = zeros(100)
+    maxDistance = 15.0
+    denom = (4 * pi) .* range(0.0, stop=maxDistance, length=100) .^2
+    total = 0
+    histCount = 0
     
     # initial values
     push!(radii, radius(poly))
@@ -135,10 +141,10 @@ function target!(res, args...)
 
     # build polymer patterns
     patternVec = zeros(Int32, poly.maxlength)
-    p_start, p_end = 1, 20
-    transcr_init_site_length = 10
+    p_start, p_end = 1, 50
+    transcr_init_site_length = 2
 
-    patternVec[1:p_start-1] .= base.intIdx         # base type (40 beads)
+    # patternVec[1:p_start-1] .= base.intIdx         # base type (40 beads)
     patternVec[p_start:p_end] .= pattern.intIdx      # pattern 1 (8 beads)
     patternVec[p_end+1:poly.maxlength] .= base.intIdx
 
@@ -196,6 +202,14 @@ function target!(res, args...)
                             end
                         end
                     end
+
+                    if t_current >= t_burn_in
+                        # find pattern center of mass
+                        cm = centerMassPattern(poly, pattern.intIdx)
+                        histCount = updateNormalHistogram!(bulk, normalHist, cm, maxDistance)
+                        push!(centers_of_mass, cm)
+                        total += histCount
+                    end
                     
                     push!(binding_activity, contacts / transcr_init_site_length)
                     push!(max_droplet_size, maximum(droplet_sizes, init=1))
@@ -229,6 +243,8 @@ function target!(res, args...)
     res["hamiltonian_bulk"] = hams_bulk
     res["acceptance_rate"] = accs
     res["binding_activity"] = binding_activity
+    res["normal_density"] = normalHist ./ (total .* denom)
+    res["centers_of_mass"] = centers_of_mass
     
     # extract polymer coordinates into a matrix
     poly_coords = zeros(Int32, poly.length, 4)

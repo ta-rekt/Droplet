@@ -1,7 +1,8 @@
-export extractCoords!, centerMass, radius, radiusLine, radiusSphere, boxDensity, 
+export extractCoords!, centerMass, centerMassPattern, radius, radiusLine, radiusSphere, boxDensity, 
        axialDensity , radialDensity, extractCoords!, dfs, cc, dropletVolume, 
        dropletDensities, diluteDensity, nspeciesBound, get_pattern_centers,
-       patterns_in_contact, compute_contact_matrix!, find_patterns
+       patterns_in_contact, compute_contact_matrix!, find_patterns, updateDensityProfile!,
+       updateNormalHistogram!
 
 ############### Generic #############
 # MARK: -Generic
@@ -29,6 +30,28 @@ function centerMass(s::AbstractSpecies,
     end
 
     return cm ./ length(subset)
+end
+
+# returns the center of mass of a pattern along a polymer
+function centerMassPattern(poly::AbstractPolymer, patternIntIdx::Int32)
+    cm = zeros(3)
+    count = 0
+
+    if haskey(poly.patternTails, patternIntIdx)
+        
+        # walk backwards from tail 
+        tail_key = poly.patternTails[patternIntIdx]
+        current_key = tail_key
+
+        while current_key != 0 && poly.pos[current_key][6] == patternIntIdx
+            cm = cm .+ view(poly.pos[current_key], 1:3)
+            count += 1
+            # move to previous bead
+            current_key = poly.pos[current_key][4]
+        end
+    end
+
+    return count > 0 ? cm ./ count : cm
 end
 
 
@@ -481,4 +504,45 @@ function compute_contact_matrix!(poly::Polymer, contact_matrix::Matrix{Int},
     end
 
     return contact_matrix
+end
+
+# updates density profile by accumulating counts of occupied lattice sites
+# as a function of euclidean distance from a given origin (continuous position)
+# density[i] accumulates the count of occupied sites at distance floor(i-1) to floor(i) from origin
+# origin: continuous 3D position (Float64) from which to measure distances
+# WARNING: ignores periodic boundaries, assumes origin stays near lattice center
+function updateNormalHistogram!(
+        s::AbstractSpecies, 
+        hist::Vector{Float64}, 
+        origin::Vector{Float64},
+        maxDistance::Float64
+    )
+
+    nbins = length(hist)
+    count = 0
+    
+    # iterate through all occupied sites in the lattice
+    for (_, pos) in s.pos
+        # compute minimum image distance from origin to this lattice site
+        # accounting for periodic boundary conditions
+        dx = abs(Float64(pos[1]) - origin[1])
+        dy = abs(Float64(pos[2]) - origin[2])
+        dz = abs(Float64(pos[3]) - origin[3])
+        
+        # euclidean distance
+        dist = sqrt(dx^2 + dy^2 + dz^2)
+
+        dist > maxDistance && continue
+        
+        # bin index
+        bin_idx = Int(floor(nbins * dist / maxDistance)) + 1
+        
+        # accumulate count if within bounds of density vector
+        if bin_idx <= nbins
+            hist[bin_idx] += 1.0
+            count += 1
+        end
+    end
+    
+    return count
 end
