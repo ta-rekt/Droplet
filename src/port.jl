@@ -86,8 +86,26 @@ end
 function _restoreSpecies!(p::Polymer, d::Dict{Symbol,Any})
     _validateRestore(p, d, :Polymer)
     p.pos = d[:pos]; p.length = d[:length]; p.head = d[:head]
-    p.keys_vec = d[:keys_vec]; p.pattern = d[:pattern]
-    p.customPattern = d[:customPattern]; p.patternTails = d[:patternTails]
+    p.keys_vec = d[:keys_vec]
+    
+    # Determine whether to use new pattern or saved pattern
+    # Use new pattern if: customPattern is set on p AND differs from saved
+    useNewPattern = _shouldUseNewPattern(p, d)
+    
+    if useNewPattern
+        # Validate nMonomerTypes compatibility
+        _validatePatternCompatibility(p, d)
+        # Keep p.pattern, p.customPattern as-is (from fresh setup)
+        # Use special marker to signal that pattern needs reapplication
+        # (patternTails will be recalculated after lattice rebuild)
+        p.patternTails = Dict{Int32, Int32}(-1 => -1)  # marker for recalculation
+    else
+        # Use saved pattern configuration
+        p.pattern = d[:pattern]
+        p.customPattern = d[:customPattern]
+        p.patternTails = d[:patternTails]
+    end
+    
     p.baseIntIdx = d[:baseIntIdx]
     # scratch buffers (mirrors initSpecies!)
     p.tempVec = zeros(Int32, 3); p.bondVec = zeros(Int32, 3)
@@ -95,6 +113,46 @@ function _restoreSpecies!(p::Polymer, d::Dict{Symbol,Any})
     p.newPosj = zeros(Int32, 3); p.moveTypes = zeros(Int32, 4)
     p.moveTypeProbs = [0, PKINK, 0]; p.nTypes = zeros(Int32, 3)
     p.hastingsFactor = 1.0; p.deltaHP = 0.0
+end
+
+# Check if we should use the new pattern from the fresh species setup
+function _shouldUseNewPattern(p::Polymer, d::Dict{Symbol,Any})::Bool
+    # If new species has a custom pattern set, check if it differs from saved
+    if p.customPattern !== nothing
+        savedPattern = d[:customPattern]
+        if savedPattern === nothing
+            return true  # new has pattern, saved doesn't
+        end
+        if length(p.customPattern) != length(savedPattern)
+            return true  # different lengths
+        end
+        if p.customPattern != savedPattern
+            return true  # different content
+        end
+    end
+    # Also check if pattern type changed (e.g., :uniform -> :custom)
+    if p.pattern != d[:pattern] && p.pattern == :custom && p.customPattern !== nothing
+        return true
+    end
+    return false
+end
+
+# Validate that the new pattern is compatible with saved state
+function _validatePatternCompatibility(p::Polymer, d::Dict{Symbol,Any})
+    savedLen = d[:length]
+    if p.customPattern !== nothing && length(p.customPattern) < savedLen
+        error("New customPattern length ($(length(p.customPattern))) is shorter than saved polymer length ($savedLen)")
+    end
+    # Warn if nMonomerTypes might be mismatched (informational only)
+    if p.customPattern !== nothing
+        newTypes = Set(p.customPattern[1:savedLen])
+        validIntIdxs = Set(keys(p.monomers))
+        for t in newTypes
+            if !(t in validIntIdxs)
+                error("New pattern contains intIdx=$t which does not exist in p.monomers (valid: $(sort(collect(validIntIdxs))))")
+            end
+        end
+    end
 end
 
 function _restoreSpecies!(b::BulkMonomer, d::Dict{Symbol,Any})
@@ -118,6 +176,62 @@ function _restoreSpecies!(b::FastBulkMonomer, d::Dict{Symbol,Any})
     b.nnIdxs = zeros(Int32, 6); b.deltaH = 0.0; b.deltaHP = 0.0
     b.chemPot === nothing && (b.chemPot = 0.0)
     b.intPot === nothing && (b.intPot = 0.0)
+end
+
+# Reapply pattern to polymer pos after restore with new pattern
+# This updates pos[key][6] and recalculates patternTails
+function _reapplyPattern!(p::Polymer)
+    if p.customPattern === nothing
+        error("Cannot reapply pattern: customPattern is nothing")
+    end
+    
+    # Traverse chain and assign intIdx from customPattern to pos[key][6]
+    key = p.head
+    chainPos = 1
+    while key != 0 && chainPos <= p.length
+        newIntIdx = p.customPattern[chainPos]
+        p.pos[key][6] = newIntIdx
+        key = p.pos[key][5]
+        chainPos += 1
+    end
+    
+    # Recalculate patternTails (uses _initPatternTails! from init.jl)
+    _reinitPatternTails!(p)
+end
+
+# Reinitialize patternTails from current pos[key][6] assignments
+# Called after restoring with a new pattern
+function _reinitPatternTails!(p::Polymer)
+    # For uniform pattern, no tails to track
+    if p.nMonomerTypes == 1 || p.pattern == :uniform
+        p.patternTails = nothing
+        return
+    end
+    
+    p.patternTails = Dict{Int32, Int32}()
+    
+    key = p.head
+    while key != 0
+        currentIntIdx = p.pos[key][6]
+        nextKey = p.pos[key][5]
+        
+        # If not base type, check if this is the tail of a pattern block
+        if currentIntIdx != p.baseIntIdx
+            if nextKey == 0 || p.pos[nextKey][6] != currentIntIdx
+                p.patternTails[currentIntIdx] = key
+            end
+        end
+        key = nextKey
+    end
+end
+
+# Check if a polymer needs pattern reapplication after restore
+# Returns true if patternTails contains the special marker Dict{-1 => -1}
+function _needsPatternReapplication(p::Polymer)::Bool
+    p.patternTails isa Dict{Int32, Int32} && 
+        length(p.patternTails) == 1 && 
+        haskey(p.patternTails, Int32(-1)) && 
+        p.patternTails[Int32(-1)] == Int32(-1)
 end
 
 # rebuilds lattice, latS views, ghost, movableIdxs, KEYCOUNT, and ham from restored species
@@ -155,6 +269,12 @@ function _rebuildLattice!(l::Lattice, slist::Vector{<:AbstractSpecies})
         s.boxlength = l.boxlength
         s.name = string(s.name, "_", ALPHABET[i])
         l.speciesDir[s.id] = i
+
+        # For polymers with new patterns (marked by special patternTails), 
+        # reapply pattern to pos before populating lattice
+        if s isa AbstractPolymer && s.monomers !== nothing && _needsPatternReapplication(s)
+            _reapplyPattern!(s)
+        end
 
         # populate lattice from pos
         if s isa AbstractBulkMonomer

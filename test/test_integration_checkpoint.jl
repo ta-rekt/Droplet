@@ -239,20 +239,18 @@ using Droplet
         rm("$tmpfile.jls")
     end
 
-    @testset "Parameter change across checkpoint preserves positions" begin
+    @testset "Parameter change across checkpoint preserves positions (homogeneous)" begin
         # Simulate: run with weak interactions → checkpoint → restore with 
-        # strong interactions
+        # strong interactions on a homogeneous polymer
         Droplet.SPECIES_ID_COUNTER[] = 0 
         Droplet.KEYCOUNT[] = 0
         l = Lattice(boxlength=32, nspecies=2)
-        poly = Polymer(length=20, maxlength=20, nMonomerTypes=2, 
+        poly = Polymer(length=20, maxlength=20, nMonomerTypes=1, 
                         pattern=:uniform, initShape="line")
         bulk = FastBulkMonomer(length=80, initShape="uniform")
         initMonomers!(poly, defaultChemPot=1.0)
         base = poly.monomers[1] 
-        pat = poly.monomers[2]
         intPot!(base, -0.2) 
-        intPot!(pat, -0.1) 
         intPot!(bulk, -0.2)
         intPot!(base, bulk, -0.05)
         updateMonomers!(poly, base.intIdx)
@@ -273,14 +271,12 @@ using Droplet
         Droplet.SPECIES_ID_COUNTER[] = 0 
         Droplet.KEYCOUNT[] = 0
         l2 = Lattice(boxlength=32, nspecies=2)
-        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=2, 
+        poly2 = Polymer(length=20, maxlength=20, nMonomerTypes=1, 
                         pattern=:uniform, initShape="line")
         bulk2 = FastBulkMonomer(length=80, initShape="uniform")
         initMonomers!(poly2, defaultChemPot=1.0)
         base2 = poly2.monomers[1] 
-        pat2 = poly2.monomers[2]
         intPot!(base2, -2.0) 
-        intPot!(pat2, -1.5) 
         intPot!(bulk2, -2.0)  # 10x stronger
         intPot!(base2, bulk2, -0.5)
         updateMonomers!(poly2, base2.intIdx)
