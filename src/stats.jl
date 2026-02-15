@@ -524,7 +524,6 @@ function updateNormalHistogram!(
     # iterate through all occupied sites in the lattice
     for (_, pos) in s.pos
         # compute minimum image distance from origin to this lattice site
-        # accounting for periodic boundary conditions
         dx = abs(Float64(pos[1]) - origin[1])
         dy = abs(Float64(pos[2]) - origin[2])
         dz = abs(Float64(pos[3]) - origin[3])
@@ -533,13 +532,14 @@ function updateNormalHistogram!(
         dist = sqrt(dx^2 + dy^2 + dz^2)
 
         dist > maxDistance && continue
+        dist < 0.5 && continue
         
         # bin index
         bin_idx = Int(floor(nbins * dist / maxDistance)) + 1
         
         # accumulate count if within bounds of density vector
         if bin_idx <= nbins
-            hist[bin_idx] += 1.0
+            hist[bin_idx] += nbins / (4 * pi * dist^2 * maxDistance)
             count += 1
         end
     end

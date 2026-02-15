@@ -1,5 +1,4 @@
-
-export initHam!, initUniform!, initLine!, initBox!, initMovableSet!, 
+export initHam!, initUniform!, initLine!, initBox!, initSphere!, initMovableSet!, 
        initMonomers!, initShape!, initSpecies!, init!, updateMonomers!,
        growPolymer!, updatePattern!
 
@@ -104,6 +103,51 @@ function initBox!(pos::OrderedDict{Int32, Vector{Int32}},
                   startPos::Union{Nothing, Vector{Int32}},
                   newIndex::Int64)
     initBox!(pos, latticelength, length, startPos, Int32(newIndex))
+end
+
+function initSphere!(pos::OrderedDict{Int32, Vector{Int32}},
+                     initPos::Vector{Int32},
+                     boxlength::Int32,
+                     radius::Int32)
+    
+    # Validate that sphere doesn't cross periodic boundaries
+    center = initPos
+    if any(center .- radius .< 1) || any(center .+ radius .> boxlength)
+        error("Sphere with center at $center and radius $radius crosses box boundaries (boxlength=$boxlength)")
+    end
+    
+    # Generate sphere by checking distance from center
+    idx = Int32(1)
+    
+    # Iterate over bounding box around sphere
+    for x in (center[1] - radius):(center[1] + radius)
+        for y in (center[2] - radius):(center[2] + radius)
+            for z in (center[3] - radius):(center[3] + radius)
+                # Calculate distance from center
+                dx = x - center[1]
+                dy = y - center[2]
+                dz = z - center[3]
+                dist = sqrt(Float64(dx*dx + dy*dy + dz*dz))
+                
+                # Include point if within radius
+                if dist <= radius
+                    pos[idx] = zeros(Int32, 6)
+                    pos[idx][1] = x
+                    pos[idx][2] = y
+                    pos[idx][3] = z
+                    pos[idx][4] = idx - 1
+                    pos[idx][5] = idx + 1
+                    # pos[idx][6] = intIdx, assigned later
+                    idx += 1
+                end
+            end
+        end
+    end
+    
+    # Actual number of beads may differ slightly from theoretical volume
+    actual_length = idx - 1
+    
+    return pos, actual_length
 end
 
 # populate the set of movable particles of a species
@@ -433,6 +477,17 @@ function initShape!(s::AbstractBulkMonomer)
 
     elseif s.initShape == "line"    
         initLine!(s.pos, s.initPos, s.boxlength, s.length)
+
+    elseif s.initShape == "sphere"
+        if s.initPos === nothing
+            error("initShape='sphere' requires initPos to specify center")
+        end
+        if s.initParams === nothing
+            error("initShape='sphere' requires initParams to specify radius")
+        end
+        
+        _, actual_length = initSphere!(s.pos, s.initPos, s.boxlength, s.initParams)
+        s.length = actual_length  # Update length to actual sphere size
 
     elseif s.initShape == "box"
         beadsPerBox = s.length

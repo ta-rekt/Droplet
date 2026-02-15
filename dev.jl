@@ -305,47 +305,6 @@ end
     # plot(plots[1], plots[2], plots[3]; layout = (3, 1), size = (600, 600))
 end
 
-## 1010011111110000100000101010111100010100001100101110000
-# Multi-component interactions
-
-# to test:
-# * exp: fastbulkMonomer flory huggins (insurance)
-# * exp: filament prewetting (insurance)
-#   * vary concentration and look at axial/radial density, compare with control
-# * exp: prewet enhancers (insurance)
-#   * radial densities of two nearby enhancers
-#   * effective force, comparison with electrostatic
-
-# to implement
-# * site occupation time-series and mean -> BP estimate of concentration
-# * distribution of densities
-#   * average histogram of lattice densities over all sites, should bifurcate
-# * exp: nucleation sites prevent Ostwald ripening (insurance)
-#   * plot n_enhancers vs. dilute density compared with critical concentration 
-
-# * reproduce Mason's results
-
-# TODO:
-# the idea: I'd like to be able to parallelize setting up experiments and 
-# working on new features. I need to develop a small preliminary workflow
-# where I can describe in detail the experiment I need to set up, and have 
-# the agent make a proposal. the experiment proposal format needs to be
-# designed, it must consist at mimimum of: creating a spec file, a summary
-# of the experiment, and a description of the resulting plots, expected
-# results, the technical specs such as number of cores to run on, expected
-# simulation time, varied parameters, type of output data, etc.
-
-# - set up paper airplane agentic experimental pipeline (run locally for now)
-#   - run design iterations to produce description files of the experiment 
-#     design/execution pipeline. write detailed context, let it ask questions
-# - try it on a dummy experiment for validation
-# - use it to design the bulk-mediated polymer collapse experiment
-# - run bulk-mediated polymer collapse experiment
-# - implement heterogeneous polymer
-# - test heterogeneous polymer
-# - expand agentic pipeline to cluster
-
-
 @time let
     date = "20251208"
     outdir = "data/$(date)/"
@@ -500,9 +459,10 @@ end
     )
 
     # create sphere with specified radius
-    sphere_radius = 8
+    sphere_radius = 5
     sphere_length = Int32(floor(4/3 * π * sphere_radius^3))
-    
+    normalHist = zeros(100)
+
     sphere = FastBulkMonomer(;
         length = sphere_length,
         initShape = "sphere",
@@ -510,49 +470,42 @@ end
         initPos = [20, 20, 20]
     )
 
-    # set up interactions (optional)
-    intPot!(sphere, -1.0)
-
     # initialize
     init!(l, [sphere])
 
+    @show sphere.length
+
     # compute center of mass
     cm = centerMass(sphere)
-    println("Sphere center of mass: ", cm)
-    println("Sphere has $(sphere.length) particles")
+    maxDistance = 10.0
+    total = 0.0
+    
+    for _ in range(1, stop=10000)
+        cm .+= rand(Normal(0.0, 0.005), 3)
+        total += updateNormalHistogram!(sphere, normalHist, cm, maxDistance)
+    end
 
-    # extract coordinates for plotting
-    coords = zeros(sphere.length, 4)
-    extractCoords!(sphere, coords)
-    
-    # save coordinates to CSV
-    using DelimitedFiles
-    coord_file = string(outpath, "_coords.csv")
-    writedlm(coord_file, 
-             vcat(["x" "y" "z" "idx"], coords), 
-             ',')
-    println("Coordinates saved to: ", coord_file)
-
-    # compute distance histogram from center of mass
-    max_distance = Float64(sphere_radius * 2)
-    nbins = 50
-    hist = zeros(Float64, nbins)
-    
-    updateNormalHistogram!(sphere, hist, cm, max_distance)
-    
-    # create bin edges for plotting
-    bin_edges = range(0, max_distance, length=nbins+1)
+    # create bin edges and centers for plotting
+    nbins = length(normalHist)
+    bin_edges = range(0, maxDistance, length=nbins+1)
     bin_centers = [(bin_edges[i] + bin_edges[i+1])/2 for i in 1:nbins]
+    normalHist ./= total
+    normalHist .*= sphere.length
     
-    # save histogram to CSV
-    hist_file = string(outpath, "_histogram.csv")
-    writedlm(hist_file, 
-             vcat(["distance" "count"], hcat(bin_centers, hist)), 
-             ',')
-    println("Histogram saved to: ", hist_file)
+    # create histogram plot
+    pl = plot(
+        bin_centers, normalHist,
+        label="Radial density",
+        xlabel="Distance from center (lattice units)",
+        ylabel="Number of particles",
+        title="Sphere radial density profile",
+        legend=:topright,
+        color=:blue,
+        linewidth=2
+    )
 
+    display(pl)
+    
     # also export to the standard format
     exportSpecies!([sphere], string(outpath, "_frame1"))
-    
-    println("Done! Files saved to: ", outdir)
 end
