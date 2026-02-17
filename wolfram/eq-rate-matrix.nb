@@ -1,0 +1,248 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 14.2' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[      8254,        240]
+NotebookOptionsPosition[      7369,        217]
+NotebookOutlinePosition[      7761,        233]
+CellTagsIndexPosition[      7718,        230]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"(*", " ", 
+  RowBox[{
+  "Solving", " ", "for", " ", "a", " ", "rate", " ", "matrix", " ", "from", " ",
+    "energies"}], " ", "*)"}]], "Input",
+ CellChangeTimes->{{3.980257151917657*^9, 3.980257161564102*^9}},
+ CellLabel->"In[3]:=",ExpressionUUID->"b24c91d0-51bd-49c0-8b69-1a8412a7b728"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", 
+   RowBox[{"Detailed", "-", 
+    RowBox[{
+     RowBox[{"balance", "/", "ratio"}], " ", "equations"}]}], "*)"}], 
+  RowBox[{
+   RowBox[{
+    RowBox[{"eqs1", "=", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"c", "*", 
+         RowBox[{"kbOff", "/", "kuOff"}]}], "==", 
+        RowBox[{"Exp", "[", 
+         RowBox[{
+          RowBox[{"-", "\[Beta]"}], " ", 
+          RowBox[{"(", 
+           RowBox[{"eBI", "-", "eUI"}], ")"}]}], "]"}]}], ",", 
+       RowBox[{
+        RowBox[{"kOnb", "/", "kOffb"}], "==", 
+        RowBox[{"Exp", "[", 
+         RowBox[{
+          RowBox[{"-", "\[Beta]"}], " ", 
+          RowBox[{"(", 
+           RowBox[{"eBA", "-", "eBI"}], ")"}]}], "]"}]}], ",", 
+       RowBox[{
+        RowBox[{"c", "*", 
+         RowBox[{"kbOn", "/", "kuOn"}]}], "==", 
+        RowBox[{"Exp", "[", 
+         RowBox[{
+          RowBox[{"-", "\[Beta]"}], " ", 
+          RowBox[{"(", 
+           RowBox[{"eBA", "-", "eUA"}], ")"}]}], "]"}]}], ",", 
+       RowBox[{
+        RowBox[{"kOnu", "/", "kOffu"}], "==", 
+        RowBox[{"Exp", "[", 
+         RowBox[{
+          RowBox[{"-", "\[Beta]"}], " ", 
+          RowBox[{"(", 
+           RowBox[{"eUI", "-", "eUA"}], ")"}]}], "]"}]}]}], "}"}]}], ";"}], 
+   "\[IndentingNewLine]", "\n", 
+   RowBox[{"(*", 
+    RowBox[{"Linear", " ", 
+     RowBox[{"(", 
+      RowBox[{"flux", "-", "balance"}], ")"}], " ", "equations"}], "*)"}], "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"eqs2", "=", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{
+        RowBox[{
+         RowBox[{"c", "*", "kbOff", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eUI"}], "]"}]}], "+", 
+         RowBox[{"kOffb", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eBA"}], "]"}]}]}], "==", 
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"c", "*", "kbOff"}], "+", "kOffb"}], ")"}], "*", 
+         RowBox[{"Exp", "[", 
+          RowBox[{
+           RowBox[{"-", "\[Beta]"}], "*", "eBI"}], "]"}]}]}], ",", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"c", "*", "kbOn", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eUA"}], "]"}]}], "+", 
+         RowBox[{"kbOn", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eBI"}], "]"}]}]}], "==", 
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"c", "*", "kbOn"}], "+", "kOnb"}], ")"}], "*", 
+         RowBox[{"Exp", "[", 
+          RowBox[{
+           RowBox[{"-", "\[Beta]"}], "*", "eBA"}], "]"}]}]}], ",", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"kuOn", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eUI"}], "]"}]}], "+", 
+         RowBox[{"kuOn", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eBA"}], "]"}]}]}], "==", 
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{
+           RowBox[{"c", "*", "kOnu"}], "+", "kuOn"}], ")"}], "*", 
+         RowBox[{"Exp", "[", 
+          RowBox[{
+           RowBox[{"-", "\[Beta]"}], "*", "eUA"}], "]"}]}]}], ",", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"kuOff", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eUA"}], "]"}]}], "+", 
+         RowBox[{"kuOff", "*", 
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Beta]"}], "*", "eBI"}], "]"}]}]}], "==", 
+        RowBox[{
+         RowBox[{"(", 
+          RowBox[{"kOffu", "+", "kuOff"}], ")"}], "*", 
+         RowBox[{"Exp", "[", 
+          RowBox[{
+           RowBox[{"-", "\[Beta]"}], "*", "eUI"}], "]"}]}]}], ",", 
+       RowBox[{"kuOff", "==", "1"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
+   "\[IndentingNewLine]", 
+   RowBox[{"(*", 
+    RowBox[{
+     RowBox[{"All", " ", "equations", " ", "together"}], ",", 
+     RowBox[{"if", " ", "you", " ", "want"}]}], "*)"}], "\n", 
+   RowBox[{
+    RowBox[{"eqs", "=", 
+     RowBox[{"Join", "[", 
+      RowBox[{"eqs1", ",", "eqs2"}], "]"}]}], ";"}], "\n"}]}]], "Input",
+ CellChangeTimes->{{3.980257164567622*^9, 3.980257164567667*^9}, {
+  3.9802573975522118`*^9, 3.980257491468493*^9}, {3.980257575051593*^9, 
+  3.9802576572492943`*^9}, {3.980259445374867*^9, 3.980259450397545*^9}},
+ CellLabel->"In[1]:=",ExpressionUUID->"d92c32ae-c8f0-4fe8-920c-09366896ee78"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"solRates", "=", 
+   RowBox[{"Solve", "[", 
+    RowBox[{"eqs", ",", 
+     RowBox[{"{", 
+      RowBox[{
+      "kOnb", ",", "kOffb", ",", "kOnu", ",", "kOffu", ",", "kbOn", ",", 
+       "kbOff", ",", "kuOn", ",", "kuOff"}], "}"}]}], "]"}]}], 
+  "\n"}]], "Input",
+ CellChangeTimes->{{3.980257677427696*^9, 3.9802577089191103`*^9}},
+ CellLabel->"In[4]:=",ExpressionUUID->"00992e43-9669-4109-a007-257b6e88bbae"],
+
+Cell[BoxData[
+ RowBox[{"{", "}"}]], "Output",
+ CellChangeTimes->{3.980257710208067*^9, 3.980259453459256*^9},
+ CellLabel->"Out[4]=",ExpressionUUID->"516c177e-53a1-4d9c-a14a-4afab2f8fb2b"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"assumptions", "=", 
+    RowBox[{
+     RowBox[{"c", ">", "0"}], "&&", 
+     RowBox[{"\[Beta]", ">", "0"}], "&&", 
+     RowBox[{"kbOn", ">", "0"}], "&&", 
+     RowBox[{"kbOff", ">", "0"}], "&&", 
+     RowBox[{"kuOn", ">", "0"}], "&&", 
+     RowBox[{"kuOff", ">", "0"}], "&&", 
+     RowBox[{"kOnb", ">", "0"}], "&&", 
+     RowBox[{"kOffb", ">", "0"}], "&&", 
+     RowBox[{"kOnu", ">", "0"}], "&&", 
+     RowBox[{"kOffu", ">", "0"}]}]}], ";"}], "\n"}], "\[IndentingNewLine]", 
+ RowBox[{"solRatesAssuming", "=", 
+  RowBox[{"Assuming", "[", 
+   RowBox[{"assumptions", ",", 
+    RowBox[{"Reduce", "[", 
+     RowBox[{"eqs", ",", 
+      RowBox[{"{", 
+       RowBox[{
+       "kuOff", ",", "kOnb", ",", "kOffb", ",", "kOnu", ",", "kOffu", ",", 
+        "kbOn", ",", "kbOff", ",", "kuOn"}], "}"}], ",", "Reals"}], "]"}]}], 
+   "]"}]}]}], "Input",
+ CellChangeTimes->{{3.980257781295442*^9, 3.980257819952965*^9}, {
+  3.9802594714065447`*^9, 3.980259475541677*^9}},
+ CellLabel->"In[7]:=",ExpressionUUID->"ff4dcdaf-491d-445f-944a-7d0771e11aa0"],
+
+Cell[BoxData["$Aborted"], "Output",
+ CellChangeTimes->{3.9802594692608023`*^9, 3.980259506038822*^9},
+ CellLabel->"Out[8]=",ExpressionUUID->"794d39cd-4a9d-48b8-b17b-6edc265996b0"]
+}, Open  ]]
+},
+WindowSize->{720, 762},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"14.2 for Linux x86 (64-bit) (December 26, 2024)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"95a428cc-19aa-47b3-abf8-9ff1d097fcd7"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[554, 20, 311, 6, 29, "Input",ExpressionUUID->"b24c91d0-51bd-49c0-8b69-1a8412a7b728"],
+Cell[868, 28, 4534, 130, 314, "Input",ExpressionUUID->"d92c32ae-c8f0-4fe8-920c-09366896ee78"],
+Cell[CellGroupData[{
+Cell[5427, 162, 440, 11, 49, "Input",ExpressionUUID->"00992e43-9669-4109-a007-257b6e88bbae"],
+Cell[5870, 175, 187, 3, 33, "Output",ExpressionUUID->"516c177e-53a1-4d9c-a14a-4afab2f8fb2b"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[6094, 183, 1077, 27, 129, "Input",ExpressionUUID->"ff4dcdaf-491d-445f-944a-7d0771e11aa0"],
+Cell[7174, 212, 179, 2, 33, "Output",ExpressionUUID->"794d39cd-4a9d-48b8-b17b-6edc265996b0"]
+}, Open  ]]
+}
+]
+*)
+
