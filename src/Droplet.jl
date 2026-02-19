@@ -18,5 +18,6 @@ module Droplet
     include("init.jl")
     include("utils.jl")
     include("stats.jl")
+    include("ctmc.jl")
 
 end # module Droplet

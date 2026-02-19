@@ -509,3 +509,121 @@ end
     # also export to the standard format
     exportSpecies!([sphere], string(outpath, "_frame1"))
 end
+
+## 1010011111110000100000101010111100010100001100101110000
+# Compute Fisher information rate from a concentration profile
+
+let
+    using JSON
+    using Plots
+    
+    # Load the JSON data
+    json_path = "data/20260218/spherical_phi_vs_phi_inf_run_interface1.json"
+    data = JSON.parsefile(json_path)
+    
+    # Extract the arrays
+    phi_inf_values = data["phi_inf_values"]
+    phi_at_probe = data["phi_at_probe"]
+    fisher_at_probe = zeros(length(phi_at_probe))
+    activity_at_probe = zeros(length(phi_at_probe))
+
+    ## load circuit specifications
+    circuits_file = "/home/tohme/.julia/dev/Droplet/spec/circuits.json"
+    circuit_specs = Dict()
+
+    open(circuits_file, "r") do f
+        circuit_specs = JSON.parse(f)
+    end
+
+    circuitId = "1bs"
+    circuit = circuit_specs[circuitId]
+    edges = circuit["edges"]
+    input_edges = circuit["input_edges"]
+    nstates = circuit["nstates"]
+    off_ind = circuit["off_indicator"]
+    on_ind = BitArray(1 .- off_ind)
+    start_state = circuit["start_state"]
+    hitting_set = circuit["hitting_set"]
+
+    @show on_ind
+
+    reltol = 1e-10
+    eps = 1e-15
+
+    d0 = OneBurstDecoyModel(;
+        circuitId = circuitId,
+        nstates = nstates,
+        edges = edges,
+        input_edges = input_edges,
+        logrates = nothing,
+        cr = 1,
+        cw = nothing,
+        gamma = nothing,
+        ind_set = on_ind,
+        start_state = start_state,
+        hitting_set = hitting_set,
+        eps = eps,
+        reltol = reltol,
+        maxevals = nothing,
+    )
+
+    kboff, kuoff, konb, koffb, kuon, kbon, koffu = 1, 1e-5, 1, 1e-5, 1, 1e-5, 1
+    d0.logrates = log10.([kboff, kuoff, konb, koffb, kuon, kbon, koffu])
+
+    d1 = deepcopy(d0)
+    d2 = deepcopy(d0)
+
+    for (idx, phi) in enumerate(phi_at_probe)    
+
+        d0.cr = phi
+        h = 0.02 * d0.cr
+        d1.cr = d0.cr - h
+        d2.cr = d0.cr - 2*h
+
+        initAcc!(d0)
+        initAcc!(d1)
+        initAcc!(d2)
+
+        activity_at_probe[idx] = pi_on(d0)
+        fisher_at_probe[idx] = FisherRateAcc(d0, d1, d2)
+    end
+    
+    # Create the plot
+    pl1 = plot(
+        phi_inf_values, phi_at_probe,
+        xlabel="\$\\phi_\\infty\$",
+        ylabel="\$\\phi(z=0.2R)\$",
+        title="Probe concentration vs bulk concentration",
+        legend=false,
+        linewidth=2,
+        color=:blue,
+        marker=:o,
+        markersize=3
+    )
+
+    pl2 = plot(
+        phi_inf_values, activity_at_probe,
+        xlabel="\$\\phi_\\infty\$",
+        ylabel="\$p_{ss}(\\phi(z=0.2R))\$",
+        title="Steady-state activity vs bulk concentration",
+        legend=false,
+        linewidth=2,
+        color=:blue,
+        marker=:o,
+        markersize=3
+    )
+
+    pl3 = plot(
+        phi_inf_values, fisher_at_probe,
+        xlabel="\$\\phi_\\infty\$",
+        ylabel="\$\\dot{F}(\\phi_\\infty)\$",
+        title="Fisher rate vs bulk concentration",
+        legend=false,
+        linewidth=2,
+        color=:blue,
+        marker=:o,
+        markersize=3
+    )
+    
+    plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 600))
+end

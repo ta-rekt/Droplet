@@ -1,0 +1,174 @@
+{
+    "1bs": {
+        "nstates": 4,
+        "edges": [
+            [1, 2],
+            [2, 1],
+            [2, 3],
+            [3, 2],
+            [3, 4],
+            [4, 3],
+            [4, 1],
+            [1, 4]
+        ],
+        "input_edges": [
+            [1, 2],
+            [4, 3]
+        ],
+        "weight_labels": [
+            "c*kboff",
+            "kuoff",
+            "konb",
+            "koffb",
+            "kuon",
+            "c*kbon",
+            "koffu",
+            "konu"
+        ],
+        "off_indicator": [1, 1, 0, 0],
+        "hitting_set": [3, 4],
+        "start_state": 1,
+        "vertex_partition": [
+            [4, 1],
+            [3, 2]
+        ]
+    },
+    "2bs_no_konu":{
+        "nstates": 6,
+        "edges": [
+            [5, 1], [1, 5],
+            [2, 6], [6, 2],
+            [1, 2], [1, 3],
+            [2, 4], [3, 1],
+            [3, 4], [4, 2],
+            [6, 5]
+        ],
+        "input_edges": [
+            [5, 1], [1, 3], [6, 2], [2, 4]
+        ],
+        "weight_labels": ["c*kboff2", "kuoff", "kuon", "c*kbon2", "kon1b", "c*kboff", "c*kbon", 
+            "kuoff2", "kon2b", "kuon2", "koffu"],
+        "off_indicator": [1, 0, 1, 0, 1, 0],
+        "hitting_set": [6,2,4],
+        "start_state": 5,
+        "vertex_partition": [[6, 5], [2, 1], [4, 3]]
+    },
+    "3bs_no_konu":{
+        "nstates": 8,
+        "edges": [
+            [5, 1], [1, 5],
+            [2, 6], [6, 2],
+            [1, 2], [1, 3],
+            [2, 4], [3, 1],
+            [3, 4], [4, 2],
+            [6, 5], [3, 7],
+            [7, 3], [4, 8],
+            [8, 4], [7, 8]
+        ],
+        "input_edges": [
+            [5, 1], [1, 3], [3, 7], [6, 2], [2, 4], [4, 8]
+        ],
+        "weight_labels": ["c*kboff3", "kuoff", "kuon", "c*kbon3", "kon1b", "c*kboff2", "c*kbon2", 
+        "kuoff2", "kon2b", "kuon2", "koffu", "c*kboff", "kuoff3", "c*kbon", "kuon3", "kon3b"],
+        "off_indicator": [1, 0, 1, 0, 1, 0, 1, 0],
+        "hitting_set": [6,2,4,8],
+        "start_state": 5,
+        "vertex_partition": [[6, 5], [2, 1], [4, 3], [8, 7]]
+    },
+    "1bs_decoy": {
+        "nstates": 6,
+        "edges": [
+            [1, 2], [2, 1],
+            [1, 6], [6, 1],
+            [4, 3], [3, 4],
+            [4, 5], [5, 4],
+            [6, 5], [4, 1],
+            [2, 3], [1, 4]
+        ],
+        "input_edges": [[1,2], [4,3]],
+        "weight_labels": ["c*kboff", "kuoff", "c2*kboff", "\\[Gamma]*kuoff", "c*kbon", "kuon", 
+        "c2*kbon", "\\[Gamma]*kuon", "konb", "koffu", "konb", "konu"],
+        "off_indicator": [1, 1, 0, 0, 0, 1],
+        "hitting_set": [5,4,3],
+        "start_state": 1,
+        "vertex_partition": [[5, 6], [4, 1], [3, 2]]
+    },
+    "1bs_decoy_no_konu": {
+        "nstates": 6,
+        "edges": [
+            [1, 2], [2, 1],
+            [1, 6], [6, 1],
+            [4, 3], [3, 4],
+            [4, 5], [5, 4],
+            [6, 5], [4, 1],
+            [2, 3]
+        ],
+        "input_edges": [[1,2], [4,3]],
+        "weight_labels": ["c*kboff", "kuoff", "c2*kboff", "\\[Gamma]*kuoff", "c*kbon", "kuon", 
+        "c2*kbon", "\\[Gamma]*kuon", "konb", "koffu", "konb"],
+        "off_indicator": [1, 1, 0, 0, 0, 1],
+        "hitting_set": [5,4,3],
+        "start_state": 1,
+        "vertex_partition": [[5, 6], [4, 1], [3, 2]]
+    },
+    "1bs_decoy_no_konu_new": {
+        "nstates": 7,
+        "edges": [
+            [1, 2], [2, 1],
+            [1, 6], [6, 1],
+            [7, 3], [3, 7],
+            [4, 5], [5, 4],
+            [6, 5], [7, 1],
+            [2, 3], [4, 1],
+            [7, 5], [4, 3]
+        ],
+        "input_edges": [[1,2], [4,3], [7,3]],
+        "weight_labels": ["c*kboff", "kuoff", "c2*kboff", "\\[Gamma]*kuoff", "c*kbon", "kuon", 
+        "c2*kbon", "\\[Gamma]*kuon", "konb", "koffu", "konb", "koffu", "c2*kbon", "c*kbon"],
+        "off_indicator": [1,1,0,0,0,1,0],
+        "hitting_set": [5,4,7,3],
+        "start_state": 1,
+        "vertex_partition": [[5, 6], [4, 7, 1], [3, 2]]
+    },
+    "6bs": {
+        "nstates": 14,
+        "input_edges": [[1, 2], [2, 3], 
+                        [3, 4], [4, 5], 
+                        [5, 6], [6, 7], 
+                        [8, 9], [9, 10], 
+                        [10, 11], [11, 12], 
+                        [12, 13], [13, 14]],
+        "off_indicator":[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1],
+        "edges": [
+            [1,  2],  [2,  1],
+            [2,  3],  [3,  2],
+            [3,  4],  [4,  3],
+            [4,  5],  [5,  4],
+            [5,  6],  [6,  5],
+            [6,  7],  [7,  6],
+            [8,  9],  [9,  8],
+            [9,  10], [10, 9],
+            [10, 11], [11, 10],
+            [11, 12], [12, 11],
+            [12, 13], [13, 12],
+            [13, 14], [14, 13],
+            [1,  8],  [8,  1],
+            [2,  9],  [9,  2],
+            [3,  10], [10, 3],
+            [4,  11], [11, 4],
+            [5,  12], [12, 5],
+            [6,  13], [13, 6],
+            [7,  14], [14, 7]
+        ],
+        "start_state": 1,
+        "hitting_set": [8, 9, 10, 11, 12, 13, 14],
+        "vertex_partition": [[8, 1], [9, 2], [10, 3], [11, 4], [12, 5], [13, 6], [14, 7]],
+        "weight_labels": [
+            "c*kboff1", "kuoff1", "c*kboff2", "kuoff2", "c*kboff3", "kuoff3", "c*kboff4", "kuoff4", 
+            "c*kboff5", "kuoff5", "c*kboff6", "kuoff6", "c*kbon1", "kuon1", "c*kbon2", "kuon2", 
+            "c*kbon3", "kuon3", "c*kbon4", "kuon4", "c*kbon5", "kuon5", "c*kbon6", "kuon6", 
+            "kon1", "koff1", "kon2", "koff2", "kon3", "koff3", "kon4", "koff4", 
+            "kon5", "koff5", "kon6", "koff6", "kon7", "koff7"
+        ]
+    }
+}
