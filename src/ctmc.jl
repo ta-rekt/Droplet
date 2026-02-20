@@ -99,8 +99,8 @@ function sharpness(d0::OneBurstDecoyModel,
 
     @assert d0.cr > d1.cr
     @assert d1.cr > d2.cr
-    h = d0.cr - d1.cr
-    @assert d2.cr ≈ d0.cr - 2*h
+    h = d0.cw - d1.cw
+    @assert d2.cw ≈ d0.cw - 2*h
 
     pi0 = pi_on(d0)
     pi1 = pi_on(d1)
@@ -111,7 +111,7 @@ function sharpness(d0::OneBurstDecoyModel,
     dpion = pi2 - 4*pi1 + 3*pi0
     dpion /= (2 * h)
 
-    return abs(d0.cr * dpion)
+    return abs(d0.cw * dpion)
 end
 
 ## . - -- .- .-.- . .- .-- -.- .- .- - -.-.... - -.-

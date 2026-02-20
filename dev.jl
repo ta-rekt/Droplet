@@ -510,13 +510,13 @@ end
     exportSpecies!([sphere], string(outpath, "_frame1"))
 end
 
-## 1010011111110000100000101010111100010100001100101110000
-# Compute Fisher information rate from a concentration profile
+# Testing interpolations
 
 let
     using JSON
     using Plots
-    
+    using Interpolations
+
     # Load the JSON data
     json_path = "data/20260218/spherical_phi_vs_phi_inf_run_interface1.json"
     data = JSON.parsefile(json_path)
@@ -524,8 +524,34 @@ let
     # Extract the arrays
     phi_inf_values = data["phi_inf_values"]
     phi_at_probe = data["phi_at_probe"]
+    phi_func = LinearInterpolation(phi_inf_values, phi_at_probe, extrapolation_bc=Line())
+
+    # @show phi_inf_values
+    @show phi_func(0.237)
+
+end
+
+## 1010011111110000100000101010111100010100001100101110000
+# Compute Fisher information rate from a concentration profile
+
+let
+    using JSON
+    using Plots
+    using Interpolations
+
+    # Load the JSON data
+    json_path = "data/20260218/spherical_phi_vs_phi_inf_run_ledge7.json"
+    data = JSON.parsefile(json_path)
+    
+    # Extract the arrays
+    phi_inf_values = data["phi_inf_values"]
+    phi_at_probe = data["phi_at_probe"]
+    phi_func = LinearInterpolation(phi_inf_values, phi_at_probe, extrapolation_bc=Line())
+
     fisher_at_probe = zeros(length(phi_at_probe))
+    fisher_at_probe_control = zeros(length(phi_at_probe))
     activity_at_probe = zeros(length(phi_at_probe))
+    activity_at_probe_control = zeros(length(phi_at_probe))
 
     ## load circuit specifications
     circuits_file = "/home/tohme/.julia/dev/Droplet/spec/circuits.json"
@@ -544,8 +570,6 @@ let
     on_ind = BitArray(1 .- off_ind)
     start_state = circuit["start_state"]
     hitting_set = circuit["hitting_set"]
-
-    @show on_ind
 
     reltol = 1e-10
     eps = 1e-15
@@ -576,9 +600,15 @@ let
     for (idx, phi) in enumerate(phi_at_probe)    
 
         d0.cr = phi
-        h = 0.02 * d0.cr
-        d1.cr = d0.cr - h
-        d2.cr = d0.cr - 2*h
+        d0.cw = phi_inf_values[idx]
+        
+        # take a step in phi_infty
+        h = 0.02 * d0.cw
+        d1.cw = d0.cw - h
+        d2.cw = d0.cw - 2*h
+
+        d1.cr = phi_func(d1.cw)
+        d2.cr = phi_func(d2.cw)
 
         initAcc!(d0)
         initAcc!(d1)
@@ -586,6 +616,25 @@ let
 
         activity_at_probe[idx] = pi_on(d0)
         fisher_at_probe[idx] = FisherRateAcc(d0, d1, d2)
+    end
+
+    for (idx, phi) in enumerate(phi_inf_values)    
+
+        d0.cr = phi
+        h = 0.02 * d0.cr
+        d1.cr = d0.cr - h
+        d2.cr = d0.cr - 2*h
+
+        d0.cw = d0.cr
+        d1.cw = d1.cr
+        d2.cw = d2.cr
+
+        initAcc!(d0)
+        initAcc!(d1)
+        initAcc!(d2)
+
+        activity_at_probe_control[idx] = pi_on(d0)
+        fisher_at_probe_control[idx] = FisherRateAcc(d0, d1, d2)
     end
     
     # Create the plot
@@ -595,22 +644,26 @@ let
         ylabel="\$\\phi(z=0.2R)\$",
         title="Probe concentration vs bulk concentration",
         legend=false,
-        linewidth=2,
-        color=:blue,
-        marker=:o,
-        markersize=3
+        linewidth=1,
+        color=:blue
     )
 
     pl2 = plot(
         phi_inf_values, activity_at_probe,
         xlabel="\$\\phi_\\infty\$",
-        ylabel="\$p_{ss}(\\phi(z=0.2R))\$",
+        ylabel="\$p_{ss}(\\phi(r_0=0.2R))\$",
         title="Steady-state activity vs bulk concentration",
         legend=false,
-        linewidth=2,
-        color=:blue,
-        marker=:o,
-        markersize=3
+        linewidth=1,
+        color=:red
+    )
+
+    plot!(
+        pl2,
+        phi_inf_values, activity_at_probe_control,
+        linewidth=1,
+        color=:red,
+        linestyle=:dash
     )
 
     pl3 = plot(
@@ -619,11 +672,33 @@ let
         ylabel="\$\\dot{F}(\\phi_\\infty)\$",
         title="Fisher rate vs bulk concentration",
         legend=false,
-        linewidth=2,
-        color=:blue,
-        marker=:o,
-        markersize=3
+        label="using \$\\phi(r_0)\$",
+        linewidth=1,
+        color=:green
     )
+
+    plot!(
+        pl3,
+        phi_inf_values, fisher_at_probe_control,
+        linewidth=1,
+        color=:green,
+        linestyle=:dash,
+        label="control",
+        legend=:left,
+        yscale=:log
+    )
+
+    # plot!(
+    #     pl3,
+    #     phi_inf_values, kboff .* phi_inf_values,
+    #     linewidth=1,
+    #     color=:green,
+    #     linestyle=:dot
+    # )
     
-    plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 600))
+    hline!([0.16])
+    
+    plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 800))
+
+    savefig("media/figures/20260218/fisher_rate_with_local_gradient_ledge7.png")
 end
