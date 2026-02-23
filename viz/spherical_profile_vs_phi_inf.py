@@ -58,17 +58,17 @@ def solve_with_previous(p: Parameters, prev_sol, tol: float = 1e-6):
 
 def main():
     # Sphere radius
-    R = 5.0
+    R = 5.6
     
     # Domain size
     L = 15.0
     
     # Distance from surface (as fraction of R)
     z_frac = 0.2
-    z_probe = z_frac * R  # Actual distance
+    z_probe = 6 - R  # Actual distance
     
     # Range of phi_inf values to scan (more points for smoother curve)
-    phi_inf_values = np.linspace(0.01, 0.173, 50)
+    phi_inf_values = np.linspace(0.01, 0.244, 50)
     
     # Storage for results
     phi_at_probe = []
@@ -85,18 +85,18 @@ def main():
     prev_sol = None  # Track previous solution for continuation
     
     date = "20260218"
-    run = "_ledge9"
+    run = "_enhancer2_collapsed"
     
     for phi_inf in phi_inf_values:
         p = Parameters(
-            chi_b=2.4,
+            chi_b=2.2,
             chi_m=1.0,
             omega_m=-0.1,
-            omega_b=-0.6,
+            omega_b=-0.7,
             chi_bb=-0.0,
             chi_bm=-0.0,
             phi_inf=phi_inf,
-            kappa=1.0,
+            kappa=1.2,
             L=L,
             R=R,
         )

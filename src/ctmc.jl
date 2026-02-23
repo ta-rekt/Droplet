@@ -97,8 +97,7 @@ function sharpness(d0::OneBurstDecoyModel,
                    d1::OneBurstDecoyModel,
                    d2::OneBurstDecoyModel)
 
-    @assert d0.cr > d1.cr
-    @assert d1.cr > d2.cr
+    # Note: removed cr monotonicity assertions to support non-monotonic concentration profiles
     h = d0.cw - d1.cw
     @assert d2.cw ≈ d0.cw - 2*h
 

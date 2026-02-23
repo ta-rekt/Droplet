@@ -2,7 +2,7 @@
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "e287868fbc2c74a6b3b5a63433c493c5e2dd7429"
+project_hash = "08c9df23d85755597755a9b9d1e0ed2516750781"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -129,6 +129,12 @@ version = "2.5.0"
 git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
+
+[[deps.CubicSplines]]
+deps = ["Random", "Test"]
+git-tree-sha1 = "4875023d456ea37c581f406b8b1bc35bea95ae67"
+uuid = "9c784101-8907-5a6d-9be6-98f00873c89b"
+version = "0.2.1"
 
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"

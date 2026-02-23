@@ -4,6 +4,7 @@ authors = ["tohme <tarektohme1@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+CubicSplines = "9c784101-8907-5a6d-9be6-98f00873c89b"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
@@ -19,6 +20,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
+CubicSplines = "0.2.1"
 DataStructures = "0.18.22"
 Distributions = "0.25.120"
 Interpolations = "0.16.2"

@@ -540,13 +540,32 @@ let
     using Interpolations
 
     # Load the JSON data
-    json_path = "data/20260218/spherical_phi_vs_phi_inf_run_ledge7.json"
-    data = JSON.parsefile(json_path)
+    json_path1 = "data/20260218/spherical_phi_vs_phi_inf_run_enhancer2.json"
+    json_path2 = "data/20260218/spherical_phi_vs_phi_inf_run_enhancer2_collapsed.json"
+    data1 = JSON.parsefile(json_path1)
+    data2 = JSON.parsefile(json_path2)
     
-    # Extract the arrays
-    phi_inf_values = data["phi_inf_values"]
-    phi_at_probe = data["phi_at_probe"]
-    phi_func = LinearInterpolation(phi_inf_values, phi_at_probe, extrapolation_bc=Line())
+    # Extract the arrays and convert to Float64
+    phi_inf_values1 = Float64.(data1["phi_inf_values"])
+    phi_inf_values2 = Float64.(data2["phi_inf_values"])
+    phi_at_probe1 = Float64.(data1["phi_at_probe"])
+    phi_at_probe2 = Float64.(data2["phi_at_probe"])
+    phi_at_probe = similar(phi_at_probe1)
+
+    for (idx, (phi1, phi2)) in enumerate(zip(phi_at_probe1, phi_at_probe2))
+        phi_infty = phi_inf_values1[idx]
+
+        if phi_infty < 0.2
+            phi_at_probe[idx] = phi1
+        else
+            phi_at_probe[idx] = phi2
+        end
+    end
+
+    # Create monotonic spline interpolation with extrapolation
+    # Using Steffen monotonic interpolation to avoid oscillations at the transition
+    itp = interpolate(phi_inf_values1, phi_at_probe, SteffenMonotonicInterpolation())
+    phi_func = extrapolate(itp, Line())
 
     fisher_at_probe = zeros(length(phi_at_probe))
     fisher_at_probe_control = zeros(length(phi_at_probe))
@@ -600,7 +619,7 @@ let
     for (idx, phi) in enumerate(phi_at_probe)    
 
         d0.cr = phi
-        d0.cw = phi_inf_values[idx]
+        d0.cw = phi_inf_values1[idx]
         
         # take a step in phi_infty
         h = 0.02 * d0.cw
@@ -610,6 +629,8 @@ let
         d1.cr = phi_func(d1.cw)
         d2.cr = phi_func(d2.cw)
 
+        @show d0.cr, d1.cr, h
+
         initAcc!(d0)
         initAcc!(d1)
         initAcc!(d2)
@@ -618,7 +639,7 @@ let
         fisher_at_probe[idx] = FisherRateAcc(d0, d1, d2)
     end
 
-    for (idx, phi) in enumerate(phi_inf_values)    
+    for (idx, phi) in enumerate(phi_inf_values1)    
 
         d0.cr = phi
         h = 0.02 * d0.cr
@@ -639,7 +660,7 @@ let
     
     # Create the plot
     pl1 = plot(
-        phi_inf_values, phi_at_probe,
+        phi_inf_values1, phi_at_probe,
         xlabel="\$\\phi_\\infty\$",
         ylabel="\$\\phi(z=0.2R)\$",
         title="Probe concentration vs bulk concentration",
@@ -649,7 +670,7 @@ let
     )
 
     pl2 = plot(
-        phi_inf_values, activity_at_probe,
+        phi_inf_values1, activity_at_probe,
         xlabel="\$\\phi_\\infty\$",
         ylabel="\$p_{ss}(\\phi(r_0=0.2R))\$",
         title="Steady-state activity vs bulk concentration",
@@ -660,14 +681,14 @@ let
 
     plot!(
         pl2,
-        phi_inf_values, activity_at_probe_control,
+        phi_inf_values1, activity_at_probe_control,
         linewidth=1,
         color=:red,
         linestyle=:dash
     )
 
     pl3 = plot(
-        phi_inf_values, fisher_at_probe,
+        phi_inf_values1, fisher_at_probe,
         xlabel="\$\\phi_\\infty\$",
         ylabel="\$\\dot{F}(\\phi_\\infty)\$",
         title="Fisher rate vs bulk concentration",
@@ -679,26 +700,18 @@ let
 
     plot!(
         pl3,
-        phi_inf_values, fisher_at_probe_control,
+        phi_inf_values1, fisher_at_probe_control,
         linewidth=1,
         color=:green,
         linestyle=:dash,
         label="control",
         legend=:left,
-        yscale=:log
+        yscale=:log10
     )
 
-    # plot!(
-    #     pl3,
-    #     phi_inf_values, kboff .* phi_inf_values,
-    #     linewidth=1,
-    #     color=:green,
-    #     linestyle=:dot
-    # )
-    
     hline!([0.16])
     
     plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 800))
 
-    savefig("media/figures/20260218/fisher_rate_with_local_gradient_ledge7.png")
+    savefig("media/figures/20260218/fisher_rate_with_local_gradient_enhancer.png")
 end
