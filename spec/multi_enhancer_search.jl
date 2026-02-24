@@ -49,7 +49,7 @@ output metrics: pairwise distances, centers of gravity, concentration profile of
 
 init_from_checkpoint = false
 
-t_max = 5    # runtime in minutes (initial test)
+t_max = 1    # runtime in minutes (initial test)
 step = 10000
 smallstep = step
 
@@ -224,39 +224,39 @@ function target!(res, args...)
                 end
 
                 # record pairwise distances between patterns
-                pattern_poly = find_patterns(poly)
-                dists_at_frame = Dict{Tuple, Float64}()
-                centers_at_frame = Matrix{Float64}(undef, 3, 5)
+                # pattern_poly = find_patterns(poly)
+                # dists_at_frame = Dict{Tuple, Float64}()
+                # centers_at_frame = Matrix{Float64}(undef, 3, 5)
 
-                for (key1, monomerIdx1) in enumerate([3,5,7,9,11])
-                    pattern1 = poly.monomers[monomerIdx1]
-                    p1_start, p1_end = pattern_poly[pattern1.intIdx][1]
+                # for (key1, monomerIdx1) in enumerate([3,5,7,9,11])
+                #     pattern1 = poly.monomers[monomerIdx1]
+                #     p1_start, p1_end = pattern_poly[pattern1.intIdx][1]
 
-                    centers_at_frame[:,key1] = centerMassPattern(poly, pattern1.intIdx)
+                    # centers_at_frame[:,key1] = centerMassPattern(poly, pattern1.intIdx)
 
-                    for (key2, monomerIdx2) in enumerate([3,5,7,9,11])
-                        if monomerIdx2 > monomerIdx1
-                            pattern2 = poly.monomers[monomerIdx2]
-                            p2_start, p2_end = pattern_poly[pattern2.intIdx][1]
+                #     for (key2, monomerIdx2) in enumerate([3,5,7,9,11])
+                #         if monomerIdx2 > monomerIdx1
+                #             pattern2 = poly.monomers[monomerIdx2]
+                #             p2_start, p2_end = pattern_poly[pattern2.intIdx][1]
 
-                            _, _, dist = get_pattern_centers(poly, 
-                                        [(p1_start, p1_end),(p2_start, p2_end)])
+                #             _, _, dist = get_pattern_centers(poly, 
+                #                         [(p1_start, p1_end),(p2_start, p2_end)])
 
-                            # store distances in a dictionary
-                            push!(dists_at_frame, (key1, key2) => dist)
-                        end
-                    end
-                end
+                #             # store distances in a dictionary
+                #             push!(dists_at_frame, (key1, key2) => dist)
+                #         end
+                #     end
+                # end
                 
-                push!(pattern_dists, dists_at_frame)
-                push!(pattern_centers, centers_at_frame)
+                # push!(pattern_dists, dists_at_frame)
+                # push!(pattern_centers, centers_at_frame)
 
-                if maximum(values(dists_at_frame)) < 3.0
-                    patterns_coalesced = true
-                end
+                # if maximum(values(dists_at_frame)) < 3.0
+                #     patterns_coalesced = true
+                # end
 
                 # density profile
-                if patterns_coalesced
+                if true
                     cm = centerMassPattern(poly, mainPattern1.intIdx)
                     histCount = updateNormalHistogram!(tf, normalHist, cm, maxDistance)
                     total += histCount

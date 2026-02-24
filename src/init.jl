@@ -463,6 +463,12 @@ function initSpecies!(p::Polymer)
     p.nTypes = zeros(Int32, 3)
     p.hastingsFactor = 1.0
     
+    # Pre-allocate bond coordinate vectors (avoids view allocations in identifyBond!)
+    p.bi = zeros(Int32, 3)
+    p.bj = zeros(Int32, 3)
+    p.bprev = zeros(Int32, 3)
+    p.bnext = zeros(Int32, 3)
+    
     # Initialize deltaHP for partner energy accumulation
     p.deltaHP = 0.0
 

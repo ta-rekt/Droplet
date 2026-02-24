@@ -110,10 +110,10 @@ Base.@kwdef mutable struct Polymer <: AbstractPolymer
     kj::Union{Nothing, Int32} = nothing
     kprev::Union{Nothing, Int32} = nothing
     knext::Union{Nothing, Int32} = nothing
-    bi::Union{Nothing, AbstractArray{Int32}} = nothing
-    bj::Union{Nothing, AbstractArray{Int32}} = nothing
-    bprev::Union{Nothing, AbstractArray{Int32}} = nothing
-    bnext::Union{Nothing, AbstractArray{Int32}} = nothing
+    bi::Union{Nothing, Vector{Int32}} = nothing      # pre-allocated bond coordinate vectors
+    bj::Union{Nothing, Vector{Int32}} = nothing
+    bprev::Union{Nothing, Vector{Int32}} = nothing
+    bnext::Union{Nothing, Vector{Int32}} = nothing
     bondVec::Union{Nothing, Vector{Int32}} = nothing       # direction vector for a given bond
     tempVec::Union{Nothing, Vector{Int32}} = nothing
 

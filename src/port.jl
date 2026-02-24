@@ -113,6 +113,9 @@ function _restoreSpecies!(p::Polymer, d::Dict{Symbol,Any})
     p.newPosj = zeros(Int32, 3); p.moveTypes = zeros(Int32, 4)
     p.moveTypeProbs = [0, PKINK, 0]; p.nTypes = zeros(Int32, 3)
     p.hastingsFactor = 1.0; p.deltaHP = 0.0
+    # bond coordinate buffers for identifyBond!
+    p.bi = zeros(Int32, 3); p.bj = zeros(Int32, 3)
+    p.bprev = zeros(Int32, 3); p.bnext = zeros(Int32, 3)
 end
 
 # Check if we should use the new pattern from the fresh species setup

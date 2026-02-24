@@ -10,7 +10,7 @@ function acceptMove(s::AbstractSpecies)
     deltaHam!(s)
     prob = min(1, exp(-s.deltaH))
 
-    return rand(Uniform(0,1)) < prob
+    return rand() < prob
 end
 
 
@@ -97,7 +97,7 @@ function proposeMove!(p::Polymer)
     dims = findall(iszero, p.bondVec)
 
     # sample move types according to proposed probabilities
-    r = rand(Uniform(0,1))
+    r = rand()
     prob = 0.0
 
     for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
@@ -145,8 +145,8 @@ function proposeMove!(b::BulkMonomer)
     end
 
     # sample an x/y/z direction and orientation at random
-    b.moveType = rand(range(1, 3))
-    b.tempVec[b.moveType] += 2 * Int(rand(Bernoulli(0.5))) - 1
+    b.moveType = rand(1:3)
+    b.tempVec[b.moveType] += 2 * (rand() < 0.5) - 1
     
     # clip to within bounding box
     boxmod!(b.tempVec, b.newPos, Int32(1), b.boxlength)

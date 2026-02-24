@@ -108,13 +108,14 @@ function kinkBond!(p::Polymer)
         p.latS[p.bi[1], p.bi[2], p.bi[3]] = 0
         p.latS[p.newPosj[1], p.newPosj[2], p.newPosj[3]] = intIdx
 
-        p.pos[p.ki] = Vector{Int32}(undef, 6)
-        p.pos[p.ki][1] = p.newPosj[1]
-        p.pos[p.ki][2] = p.newPosj[2]
-        p.pos[p.ki][3] = p.newPosj[3]
-        p.pos[p.ki][4] = p.kprev
-        p.pos[p.ki][5] = p.kj
-        p.pos[p.ki][6] = intIdx
+        # Update position in-place (no allocation)
+        pos_ki = p.pos[p.ki]
+        pos_ki[1] = p.newPosj[1]
+        pos_ki[2] = p.newPosj[2]
+        pos_ki[3] = p.newPosj[3]
+        pos_ki[4] = p.kprev
+        pos_ki[5] = p.kj
+        pos_ki[6] = intIdx
 
     elseif p.newPosj == p.bnext
         # bead kj moves from bj to newPosi
@@ -122,13 +123,14 @@ function kinkBond!(p::Polymer)
         p.latS[p.newPosi[1], p.newPosi[2], p.newPosi[3]] = intIdx
         p.latS[p.bj[1], p.bj[2], p.bj[3]] = 0
 
-        p.pos[p.kj] = Vector{Int32}(undef, 6)
-        p.pos[p.kj][1] = p.newPosi[1]
-        p.pos[p.kj][2] = p.newPosi[2]
-        p.pos[p.kj][3] = p.newPosi[3]
-        p.pos[p.kj][4] = p.ki
-        p.pos[p.kj][5] = p.knext
-        p.pos[p.kj][6] = intIdx
+        # Update position in-place (no allocation)
+        pos_kj = p.pos[p.kj]
+        pos_kj[1] = p.newPosi[1]
+        pos_kj[2] = p.newPosi[2]
+        pos_kj[3] = p.newPosi[3]
+        pos_kj[4] = p.ki
+        pos_kj[5] = p.knext
+        pos_kj[6] = intIdx
     end
 
     return p
@@ -196,7 +198,11 @@ function identifyBond!(p::Polymer)
         "p.moveIdx must be between 1 and Species length (# of monomers)"
     end
 
-    # keys_array = collect(keys(p.pos))  # TODO: this wastes allocs, fix it
+    # Initialize bond coordinate buffers if needed (lazy initialization for restored/manually-created polymers)
+    if p.bi === nothing
+        p.bi = zeros(Int32, 3); p.bj = zeros(Int32, 3)
+        p.bprev = zeros(Int32, 3); p.bnext = zeros(Int32, 3)
+    end
 
     # pointers to the two beads (i and j) to be moved
     p.ki = p.keys_vec[p.moveIdx]
@@ -206,13 +212,31 @@ function identifyBond!(p::Polymer)
     p.kprev = p.pos[p.ki][4]
     p.knext = p.kj == 0 ? 0 : p.pos[p.kj][5]
 
-    # bond edge coordinates
-    p.bi = view(p.pos[p.ki], range(1, 3))
-    p.bj = p.kj == 0 ? view(SENTINEL, range(1, 3)) : view(p.pos[p.kj], range(1, 3))
+    # bond edge coordinates - copy values instead of creating views
+    pos_ki = p.pos[p.ki]
+    p.bi[1] = pos_ki[1]; p.bi[2] = pos_ki[2]; p.bi[3] = pos_ki[3]
+    
+    if p.kj == 0
+        p.bj[1] = SENTINEL[1]; p.bj[2] = SENTINEL[2]; p.bj[3] = SENTINEL[3]
+    else
+        pos_kj = p.pos[p.kj]
+        p.bj[1] = pos_kj[1]; p.bj[2] = pos_kj[2]; p.bj[3] = pos_kj[3]
+    end
 
     # coordinates of previous and next beads relative to bond
-    p.bprev = p.kprev == 0 ? view(SENTINEL, range(1, 3)) : view(p.pos[p.kprev], range(1, 3))
-    p.bnext = p.knext == 0 ? view(SENTINEL, range(1, 3)) : view(p.pos[p.knext], range(1, 3))
+    if p.kprev == 0
+        p.bprev[1] = SENTINEL[1]; p.bprev[2] = SENTINEL[2]; p.bprev[3] = SENTINEL[3]
+    else
+        pos_kprev = p.pos[p.kprev]
+        p.bprev[1] = pos_kprev[1]; p.bprev[2] = pos_kprev[2]; p.bprev[3] = pos_kprev[3]
+    end
+    
+    if p.knext == 0
+        p.bnext[1] = SENTINEL[1]; p.bnext[2] = SENTINEL[2]; p.bnext[3] = SENTINEL[3]
+    else
+        pos_knext = p.pos[p.knext]
+        p.bnext[1] = pos_knext[1]; p.bnext[2] = pos_knext[2]; p.bnext[3] = pos_knext[3]
+    end
 
     for i in range(1, 3)
         p.bondVec[i] = (p.bj[i] - p.bi[i]) % p.boxlength
