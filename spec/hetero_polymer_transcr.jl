@@ -11,7 +11,7 @@ l = Lattice(;
 # heterogeneous polymer with patterned regions
 poly = Polymer(;
     length = 32,
-    maxlength = 150,
+    maxlength = 400,
     initShape = "line",
     nMonomerTypes = 2,  # base, pattern
     initPos = [5, 21, 21],
@@ -40,18 +40,18 @@ slist = [poly, tf, rnap]
 # MARK: -Sim. params
 
 blurb = """
-How does polymer prewetting and crumpling affect the contact probability of rnap
-monomers at the transcription initiation site?
-One long pattern at the polymer's head (50 beads), followed by a transcription initiation
-site (10 beads). The strong pattern-tf interaction prewets the pattern and crumples
-the polymer. TF-RNAP coupling results in increased contacts_tf at TI site upon droplet formation
-swept parameters: concentration, tf-rnap coupling strength
+How does an rna polymerase binding site interact with a tf binding site a certain distance away?
+
+One long pattern at the polymer's head, either 100 beads to nucleate a droplet, or 10 beads to 
+bind TF without nucleation, and a transcription initiation site (2 beads).
+
+swept parameters: concentration, tf-rnap binding site distance
 output metrics: rnap contact probability at TI site
 """
 
 init_from_checkpoint = false
 
-t_max = 0.2    # runtime in minutes (initial test)
+t_max = 0.1    # runtime in minutes (initial test)
 step = 10000
 smallstep = step
 
@@ -64,7 +64,7 @@ for (i, v) in enumerate(vals)
 end
 
 alphas = [0.01]    # concentration
-betas = [-0.5]    # tf-rnap coupling energy
+betas = [-0.0]    # tf-rnap coupling energy
 nparams = length(alphas)
 
 
@@ -86,7 +86,7 @@ function target!(res, args...)
     concentration = alpha
     tf_rnap_intpot = beta
     temperature = 0.66
-    pattern_tf_intpot = -0.5
+    pattern_tf_intpot = -0.8
     transcription_threshold = 0.1  # threshold for transcription activity
     
     # set interaction potentials (4x4 interaction matrix)
@@ -94,7 +94,7 @@ function target!(res, args...)
     intPot!(base, 0.5)              # base self-interaction
     intPot!(base, pattern, 0.5)    # base-pattern
     intPot!(base, tf, 0.0)        # base-tf (weak)
-    intPot!(base, rnap, -0.1)      # base-rnap (weak)
+    intPot!(base, rnap, -0.0)      # base-rnap (weak)
     
     # pattern (type 2)
     intPot!(pattern, 0.5)           # pattern self-interaction
@@ -109,7 +109,7 @@ function target!(res, args...)
     intPot!(rnap, tf, tf_rnap_intpot)
 
     tf.length = Int32(round(l.boxlength^3 * concentration))
-    rnap.length = Int32(round(l.boxlength^3 * 0.02))
+    rnap.length = 2
 
     updateMonomers!(poly, base.intIdx)
 
@@ -162,7 +162,7 @@ function target!(res, args...)
     # build polymer patterns
     patternVec = zeros(Int32, poly.maxlength)
     p_start, p_end = 1, 50
-    transcr_init_site_length = 10
+    transcr_init_site_length = 2
 
     patternVec[1:p_start-1] .= base.intIdx         # base type (40 beads)
     patternVec[p_start:p_end] .= pattern.intIdx      # pattern 1 (8 beads)
@@ -218,17 +218,21 @@ function target!(res, args...)
                     # get tail key for pattern
                     if haskey(poly.patternTails, pattern.intIdx)
                         tail_key = poly.patternTails[pattern.intIdx]
+                        current_key = tail_key
                         
-                        # walk forward right after tail to count nearby contacts_tf
-                        current_key = poly.pos[tail_key][5]
+                        # walk forward a certain distance to count contacts at TI site
+                        for _ in range(1, ti_site_distance)
+                            current_key = poly.pos[current_key][5]
+                        end
+
                         count = 0
                         while count < transcr_init_site_length
-                            # check if this bead is pattern type
+                            # check if this bead is base type
                             if poly.pos[current_key][6] == base.intIdx
                                 # count nearest neighbors with rnap
                                 contacts_tf += nnp(pattern, tf, poly.pos[current_key][1:3]) / 6
                                 contacts_rnap += nnp(pattern, rnap, poly.pos[current_key][1:3]) / 6
-                                # move to previous bead
+                                # move to next bead
                                 current_key = poly.pos[current_key][5]
                                 count += 1
                             else

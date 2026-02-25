@@ -10,11 +10,11 @@ l = Lattice(;
 
 # heterogeneous polymer with patterned regions
 poly = Polymer(;
-    length = 32,
-    maxlength = 800,
+    length = 16,
+    maxlength = 400,
     initShape = "line",
     nMonomerTypes = 8,  # base, pattern
-    initPos = [5, 21, 21],
+    initPos = [21, 21, 21],
     pattern = :uniform
 )
 
@@ -40,32 +40,40 @@ slist = [poly, tf, rnap]
 # MARK: -Sim. params
 
 blurb = """
-How does enhancer prewetting and crumpling affect the contact probability of rnap
-monomers at the transcription initiation site?
+How does an rna polymerase binding site interact with a tf binding site a certain distance away?
 
-Two enhancers and a promoter, the latter followed by a transcription initiation
-site (10 beads). The strong pattern-tf interaction prewets the enhancers and crumples
-the polymer. TF-RNAP coupling results in increased contacts_tf at TI site upon droplet formation
-swept parameters: concentration
-output metrics: rnap contact time-series at TI site
+One long pattern at the polymer's head, either 100 beads to nucleate a droplet, or 10 beads to 
+bind TF without nucleation, and a transcription initiation site (2 beads).
+
+swept parameters: concentration [], tf-rnap binding site distance
+output metrics: rnap contact probability at TI site
 """
 
 init_from_checkpoint = false
 
-t_max = 3    # runtime in minutes (initial test)
+t_max = 0.1    # runtime in minutes (initial test)
 step = 10000
 smallstep = step
 
 vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
-alphas = zeros(32)
+alphas = []
 nrepeats = 1
 
-for (i, v) in enumerate(vals)
-    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+# for (i, v) in enumerate(vals)
+#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+# end
+
+# alphas = [0,10,20,30]    # distance between tf and rnap binding sites
+
+for dist in [0, 10, 20, 30]
+    for int in [0.0, -0.1, -0.5]
+        for len in [10, 100]
+            push!(alpha, (dist, int, len))
+        end
+    end
 end
 
-alphas = [0.01]    # concentration
-betas = [-0.5]    # tf-rnap coupling energy
+betas = [0]           # nothing
 nparams = length(alphas)
 
 
@@ -80,6 +88,7 @@ function target!(res, args...)
     slist, keya, alpha, beta, blurb = args
 
     poly, tf, rnap = slist
+    tf_rnap_dist, tf_pattern2_int, tf_rnap_len = alpha
 
     base = poly.monomers[1]
 
@@ -93,35 +102,23 @@ function target!(res, args...)
     mainPattern3 = poly.monomers[7]
     tailPattern3 = poly.monomers[8]
 
-    concentration = alpha
-    tf_rnap_intpot = beta
+    concentration = 0.015
     temperature = 0.66
     transcription_threshold = 0.1  # threshold for transcription activity
     
     # polymer self-interaction
-    intPot!(base, 0.5)                   # base self-interaction
-    intPot!(headPattern1, 0.5)           # mainPattern1 self-interaction
-    intPot!(mainPattern1, 0.5)           # mainPattern1 self-interaction
-    intPot!(tailPattern1, 0.5)           # mainPattern1 self-interaction
-    intPot!(mainPattern2, 0.5)           # mainPattern1 self-interaction
-    intPot!(tailPattern2, 0.5)           # mainPattern1 self-interaction
-    intPot!(mainPattern3, 0.5)           # mainPattern1 self-interaction
-    intPot!(tailPattern3, 0.5)           # mainPattern1 self-interaction
-    intPot!(base, headPattern1, 0.5)    # base-mainPattern1
-    intPot!(base, mainPattern1, 0.5)    # base-mainPattern1
-    intPot!(base, tailPattern1, 0.5)    # base-mainPattern1
-    intPot!(base, mainPattern2, 0.5)    # base-mainPattern1
-    intPot!(base, tailPattern2, 0.5)    # base-mainPattern1
-    intPot!(base, mainPattern3, 0.5)    # base-mainPattern1
-    intPot!(base, tailPattern3, 0.5)    # base-mainPattern1
+    for (_, pat) in poly.monomers
+        intPot!(pat, 0.5)
+        intPot!(base, pat, 0.5)
+    end
 
     # rnap-transcription initiation site interaction
-    intPot!(tailPattern3, rnap, -0.1)      # (weak)
+    intPot!(tailPattern3, rnap, -0.0)      # (weak)
     
     # enhancers
-    intPot!(mainPattern1, tf, -0.2)    # pattern-tf (weak)
-    intPot!(mainPattern2, tf, -0.5)    # pattern-tf (med)
-    intPot!(mainPattern3, tf, -0.8)    # pattern-tf (strong)
+    intPot!(mainPattern1, tf, -0.5)    # pattern-tf (weak)
+    intPot!(mainPattern2, tf, tf_pattern2_int)    # pattern-tf (med)
+    intPot!(mainPattern3, tf, -0.0)    # pattern-tf (strong)
     
     # tf (type 3)
     intPot!(tf, -1.0 / temperature)    # tf self-interaction
@@ -130,7 +127,7 @@ function target!(res, args...)
     intPot!(rnap, tf, tf_rnap_intpot)
 
     tf.length = Int32(round(l.boxlength^3 * concentration))
-    rnap.length = Int32(round(l.boxlength^3 * 0.02))
+    rnap.length = 2
 
     updateMonomers!(poly, base.intIdx)
 
@@ -154,7 +151,6 @@ function target!(res, args...)
     niter = 0
     minsize = 10
 
-    radii = []
     lengths = []
     hams_poly = []
     hams_tf = []
@@ -165,16 +161,13 @@ function target!(res, args...)
     transcription_activity = []
     on_times = []
     off_times = []
-    pattern1_position = []
-    pattern2_position = []
-    pattern3_position = []
+    pattern_dists = []
     
     # transcription state tracking
     is_transcribing = false
     moves_in_state = 0
     
     # initial values
-    push!(radii, radius(poly))
     push!(lengths, poly.length)
     push!(hams_poly, poly.ham)
     push!(hams_tf, tf.ham)
@@ -185,10 +178,10 @@ function target!(res, args...)
 
     # build polymer patterns
     patternVec = zeros(Int32, poly.maxlength)
-    p1_start, p1_end = 176, 225
-    p2_start, p2_end = 376, 425
-    p3_start, p3_end = 576, 625
-    transcr_init_site_length = 10
+    p1_start, p1_end = 1, tf_rnap_len
+    p2_start, p2_end = p1_end+1+tf_rnap_dist, p1_end+3+tf_rnap_dist
+    p3_start, p3_end = 351, 360
+    transcr_init_site_length = 1
 
     patternVec[1:p1_start-1] .= headPattern1.intIdx         # base type (40 beads)
     patternVec[p1_start:p1_end] .= mainPattern1.intIdx      # pattern 1 (8 beads)
@@ -234,7 +227,6 @@ function target!(res, args...)
                     end
 
                     push!(max_droplet_size, maximum(droplet_sizes, init=1))
-                    push!(radii, radius(poly))
                     push!(lengths, poly.length)
 
                     # acceptance rate
@@ -242,41 +234,38 @@ function target!(res, args...)
                 end
 
                 if mod(nmoves, smallstep) == 0
-                    pattern_poly = find_patterns(poly)
-                    p1_start, p1_end = pattern_poly[mainPattern1.intIdx][1]
-                    p2_start, p2_end = pattern_poly[mainPattern2.intIdx][1]
-                    p3_start, p3_end = pattern_poly[mainPattern3.intIdx][1]
-
-                    push!(pattern1_position, p1_start)
-                    push!(pattern2_position, p2_start)
-                    push!(pattern3_position, p3_start)
 
                     # compute contact probability between pattern and tf
                     contacts_tf = 0
                     contacts_rnap = 0
                     
                     # get tail key for pattern
-                    if haskey(poly.patternTails, mainPattern3.intIdx)
-                        tail_key = poly.patternTails[mainPattern3.intIdx]
+                    if haskey(poly.patternTails, mainPattern2.intIdx)
+                        tail_key = poly.patternTails[mainPattern2.intIdx]
                         
                         # walk forward right after tail to count nearby contacts_tf
                         current_key = poly.pos[tail_key][5]
                         count = 0
                         while count < transcr_init_site_length
-                            # check if this bead is pattern type
-                            if poly.pos[current_key][6] == tailPattern3.intIdx
+                            
+                            # check if we are at the tail of pattern 2
+                            if poly.pos[current_key][6] == tailPattern2.intIdx
+                                
                                 # count nearest neighbors with rnap
-                                contacts_tf += nnp(tailPattern3, tf, poly.pos[current_key][1:3]) / 6
-                                contacts_rnap += nnp(tailPattern3, rnap, poly.pos[current_key][1:3]) / 6
-                                # move to previous bead
+                                contacts_tf += nnp(tailPattern2, tf, poly.pos[current_key][1:3]) / 6
+                                contacts_rnap += nnp(tailPattern2, rnap, poly.pos[current_key][1:3]) / 6
+                                
+                                # move to next bead
                                 current_key = poly.pos[current_key][5]
                                 count += 1
 
                             elseif poly.pos[current_key][6] == base.intIdx
+                            
                                 # count nearest neighbors with rnap
                                 contacts_tf += nnp(base, tf, poly.pos[current_key][1:3]) / 6
                                 contacts_rnap += nnp(base, rnap, poly.pos[current_key][1:3]) / 6
-                                # move to previous bead
+                                
+                                # move to next bead
                                 current_key = poly.pos[current_key][5]
                                 count += 1
                             else
@@ -288,6 +277,11 @@ function target!(res, args...)
                     push!(binding_activity, contacts_tf / transcr_init_site_length)
                     current_transcription_activity = contacts_rnap / transcr_init_site_length
                     push!(transcription_activity, current_transcription_activity)
+
+                    # measure distance between probe and TF binding site
+                    _, _, dist = get_pattern_centers(poly, 
+                                    [(p1_start, p1_end),(p2_start, p2_end)])
+                    push!(pattern_dists, dist)
                     
                     # track on/off transitions
                     was_transcribing = is_transcribing
@@ -314,7 +308,7 @@ function target!(res, args...)
     # save results
     res["blurb"] = blurb
     res["species_name"] = "poly"
-    res["nframes"] = length(radii)
+    res["nframes"] = length(accs)
     res["step"] = step
     res["smallstep"] = smallstep
     res["temperature"] = temperature
@@ -323,10 +317,6 @@ function target!(res, args...)
     res["boxlength"] = l.boxlength
     res["length_poly"] = lengths
     res["length_tf"] = tf.length
-    res["radius_of_gyration"] = radii
-    res["pattern1_position"] = pattern1_position
-    res["pattern2_position"] = pattern2_position
-    res["pattern3_position"] = pattern3_position
     res["max_droplet_size"] = max_droplet_size
     res["hamiltonian_poly"] = hams_poly
     res["hamiltonian_tf"] = hams_tf
@@ -336,6 +326,7 @@ function target!(res, args...)
     res["transcription_activity"] = transcription_activity
     res["on_times"] = on_times
     res["off_times"] = off_times
+    res["pattern_distances"] = pattern_dists
     
     # extract polymer coordinates into a matrix
     poly_coords = zeros(Int32, poly.length, 4)
