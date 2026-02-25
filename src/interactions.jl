@@ -1,5 +1,5 @@
 
-export intPot!, intPot!, getIntPot
+export intPot!, intPot!, getIntPot, couplingPot!, getCouplingPot
 
 ############# Interaction potential functions #############
 
@@ -165,4 +165,214 @@ function getIntPot(a::AbstractMonomer, b::AbstractMonomer)
     end
     
     return a.intMat[a.intIdx, idxB]
+end
+
+
+############# Three-way coupling functions #############
+# MARK: -Coupling
+
+# helper: initialize coupling structures for a BulkMonomer if not present
+function _ensureCouplingStructures!(s::BulkMonomer)
+    # first ensure two-way interaction structures exist (needed for intIdx)
+    _ensureIntStructures!(s)
+    
+    if s.couplingSpecies === nothing
+        s.couplingSpecies = Vector{Tuple{AbstractBulkMonomer, Int32}}()
+    end
+    if s.couplingIdx === nothing
+        # add self to coupling species list
+        m = length(s.couplingSpecies) + 1
+        s.couplingIdx = Int32(m)
+        push!(s.couplingSpecies, (s, Int32(m)))
+    end
+    if s.couplingMat === nothing
+        # initialize with dimensions: m (BulkMonomers) × n (all species) × n
+        m = length(s.couplingSpecies)
+        n = s.intMat !== nothing ? size(s.intMat, 1) : 1
+        s.couplingMat = zeros(Float64, m, n, n)
+    end
+end
+
+# helper: synchronize coupling structures between two BulkMonomers
+function _syncCouplingStructures!(a::BulkMonomer, b::BulkMonomer)
+    # both must already have coupling structures initialized
+    # merge their couplingSpecies lists and rebuild shared couplingMat
+    
+    # first ensure intMat is synced (needed for partner/context indices)
+    if a.intMat !== b.intMat
+        _syncMatrices!(a, b)
+    end
+    
+    # collect all BulkMonomers from both coupling lists
+    allCouplingSpecies = Dict{Int32, Tuple{AbstractBulkMonomer, Int32}}()
+    
+    newIdx = Int32(1)
+    for (sp, _) in a.couplingSpecies
+        if !haskey(allCouplingSpecies, sp.id)
+            allCouplingSpecies[sp.id] = (sp, newIdx)
+            newIdx += Int32(1)
+        end
+    end
+    for (sp, _) in b.couplingSpecies
+        if !haskey(allCouplingSpecies, sp.id)
+            allCouplingSpecies[sp.id] = (sp, newIdx)
+            newIdx += Int32(1)
+        end
+    end
+    
+    m = length(allCouplingSpecies)
+    n = size(a.intMat, 1)  # number of all species (from synced intMat)
+    newCouplingMat = zeros(Float64, m, n, n)
+    
+    # copy existing coupling values from a's matrix
+    for (sp, oldCoupIdx) in a.couplingSpecies
+        (_, newCoupIdx) = allCouplingSpecies[sp.id]
+        if oldCoupIdx <= size(a.couplingMat, 1)
+            # copy all j,k values for this self species
+            jmax = min(size(a.couplingMat, 2), n)
+            kmax = min(size(a.couplingMat, 3), n)
+            newCouplingMat[newCoupIdx, 1:jmax, 1:kmax] .= a.couplingMat[oldCoupIdx, 1:jmax, 1:kmax]
+        end
+    end
+    
+    # copy existing coupling values from b's matrix (if not already set)
+    for (sp, oldCoupIdx) in b.couplingSpecies
+        (_, newCoupIdx) = allCouplingSpecies[sp.id]
+        if oldCoupIdx <= size(b.couplingMat, 1)
+            jmax = min(size(b.couplingMat, 2), n)
+            kmax = min(size(b.couplingMat, 3), n)
+            for j in 1:jmax
+                for k in 1:kmax
+                    if newCouplingMat[newCoupIdx, j, k] == 0.0
+                        newCouplingMat[newCoupIdx, j, k] = b.couplingMat[oldCoupIdx, j, k]
+                    end
+                end
+            end
+        end
+    end
+    
+    # build new couplingSpecies list
+    newCouplingSpecies = Vector{Tuple{AbstractBulkMonomer, Int32}}(undef, m)
+    for (sp, idx) in values(allCouplingSpecies)
+        newCouplingSpecies[idx] = (sp, idx)
+    end
+    
+    # update all BulkMonomers to point to same structures
+    for (sp, idx) in newCouplingSpecies
+        sp.couplingSpecies = newCouplingSpecies
+        sp.couplingMat = newCouplingMat
+        sp.couplingIdx = idx
+    end
+end
+
+# helper: expand coupling matrix when intMat grows (new species added)
+function _expandCouplingMat!(s::BulkMonomer)
+    if s.couplingMat === nothing
+        return
+    end
+    
+    n_old = size(s.couplingMat, 2)
+    n_new = size(s.intMat, 1)
+    
+    if n_new > n_old
+        m = size(s.couplingMat, 1)
+        newCouplingMat = zeros(Float64, m, n_new, n_new)
+        newCouplingMat[:, 1:n_old, 1:n_old] .= s.couplingMat
+        s.couplingMat = newCouplingMat
+        
+        # update all BulkMonomers sharing this coupling matrix
+        if s.couplingSpecies !== nothing
+            for (sp, _) in s.couplingSpecies
+                sp.couplingMat = newCouplingMat
+            end
+        end
+    end
+end
+
+"""
+    couplingPot!(self::BulkMonomer, partner::AbstractMonomer, context::AbstractMonomer, pot::Float64)
+
+Set the three-way coupling potential for a BulkMonomer.
+
+The coupling contributes to `self`'s Hamiltonian when:
+- `self` occupies the same lattice site as `context`
+- `self` has a nearest neighbor of type `partner`
+
+The coupling is symmetric in partner/context: setting (self, A, B, pot) also sets (self, B, A, pot).
+
+All three species (self, partner, context) must be distinct.
+
+# Arguments
+- `self::BulkMonomer`: The BulkMonomer whose Hamiltonian is modified (cannot be FastBulkMonomer)
+- `partner::AbstractMonomer`: The species that must be a nearest neighbor
+- `context::AbstractMonomer`: The species that must occupy the same site as self
+- `pot::Float64`: The coupling strength (energy contribution per neighbor)
+
+# Example
+```julia
+a = BulkMonomer(; name="A", length=100)
+b = BulkMonomer(; name="B", length=100)
+c = BulkMonomer(; name="C", length=100)
+
+# Set up standard two-way interactions first
+intPot!(a, -1.0)
+intPot!(b, -1.0)
+intPot!(c, -1.0)
+
+# When A is at the same site as C, A's interaction with B neighbors is modified by -0.5
+couplingPot!(a, b, c, -0.5)
+```
+"""
+function couplingPot!(self::BulkMonomer, partner::AbstractMonomer, context::AbstractMonomer, pot::Float64)
+    # validate: all three must be distinct
+    if self === partner || self === context || partner === context
+        error("couplingPot!: self, partner, and context must all be distinct species")
+    end
+    
+    # ensure two-way interaction structures exist for all species
+    _ensureIntStructures!(self)
+    _ensureIntStructures!(partner)
+    _ensureIntStructures!(context)
+    
+    # sync two-way matrices so all species share the same intMat
+    if self.intMat !== partner.intMat
+        _syncMatrices!(self, partner)
+    end
+    if self.intMat !== context.intMat
+        _syncMatrices!(self, context)
+    end
+    
+    # initialize coupling structures for self
+    _ensureCouplingStructures!(self)
+    
+    # expand coupling matrix if intMat has grown
+    _expandCouplingMat!(self)
+    
+    # get indices
+    selfCoupIdx = self.couplingIdx
+    partnerIntIdx = partner.intIdx
+    contextIntIdx = context.intIdx
+    
+    # set coupling (symmetric in partner/context)
+    self.couplingMat[selfCoupIdx, partnerIntIdx, contextIntIdx] = pot
+    self.couplingMat[selfCoupIdx, contextIntIdx, partnerIntIdx] = pot
+    
+    return nothing
+end
+
+# get coupling potential for a three-way interaction
+function getCouplingPot(self::BulkMonomer, partner::AbstractMonomer, context::AbstractMonomer)
+    if self.couplingMat === nothing || self.couplingIdx === nothing
+        return nothing
+    end
+    if partner.intIdx === nothing || context.intIdx === nothing
+        return nothing
+    end
+    
+    # check bounds
+    if partner.intIdx > size(self.couplingMat, 2) || context.intIdx > size(self.couplingMat, 3)
+        return nothing
+    end
+    
+    return self.couplingMat[self.couplingIdx, partner.intIdx, context.intIdx]
 end

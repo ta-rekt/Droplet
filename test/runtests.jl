@@ -25,4 +25,8 @@ using Random
     include("test_rebuild_lattice.jl")
     include("test_restore.jl")
     include("test_integration_checkpoint.jl")
+    # Three-way interaction tests
+    include("test_nnpq.jl")
+    include("test_couplingPot.jl")
+    include("test_ham_coupling.jl")
 end

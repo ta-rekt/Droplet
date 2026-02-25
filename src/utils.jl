@@ -1,6 +1,6 @@
 
 export coords_equal, getLatS, getTempVec, getBoxlength, getPolyMonomer, 
-       getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nnIdxs!, splitDroplet!,
+       getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nnpq, nnIdxs!, splitDroplet!,
        dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP,
        setHam, setDeltaHam, setDeltaHP, isneighbor, isInPatternRegion
 
@@ -316,6 +316,131 @@ function nnp(s::AbstractBulkMonomer,
     # clear temporary containers
     clamp!(tempVec, 0, 0)
 
+    return n
+end
+
+
+# Number of nearest neighbors between species s and p at a given position
+# conditioned on species s and q occupying the same lattice site.
+# Specialized methods handle PolyMonomer types by checking intIdx match.
+
+# Generic version: both p and q use occupancy check (> 0)
+function nnpq(s::AbstractSpecies, 
+              p::AbstractSpecies, 
+              q::AbstractSpecies, 
+              pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(p)
+    qLatS = getLatS(q)
+
+    boxmod!(pos, tempVec, Int32(1), boxlength)
+    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
+
+        pos[i] += 1
+    end
+
+    clamp!(tempVec, 0, 0)
+    return n
+end
+
+# PolyMonomer context: check q.intIdx match for context overlap
+function nnpq(s::AbstractSpecies, 
+              p::AbstractSpecies, 
+              q::AbstractPolyMonomer, 
+              pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(p)
+    qLatS = getLatS(q)
+
+    boxmod!(pos, tempVec, Int32(1), boxlength)
+    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] == q.intIdx)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
+
+        pos[i] += 1
+    end
+
+    clamp!(tempVec, 0, 0)
+    return n
+end
+
+# PolyMonomer partner: check p.intIdx match for neighbor counting
+function nnpq(s::AbstractSpecies, 
+              p::AbstractPolyMonomer, 
+              q::AbstractSpecies, 
+              pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(p)
+    qLatS = getLatS(q)
+
+    boxmod!(pos, tempVec, Int32(1), boxlength)
+    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
+
+        pos[i] += 1
+    end
+
+    clamp!(tempVec, 0, 0)
+    return n
+end
+
+# Both PolyMonomer: check intIdx match for both partner and context
+function nnpq(s::AbstractSpecies, 
+              p::AbstractPolyMonomer, 
+              q::AbstractPolyMonomer, 
+              pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(p)
+    qLatS = getLatS(q)
+
+    boxmod!(pos, tempVec, Int32(1), boxlength)
+    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] == q.intIdx)
+
+    for i in 1:3
+        pos[i] += 1
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
+
+        pos[i] -= 2
+        boxmod!(pos, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
+
+        pos[i] += 1
+    end
+
+    clamp!(tempVec, 0, 0)
     return n
 end
 

@@ -445,6 +445,26 @@ function ham!(b::AbstractBulkMonomer)
         b.ham += b.intMat[b.intIdx, idx] * nnp_ * selfFactor
     end
 
+    # Three-way coupling contribution (BulkMonomer only, not FastBulkMonomer)
+    if hasfield(typeof(b), :couplingMat) && !isnothing(b.couplingMat)
+        for (sp_j, idx_j) in b.intSpecies
+            for (sp_k, idx_k) in b.intSpecies
+                # Skip if same species or idx_j >= idx_k (avoid double-counting pairs)
+                if idx_j >= idx_k
+                    continue
+                end
+                coupling_val = b.couplingMat[b.couplingIdx, idx_j, idx_k]
+                if coupling_val != 0.0
+                    for i in 1:b.length
+                        pos = b.pos[i][range(1, 3)]
+                        # Count both configurations: j-neighbor/k-overlap AND k-neighbor/j-overlap
+                        b.ham += coupling_val * (nnpq(b, sp_j, sp_k, pos) + nnpq(b, sp_k, sp_j, pos))
+                    end
+                end
+            end
+        end
+    end
+
     return b
 end
 
@@ -475,6 +495,26 @@ function deltaHam!(b::BulkMonomer)
                        - Int(b.intIdx == idx))) # subtract 1 in self-interaction
             setDeltaHP(sp, energy_change)
             b.deltaH += energy_change
+        end
+    end
+
+    # Three-way coupling contribution (BulkMonomer only, not FastBulkMonomer)
+    if !isnothing(b.couplingMat)
+        for (sp_j, idx_j) in b.intSpecies
+            for (sp_k, idx_k) in b.intSpecies
+                if idx_j >= idx_k
+                    continue
+                end
+                coupling_val = b.couplingMat[b.couplingIdx, idx_j, idx_k]
+                if coupling_val != 0.0
+                    # Count both configurations: j-neighbor/k-overlap AND k-neighbor/j-overlap
+                    delta_coupling = coupling_val * (
+                        (nnpq(b, sp_j, sp_k, b.newPos) + nnpq(b, sp_k, sp_j, b.newPos)) -
+                        (nnpq(b, sp_j, sp_k, b.bi) + nnpq(b, sp_k, sp_j, b.bi))
+                    )
+                    b.deltaH += delta_coupling
+                end
+            end
         end
     end
 

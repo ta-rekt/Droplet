@@ -172,6 +172,13 @@ Base.@kwdef mutable struct BulkMonomer <: AbstractBulkMonomer
     intMat::Union{Nothing, Matrix{Float64}} = nothing  # interaction matrix (symmetric, diagonal = self intPot)
     intIdx::Union{Nothing, Int32} = nothing  # this species' canonical index in intMat
 
+    # three-way coupling fields (BulkMonomer only)
+    # couplingMat[i,j,k] = energy contribution when self (couplingIdx=i) overlaps context k and neighbors partner j
+    # Symmetry: couplingMat[i,j,k] == couplingMat[i,k,j] (partner/context interchangeable)
+    couplingSpecies::Union{Nothing, Vector{Tuple{AbstractBulkMonomer, Int32}}} = nothing  # list of (BulkMonomer, couplingIdx) pairs
+    couplingMat::Union{Nothing, Array{Float64, 3}} = nothing  # m × n × n array (m = BulkMonomers, n = all species)
+    couplingIdx::Union{Nothing, Int32} = nothing  # this BulkMonomer's index in couplingMat first dimension
+
     # moveTypes! variables
     bi::Union{Nothing, AbstractArray{Int32}} = nothing
     moveIdx::Union{Nothing, Int32} = nothing 

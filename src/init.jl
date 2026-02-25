@@ -306,6 +306,43 @@ function updateMonomers!(p::Polymer, baseIntIdx::Int32)
     return p
 end
 
+# Internal helper called by init! to ensure the polymer's monomers dictionary
+# keys match the current intIdx values of each monomer. Handles cases where
+# intPot! changed intIdx after initMonomers! without a manual updateMonomers! call.
+# No-op if keys already match.
+function _syncMonomerKeys!(p::Polymer)
+    # Check if any key doesn't match its monomer's intIdx
+    needs_sync = false
+    for (key, monomer) in p.monomers
+        if key != monomer.intIdx
+            needs_sync = true
+            break
+        end
+    end
+    
+    if !needs_sync
+        return p
+    end
+    
+    # Re-key dictionary with current intIdx values
+    new_monomers = Dict{Int32, PolyMonomer}()
+    for (_, monomer) in p.monomers
+        new_monomers[monomer.intIdx] = monomer
+    end
+    p.monomers = new_monomers
+    
+    # Find baseIntIdx as the smallest intIdx
+    intIdxList = sort(collect(keys(p.monomers)))
+    p.baseIntIdx = intIdxList[1]
+    
+    # Re-assign pattern to pos[key][6] with correct intIdx values
+    if p.pos !== nothing
+        _assignPattern!(p)
+    end
+    
+    return p
+end
+
 # Validate that each non-base pattern type (2+) appears in exactly one contiguous block
 function _validateContiguousBlocks(patternVec::Vector{Int32}, baseIntIdx::Int32)
     patternTypes = []
@@ -639,6 +676,12 @@ function init!(l::Lattice, slist::Vector{<:AbstractSpecies})
         # Initialize species if not already done (parent polymers might be pre-initialized)
         if s.pos === nothing
             initSpecies!(s)
+        end
+
+        # Auto-sync monomer dict keys to current intIdx values (handles
+        # cases where intPot! changed intIdx after initMonomers!)
+        if typeof(s) <: AbstractPolymer && s.monomers !== nothing
+            _syncMonomerKeys!(s)
         end
 
         # give each species a unique letter suffix
