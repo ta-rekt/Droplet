@@ -360,6 +360,11 @@ function couplingPot!(self::BulkMonomer, partner::AbstractMonomer, context::Abst
     return nothing
 end
 
+# FastBulkMonomer does not support three-way couplings
+function couplingPot!(self::FastBulkMonomer, partner::AbstractMonomer, context::AbstractMonomer, pot::Float64)
+    error("FastBulkMonomer does not support three-way couplings. Use BulkMonomer instead.")
+end
+
 # get coupling potential for a three-way interaction
 function getCouplingPot(self::BulkMonomer, partner::AbstractMonomer, context::AbstractMonomer)
     if self.couplingMat === nothing || self.couplingIdx === nothing

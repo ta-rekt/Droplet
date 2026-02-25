@@ -528,6 +528,8 @@ end
 # MARK: -FastBulkMonomer
 
 # Energy increment for the bulkMonomer system
+# Note: FastBulkMonomer does not support three-way couplings.
+# Use BulkMonomer if three-way interactions are needed.
 function deltaHam!(b::FastBulkMonomer)
 
     # energy increment from self-interactions

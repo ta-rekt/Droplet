@@ -30,4 +30,5 @@ using Random
     include("test_couplingPot.jl")
     include("test_ham_coupling.jl")
     include("test_deltaHam_coupling.jl")
+    include("test_integration_coupling.jl")
 end

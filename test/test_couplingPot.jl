@@ -347,8 +347,8 @@ end
     intPot!(b, -1.0)
     intPot!(c, -1.0)
     
-    # FastBulkMonomer as self should fail (MethodError because couplingPot! is only defined for BulkMonomer)
-    @test_throws MethodError couplingPot!(f, b, c, -0.5)
+    # FastBulkMonomer as self should fail with explicit error
+    @test_throws ErrorException couplingPot!(f, b, c, -0.5)
 end
 
 @testset "couplingPot! - FastBulkMonomer allowed as partner or context" begin
