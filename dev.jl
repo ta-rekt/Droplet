@@ -510,6 +510,7 @@ end
     exportSpecies!([sphere], string(outpath, "_frame1"))
 end
 
+## 1010011111110000100000101010111100010100001100101110000
 # Testing interpolations
 
 let
@@ -714,4 +715,12 @@ let
     plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 800))
 
     savefig("media/figures/20260218/fisher_rate_with_local_gradient_enhancer.png")
+end
+
+## 1010011111110000100000101010111100010100001100101110000
+# Debug coupling machinery
+
+let
+    
+
 end

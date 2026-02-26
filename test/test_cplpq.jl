@@ -4,8 +4,6 @@
 using Test
 using Droplet
 
-println("Testing cplpq (site co-location)")
-println("=" ^ 50)
 
 # =============================================================================
 # PART 1: Generic BulkMonomer dispatch
@@ -283,5 +281,3 @@ end
     @test cplpq(a, b, Int32[8, 8, 8]) == 0  # A absent, B present
 end
 
-println()
-println("All cplpq tests completed!")

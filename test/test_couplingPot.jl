@@ -4,8 +4,6 @@
 using Test
 using Droplet
 
-println("Testing couplingPot! (site-coupling)")
-println("=" ^ 50)
 
 # =============================================================================
 # PART 1: Basic functionality
@@ -418,5 +416,100 @@ end
     @test size(a.couplingMat, 2) == size(a.intMat, 1)
 end
 
-println()
-println("All couplingPot! tests completed!")
+# =============================================================================
+# PART 8: Coupling survives index remapping during _syncMatrices!
+# =============================================================================
+
+@testset "couplingPot! - coupling value survives later _syncMatrices! (2-arg)" begin
+    # Regression: couplingPot! sets value at mainPattern2.intIdx,
+    # then a later intPot!/couplingPot! call triggers _syncMatrices!
+    # which shifts intIdx. The coupling value must follow.
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    c = BulkMonomer(; name="C", length=5)
+
+    intPot!(a, -1.0)
+    intPot!(b, -1.0)
+    intPot!(a, b, -0.5)
+
+    couplingPot!(a, b, -3.0)
+    @test getCouplingPot(a, b) == -3.0
+
+    # Now introduce c, which triggers _syncMatrices! and may shift indices
+    intPot!(c, -1.0)
+    intPot!(a, c, -0.2)
+
+    # After sync, the coupling value should still be accessible via current intIdx
+    @test getCouplingPot(a, b) == -3.0
+    @test a.couplingMat[a.couplingIdx, b.intIdx, b.intIdx] == -3.0
+end
+
+@testset "couplingPot! - coupling value survives later _syncMatrices! (3-arg)" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    c = BulkMonomer(; name="C", length=5)
+    d = BulkMonomer(; name="D", length=5)
+
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+    intPot!(a, b, -0.5); intPot!(a, c, -0.3)
+
+    couplingPot!(a, b, c, -2.0)
+    @test getCouplingPot(a, b, c) == -2.0
+
+    # Introduce d, triggering _syncMatrices!
+    intPot!(d, -1.0)
+    intPot!(a, d, -0.1)
+
+    @test getCouplingPot(a, b, c) == -2.0
+    @test a.couplingMat[a.couplingIdx, b.intIdx, c.intIdx] == -2.0
+    @test a.couplingMat[a.couplingIdx, c.intIdx, b.intIdx] == -2.0
+end
+
+@testset "couplingPot! - BulkMonomer + PolyMonomer coupling survives new species sync" begin
+    poly = Polymer(; length=10, maxlength=20, nMonomerTypes=2, pattern=:block)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm1 = poly.monomers[1]
+    pm2 = poly.monomers[2]
+
+    tf = BulkMonomer(; name="TF", length=5)
+    intPot!(tf, 0.0)
+    intPot!(pm1, tf, 0.0)
+
+    couplingPot!(tf, pm2, -3.0)
+    @test tf.couplingMat[tf.couplingIdx, pm2.intIdx, pm2.intIdx] == -3.0
+
+    # Now add a new species that triggers _syncMatrices!
+    rnap = BulkMonomer(; name="RNAP", length=5)
+    intPot!(rnap, 0.0)
+    couplingPot!(rnap, pm2, 0.0)
+
+    # TF's coupling to pm2 must survive the index shift
+    @test tf.couplingMat[tf.couplingIdx, pm2.intIdx, pm2.intIdx] == -3.0
+end
+
+@testset "couplingPot! - multiple couplings survive sequential syncs" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+
+    intPot!(a, -1.0); intPot!(b, -1.0)
+
+    couplingPot!(a, b, -2.0)
+    @test getCouplingPot(a, b) == -2.0
+
+    # Add c with coupling to b
+    c = BulkMonomer(; name="C", length=5)
+    intPot!(c, -1.0)
+    couplingPot!(a, b, c, -1.5)
+
+    @test getCouplingPot(a, b) == -2.0     # two-way preserved
+    @test getCouplingPot(a, b, c) == -1.5  # three-way set
+
+    # Add d with yet another sync
+    d = BulkMonomer(; name="D", length=5)
+    intPot!(d, -1.0)
+    intPot!(a, d, -0.1)
+
+    @test getCouplingPot(a, b) == -2.0     # still preserved
+    @test getCouplingPot(a, b, c) == -1.5  # still preserved
+end
+

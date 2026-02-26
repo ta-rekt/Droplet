@@ -4,7 +4,7 @@
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 l = Lattice(;
-    boxlength = 16,
+    boxlength = 42,
     nspecies = 2  # base (1), pattern (2), tf (3), rnap (4)
 )
 
@@ -14,7 +14,7 @@ poly = Polymer(;
     maxlength = 16,
     initShape = "line",
     nMonomerTypes = 8,  # base, pattern
-    initPos = [1, 8, 8],
+    initPos = [8, 21, 21],
     pattern = :uniform
 )
 
@@ -51,12 +51,12 @@ output metrics: rnap contact probability at TI site
 
 init_from_checkpoint = false
 
-t_max = 0.1    # runtime in minutes (initial test)
+t_max = 3    # runtime in minutes (initial test)
 step = 10000
 smallstep = step
 
-vals = range(0.1, stop=0.9, length=9)  # parallelized parameters (concentration)
-alphas = zeros(9)
+vals = exp.(range(-5, stop=-1, length=16))  # parallelized parameters (concentration)
+alphas = zeros(16)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
@@ -71,7 +71,7 @@ end
 #     end
 # end
 
-alphas = [0.1]    # concentration
+# alphas = [0.1]    # concentration
 betas = [0]           # nothing
 nparams = length(alphas)
 
@@ -114,19 +114,21 @@ function target!(res, args...)
     end
 
     # rnap-transcription initiation site interaction
-    intPot!(tailPattern3, rnap, -0.0)      # (weak)
+    # intPot!(tailPattern3, rnap, -0.0)      # (weak)
     
     # enhancers
-    intPot!(mainPattern1, tf, -0.0)    # pattern-tf (weak)
-    intPot!(mainPattern2, tf, 0.0)    # pattern-tf (med)
-    intPot!(mainPattern3, tf, -0.0)    # pattern-tf (strong)
+    intPot!(mainPattern1, tf, -0.0)    # pattern-tf
     
     # tf (type 3)
     # intPot!(tf, -1.0 / temperature)    # tf self-interaction
 
+    # set two-way coupling
+    couplingPot!(tf, mainPattern2, -3.0)
+    couplingPot!(rnap, mainPattern2, 0.0)
+
     # Set three-way coupling
-    # couplingPot!(tf, rnap, mainPattern2, 0.0)   # TF only binds p2 when rnap bound
-    # couplingPot!(rnap, tf, mainPattern2, 0.0)   # RNAP only binds p2 when tf bound
+    couplingPot!(tf, rnap, mainPattern2, 0.0)   # TF only binds p2 when rnap bound
+    couplingPot!(rnap, tf, mainPattern2, 0.0)   # RNAP only binds p2 when tf bound
 
     tf.length = Int32(round(l.boxlength^3 * concentration))
     # rnap.length = Int32(round(l.boxlength^3 * 0.02))
@@ -162,6 +164,7 @@ function target!(res, args...)
     accs = []
     binding_activity = []
     transcription_activity = []
+    tf_rnap_activity = []
     on_times = []
     off_times = []
     pattern_dists = []
@@ -175,9 +178,6 @@ function target!(res, args...)
     push!(hams_poly, poly.ham)
     push!(hams_tf, tf.ham)
     push!(hams_rnap, rnap.ham)
-    push!(accs, 0)
-    push!(binding_activity, 0.0)
-    push!(transcription_activity, 0.0)
 
     # build polymer patterns
     patternVec = zeros(Int32, poly.maxlength)
@@ -238,48 +238,44 @@ function target!(res, args...)
 
                 if mod(nmoves, smallstep) == 0
 
-                    # compute contact probability between pattern and tf
+                    # compute contact probability at the mainPattern2 probe site
                     contacts_tf = 0
                     contacts_rnap = 0
+                    contacts_tf_rnap = 0
                     
-                    # get tail key for pattern
+                    # get tail key for mainPattern2 — the tail IS the probe bead
                     if haskey(poly.patternTails, mainPattern2.intIdx)
                         tail_key = poly.patternTails[mainPattern2.intIdx]
                         
-                        # walk forward right after tail to count nearby contacts_tf
-                        current_key = poly.pos[tail_key][5]
+                        # walk the mainPattern2 region itself (not past it)
+                        current_key = tail_key
                         count = 0
                         while count < transcr_init_site_length
                             
-                            # check if we are at the tail of pattern 2
-                            if poly.pos[current_key][6] == tailPattern2.intIdx
+                            # check if this bead is actually mainPattern2
+                            if poly.pos[current_key][6] == mainPattern2.intIdx
                                 
-                                # count nearest neighbors with rnap
-                                contacts_tf += nnp(tailPattern2, tf, poly.pos[current_key][1:3]) / 6
-                                contacts_rnap += nnp(tailPattern2, rnap, poly.pos[current_key][1:3]) / 6
+                                # measure species occupancy at this probe site
+                                pos = poly.pos[current_key][1:3]
+                                contacts_tf += Int(tf.latS[pos[1], pos[2], pos[3]] > 0)
+                                contacts_rnap += Int(rnap.latS[pos[1], pos[2], pos[3]] > 0)
+                                contacts_tf_rnap += Int(tf.latS[pos[1], pos[2], pos[3]] > 0 && 
+                                                        rnap.latS[pos[1], pos[2], pos[3]] > 0)
                                 
-                                # move to next bead
-                                current_key = poly.pos[current_key][5]
-                                count += 1
-
-                            elseif poly.pos[current_key][6] == base.intIdx
-                            
-                                # count nearest neighbors with rnap
-                                contacts_tf += nnp(base, tf, poly.pos[current_key][1:3]) / 6
-                                contacts_rnap += nnp(base, rnap, poly.pos[current_key][1:3]) / 6
-                                
-                                # move to next bead
-                                current_key = poly.pos[current_key][5]
+                                # move backward along polymer (toward head)
+                                current_key = poly.pos[current_key][4]
                                 count += 1
                             else
-                                break  # reached end of pattern region
+                                break  # left the mainPattern2 region
                             end
                         end
                     end
                     
-                    push!(binding_activity, contacts_tf / transcr_init_site_length)
                     current_transcription_activity = contacts_rnap / transcr_init_site_length
+
+                    push!(binding_activity, contacts_tf / transcr_init_site_length)
                     push!(transcription_activity, current_transcription_activity)
+                    push!(tf_rnap_activity, contacts_tf_rnap / transcr_init_site_length)
 
                     # measure distance between probe and TF binding site
                     _, _, dist = get_pattern_centers(poly, 
@@ -327,6 +323,7 @@ function target!(res, args...)
     res["acceptance_rate"] = accs
     res["binding_activity"] = binding_activity
     res["transcription_activity"] = transcription_activity
+    res["tf_rnap_activity"] = tf_rnap_activity
     res["on_times"] = on_times
     res["off_times"] = off_times
     res["pattern_distances"] = pattern_dists

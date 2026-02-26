@@ -102,6 +102,63 @@ function _syncMatrices!(a::AbstractMonomer, b::AbstractMonomer)
         newIntSpecies[idx] = (sp, idx)
     end
     
+    # Build old→new index mapping for remapping coupling matrices.
+    # Collect from both a's and b's old intSpecies.
+    oldToNewA = Dict{Int, Int}()
+    aSpeciesIds = Set{Int}()
+    for (sp, oldIdx) in a.intSpecies
+        (_, newI) = allSpecies[sp.id]
+        oldToNewA[oldIdx] = newI
+        push!(aSpeciesIds, sp.id)
+    end
+    oldToNewB = Dict{Int, Int}()
+    bSpeciesIds = Set{Int}()
+    for (sp, oldIdx) in b.intSpecies
+        (_, newI) = allSpecies[sp.id]
+        oldToNewB[oldIdx] = newI
+        push!(bSpeciesIds, sp.id)
+    end
+
+    # Remap coupling matrices for all BulkMonomers in the merged set.
+    # Each coupling matrix uses intIdx for its j,k dimensions, which just changed.
+    remapped = Set{UInt64}()  # track by objectid to avoid double-remapping shared matrices
+    for (sp, _) in newIntSpecies
+        if sp isa BulkMonomer && !isnothing(sp.couplingMat)
+            matId = objectid(sp.couplingMat)
+            if matId in remapped
+                continue
+            end
+            push!(remapped, matId)
+            
+            # Determine which old→new mapping applies to this species.
+            # Species from a's network used a's old indices; from b's used b's.
+            mapping = sp.id in aSpeciesIds ? oldToNewA : oldToNewB
+
+            oldMat = sp.couplingMat
+            m = size(oldMat, 1)
+            nOld = size(oldMat, 2)
+            newCMat = zeros(Float64, m, n, n)
+            
+            for ci in 1:m
+                for j in 1:nOld
+                    for k in 1:nOld
+                        v = oldMat[ci, j, k]
+                        if v != 0.0 && haskey(mapping, j) && haskey(mapping, k)
+                            newCMat[ci, mapping[j], mapping[k]] = v
+                        end
+                    end
+                end
+            end
+            
+            # Update all BulkMonomers sharing this coupling matrix
+            for (sp2, _) in newIntSpecies
+                if sp2 isa BulkMonomer && sp2.couplingMat === oldMat
+                    sp2.couplingMat = newCMat
+                end
+            end
+        end
+    end
+
     # update all species to point to the same matrix and list
     for (sp, idx) in newIntSpecies
         sp.intSpecies = newIntSpecies
