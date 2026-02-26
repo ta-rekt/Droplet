@@ -292,80 +292,123 @@ end
 """
     couplingPot!(self::BulkMonomer, partner::AbstractMonomer, context::AbstractMonomer, pot::Float64)
 
-Set the three-way coupling potential for a BulkMonomer.
+Set a three-way on-site coupling potential. Energy `pot` is contributed per lattice site
+where all three species (self, partner, context) co-occupy.
 
-The coupling contributes to `self`'s Hamiltonian when:
-- `self` occupies the same lattice site as `context`
-- `self` has a nearest neighbor of type `partner`
+Symmetry is enforced across all indices:
+- j,k symmetry: `couplingMat[i, j, k] == couplingMat[i, k, j]`
+- owner symmetry: every BulkMonomer participant gets the same coupling value
 
-The coupling is symmetric in partner/context: setting (self, A, B, pot) also sets (self, B, A, pot).
-
-All three species (self, partner, context) must be distinct.
+If `partner === context`, this delegates to the two-way form `couplingPot!(self, partner, pot)`.
 
 # Arguments
-- `self::BulkMonomer`: The BulkMonomer whose Hamiltonian is modified (cannot be FastBulkMonomer)
-- `partner::AbstractMonomer`: The species that must be a nearest neighbor
-- `context::AbstractMonomer`: The species that must occupy the same site as self
-- `pot::Float64`: The coupling strength (energy contribution per neighbor)
-
-# Example
-```julia
-a = BulkMonomer(; name="A", length=100)
-b = BulkMonomer(; name="B", length=100)
-c = BulkMonomer(; name="C", length=100)
-
-# Set up standard two-way interactions first
-intPot!(a, -1.0)
-intPot!(b, -1.0)
-intPot!(c, -1.0)
-
-# When A is at the same site as C, A's interaction with B neighbors is modified by -0.5
-couplingPot!(a, b, c, -0.5)
-```
+- `self::BulkMonomer`: Cannot be FastBulkMonomer
+- `partner::AbstractMonomer`: Must be distinct from self
+- `context::AbstractMonomer`: Must be distinct from self
+- `pot::Float64`: On-site coupling strength
 """
 function couplingPot!(self::BulkMonomer, partner::AbstractMonomer, context::AbstractMonomer, pot::Float64)
-    # validate: all three must be distinct
-    if self === partner || self === context || partner === context
-        error("couplingPot!: self, partner, and context must all be distinct species")
+    if self === partner || self === context
+        error("couplingPot!: self must be distinct from partner and context")
     end
-    
-    # ensure two-way interaction structures exist for all species
+
+    # j == k case: delegate to two-way form
+    if partner === context
+        return couplingPot!(self, partner, pot)
+    end
+
+    # ensure and sync intMat across all three
     _ensureIntStructures!(self)
     _ensureIntStructures!(partner)
     _ensureIntStructures!(context)
-    
-    # sync two-way matrices so all species share the same intMat
-    if self.intMat !== partner.intMat
-        _syncMatrices!(self, partner)
-    end
-    if self.intMat !== context.intMat
-        _syncMatrices!(self, context)
-    end
-    
-    # initialize coupling structures for self
+    self.intMat !== partner.intMat && _syncMatrices!(self, partner)
+    self.intMat !== context.intMat && _syncMatrices!(self, context)
+
+    # ensure coupling structures for all BulkMonomer participants
     _ensureCouplingStructures!(self)
-    
-    # expand coupling matrix if intMat has grown
+    participants = [self]
+    if partner isa BulkMonomer
+        _ensureCouplingStructures!(partner)
+        push!(participants, partner)
+    end
+    if context isa BulkMonomer
+        _ensureCouplingStructures!(context)
+        push!(participants, context)
+    end
+
+    # sync coupling structures pairwise among BulkMonomer participants
+    for i in 2:length(participants)
+        if participants[1].couplingMat !== participants[i].couplingMat
+            _syncCouplingStructures!(participants[1], participants[i])
+        end
+    end
+
     _expandCouplingMat!(self)
-    
-    # get indices
-    selfCoupIdx = self.couplingIdx
-    partnerIntIdx = partner.intIdx
-    contextIntIdx = context.intIdx
-    
-    # set coupling (symmetric in partner/context)
-    self.couplingMat[selfCoupIdx, partnerIntIdx, contextIntIdx] = pot
-    self.couplingMat[selfCoupIdx, contextIntIdx, partnerIntIdx] = pot
-    
+
+    # collect the intIdx triplet: (self, partner, context)
+    idxs = (self.intIdx, partner.intIdx, context.intIdx)
+
+    # set coupling for all BulkMonomer participants (first-two-index + j,k symmetry)
+    # each participant's j,k are the intIdx of the other two species in the triplet
+    for p in participants
+        j, k = idxs[findfirst(x -> x != p.intIdx, idxs)], idxs[findlast(x -> x != p.intIdx, idxs)]
+        p.couplingMat[p.couplingIdx, j, k] = pot
+        p.couplingMat[p.couplingIdx, k, j] = pot
+    end
+
     return nothing
 end
 
-# FastBulkMonomer does not support three-way couplings
-function couplingPot!(self::FastBulkMonomer, partner::AbstractMonomer, context::AbstractMonomer, pot::Float64)
-    error("FastBulkMonomer does not support three-way couplings. Use BulkMonomer instead.")
+"""
+    couplingPot!(self::BulkMonomer, partner::AbstractMonomer, pot::Float64)
+
+Set a two-way on-site coupling potential. Energy `pot` is contributed per lattice site
+where both `self` and `partner` co-occupy. Distinct from `intPot!` which is nearest-neighbor.
+
+Owner symmetry: both BulkMonomer participants (if applicable) get the same value.
+"""
+function couplingPot!(self::BulkMonomer, partner::AbstractMonomer, pot::Float64)
+    if self === partner
+        error("couplingPot!: self and partner must be distinct species")
+    end
+
+    _ensureIntStructures!(self)
+    _ensureIntStructures!(partner)
+    self.intMat !== partner.intMat && _syncMatrices!(self, partner)
+
+    _ensureCouplingStructures!(self)
+    participants = [self]
+    if partner isa BulkMonomer
+        _ensureCouplingStructures!(partner)
+        push!(participants, partner)
+        if self.couplingMat !== partner.couplingMat
+            _syncCouplingStructures!(self, partner)
+        end
+    end
+
+    _expandCouplingMat!(self)
+
+    pIdx = partner.intIdx
+    sIdx = self.intIdx
+
+    # two-way: couplingMat[owner, j, j] where j is the other species
+    self.couplingMat[self.couplingIdx, pIdx, pIdx] = pot
+    if partner isa BulkMonomer
+        partner.couplingMat[partner.couplingIdx, sIdx, sIdx] = pot
+    end
+
+    return nothing
 end
 
-# get coupling potential for a three-way interaction
+# FastBulkMonomer guards
+function couplingPot!(self::FastBulkMonomer, partner::AbstractMonomer, context::AbstractMonomer, pot::Float64)
+    error("FastBulkMonomer does not support couplings. Use BulkMonomer instead.")
+end
+function couplingPot!(self::FastBulkMonomer, partner::AbstractMonomer, pot::Float64)
+    error("FastBulkMonomer does not support couplings. Use BulkMonomer instead.")
+end
+
+# get coupling potential (three-way)
 function getCouplingPot(self::BulkMonomer, partner::AbstractMonomer, context::AbstractMonomer)
     if self.couplingMat === nothing || self.couplingIdx === nothing
         return nothing
@@ -373,11 +416,13 @@ function getCouplingPot(self::BulkMonomer, partner::AbstractMonomer, context::Ab
     if partner.intIdx === nothing || context.intIdx === nothing
         return nothing
     end
-    
-    # check bounds
     if partner.intIdx > size(self.couplingMat, 2) || context.intIdx > size(self.couplingMat, 3)
         return nothing
     end
-    
     return self.couplingMat[self.couplingIdx, partner.intIdx, context.intIdx]
+end
+
+# get coupling potential (two-way)
+function getCouplingPot(self::BulkMonomer, partner::AbstractMonomer)
+    return getCouplingPot(self, partner, partner)
 end

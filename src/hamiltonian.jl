@@ -445,11 +445,25 @@ function ham!(b::AbstractBulkMonomer)
         b.ham += b.intMat[b.intIdx, idx] * nnp_ * selfFactor
     end
 
-    # Three-way coupling contribution (BulkMonomer only, not FastBulkMonomer)
+    # On-site coupling contribution (BulkMonomer only, not FastBulkMonomer)
     if hasfield(typeof(b), :couplingMat) && !isnothing(b.couplingMat)
+        # Pass 1: two-way on-site coupling (j == k, j ≠ self)
+        for (sp_j, idx_j) in b.intSpecies
+            if idx_j == b.intIdx
+                continue
+            end
+            coupling_val = b.couplingMat[b.couplingIdx, idx_j, idx_j]
+            if coupling_val != 0.0
+                for i in 1:b.length
+                    pos = b.pos[i][range(1, 3)]
+                    b.ham += coupling_val * cplpq(sp_j, sp_j, pos)
+                end
+            end
+        end
+
+        # Pass 2: three-way on-site coupling (j < k)
         for (sp_j, idx_j) in b.intSpecies
             for (sp_k, idx_k) in b.intSpecies
-                # Skip if same species or idx_j >= idx_k (avoid double-counting pairs)
                 if idx_j >= idx_k
                     continue
                 end
@@ -457,8 +471,7 @@ function ham!(b::AbstractBulkMonomer)
                 if coupling_val != 0.0
                     for i in 1:b.length
                         pos = b.pos[i][range(1, 3)]
-                        # Count both configurations: j-neighbor/k-overlap AND k-neighbor/j-overlap
-                        b.ham += coupling_val * (nnpq(b, sp_j, sp_k, pos) + nnpq(b, sp_k, sp_j, pos))
+                        b.ham += coupling_val * cplpq(sp_j, sp_k, pos)
                     end
                 end
             end
@@ -498,8 +511,20 @@ function deltaHam!(b::BulkMonomer)
         end
     end
 
-    # Three-way coupling contribution (BulkMonomer only, not FastBulkMonomer)
+    # On-site coupling contribution (BulkMonomer only, not FastBulkMonomer)
     if !isnothing(b.couplingMat)
+        # Pass 1: two-way on-site coupling delta (j == k, j ≠ self)
+        for (sp_j, idx_j) in b.intSpecies
+            if idx_j == b.intIdx
+                continue
+            end
+            coupling_val = b.couplingMat[b.couplingIdx, idx_j, idx_j]
+            if coupling_val != 0.0
+                b.deltaH += coupling_val * (cplpq(sp_j, sp_j, b.newPos) - cplpq(sp_j, sp_j, b.bi))
+            end
+        end
+
+        # Pass 2: three-way on-site coupling delta (j < k)
         for (sp_j, idx_j) in b.intSpecies
             for (sp_k, idx_k) in b.intSpecies
                 if idx_j >= idx_k
@@ -507,12 +532,7 @@ function deltaHam!(b::BulkMonomer)
                 end
                 coupling_val = b.couplingMat[b.couplingIdx, idx_j, idx_k]
                 if coupling_val != 0.0
-                    # Count both configurations: j-neighbor/k-overlap AND k-neighbor/j-overlap
-                    delta_coupling = coupling_val * (
-                        (nnpq(b, sp_j, sp_k, b.newPos) + nnpq(b, sp_k, sp_j, b.newPos)) -
-                        (nnpq(b, sp_j, sp_k, b.bi) + nnpq(b, sp_k, sp_j, b.bi))
-                    )
-                    b.deltaH += delta_coupling
+                    b.deltaH += coupling_val * (cplpq(sp_j, sp_k, b.newPos) - cplpq(sp_j, sp_k, b.bi))
                 end
             end
         end

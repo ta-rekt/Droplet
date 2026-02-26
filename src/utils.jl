@@ -1,6 +1,6 @@
 
 export coords_equal, getLatS, getTempVec, getBoxlength, getPolyMonomer, 
-       getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nnpq, nnIdxs!, splitDroplet!,
+       getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, cplpq, nnIdxs!, splitDroplet!,
        dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP,
        setHam, setDeltaHam, setDeltaHP, isneighbor, isInPatternRegion
 
@@ -320,128 +320,43 @@ function nnp(s::AbstractBulkMonomer,
 end
 
 
-# Number of nearest neighbors between species s and p at a given position
-# conditioned on species s and q occupying the same lattice site.
+# Boolean: do species p and q both occupy lattice site pos?
 # Specialized methods handle PolyMonomer types by checking intIdx match.
 
 # Generic version: both p and q use occupancy check (> 0)
-function nnpq(s::AbstractSpecies, 
-              p::AbstractSpecies, 
-              q::AbstractSpecies, 
-              pos::Union{SubArray{Int32}, Vector{Int32}})
-    n = 0
-    tempVec = getTempVec(s)
-    boxlength = getBoxlength(s)
+function cplpq(p::AbstractSpecies, 
+               q::AbstractSpecies, 
+               pos::Union{SubArray{Int32}, Vector{Int32}})
     pLatS = getLatS(p)
     qLatS = getLatS(q)
-
-    boxmod!(pos, tempVec, Int32(1), boxlength)
-    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
-
-    for i in 1:3
-        pos[i] += 1
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
-
-        pos[i] -= 2
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
-
-        pos[i] += 1
-    end
-
-    clamp!(tempVec, 0, 0)
-    return n
+    return (pLatS[pos[1], pos[2], pos[3]] > 0) * (qLatS[pos[1], pos[2], pos[3]] > 0)
 end
 
-# PolyMonomer context: check q.intIdx match for context overlap
-function nnpq(s::AbstractSpecies, 
-              p::AbstractSpecies, 
-              q::AbstractPolyMonomer, 
-              pos::Union{SubArray{Int32}, Vector{Int32}})
-    n = 0
-    tempVec = getTempVec(s)
-    boxlength = getBoxlength(s)
+# PolyMonomer p: check p.intIdx match
+function cplpq(p::AbstractPolyMonomer, 
+               q::AbstractSpecies, 
+               pos::Union{SubArray{Int32}, Vector{Int32}})
     pLatS = getLatS(p)
     qLatS = getLatS(q)
-
-    boxmod!(pos, tempVec, Int32(1), boxlength)
-    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] == q.intIdx)
-
-    for i in 1:3
-        pos[i] += 1
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
-
-        pos[i] -= 2
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0) * sq_coupled
-
-        pos[i] += 1
-    end
-
-    clamp!(tempVec, 0, 0)
-    return n
+    return (pLatS[pos[1], pos[2], pos[3]] == p.intIdx) * (qLatS[pos[1], pos[2], pos[3]] > 0)
 end
 
-# PolyMonomer partner: check p.intIdx match for neighbor counting
-function nnpq(s::AbstractSpecies, 
-              p::AbstractPolyMonomer, 
-              q::AbstractSpecies, 
-              pos::Union{SubArray{Int32}, Vector{Int32}})
-    n = 0
-    tempVec = getTempVec(s)
-    boxlength = getBoxlength(s)
+# PolyMonomer q: check q.intIdx match
+function cplpq(p::AbstractSpecies, 
+               q::AbstractPolyMonomer, 
+               pos::Union{SubArray{Int32}, Vector{Int32}})
     pLatS = getLatS(p)
     qLatS = getLatS(q)
-
-    boxmod!(pos, tempVec, Int32(1), boxlength)
-    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
-
-    for i in 1:3
-        pos[i] += 1
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
-
-        pos[i] -= 2
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
-
-        pos[i] += 1
-    end
-
-    clamp!(tempVec, 0, 0)
-    return n
+    return (pLatS[pos[1], pos[2], pos[3]] > 0) * (qLatS[pos[1], pos[2], pos[3]] == q.intIdx)
 end
 
-# Both PolyMonomer: check intIdx match for both partner and context
-function nnpq(s::AbstractSpecies, 
-              p::AbstractPolyMonomer, 
-              q::AbstractPolyMonomer, 
-              pos::Union{SubArray{Int32}, Vector{Int32}})
-    n = 0
-    tempVec = getTempVec(s)
-    boxlength = getBoxlength(s)
+# Both PolyMonomer: check intIdx match for both
+function cplpq(p::AbstractPolyMonomer, 
+               q::AbstractPolyMonomer, 
+               pos::Union{SubArray{Int32}, Vector{Int32}})
     pLatS = getLatS(p)
     qLatS = getLatS(q)
-
-    boxmod!(pos, tempVec, Int32(1), boxlength)
-    sq_coupled = (qLatS[tempVec[1], tempVec[2], tempVec[3]] == q.intIdx)
-
-    for i in 1:3
-        pos[i] += 1
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
-
-        pos[i] -= 2
-        boxmod!(pos, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == p.intIdx) * sq_coupled
-
-        pos[i] += 1
-    end
-
-    clamp!(tempVec, 0, 0)
-    return n
+    return (pLatS[pos[1], pos[2], pos[3]] == p.intIdx) * (qLatS[pos[1], pos[2], pos[3]] == q.intIdx)
 end
 
 

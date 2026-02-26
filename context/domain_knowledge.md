@@ -110,13 +110,75 @@ intPot!(tf, rnap, -2.0)          # Cooperative interaction
 # Expect: RNAP binding increases super-linearly with TF concentration
 ```
 
+### 2.4 On-Site Coupling Interactions (Two-Way and Three-Way)
+
+**What it is**: On-site coupling interactions where energy depends on multiple species co-located at the same lattice site. Two-way coupling rewards/penalizes two species sharing a site; three-way coupling rewards/penalizes three species sharing a site. These are distinct from nearest-neighbor `intMat` interactions.
+
+**Physical formula**: For species `self` at position `r`, the coupling contribution is:
+
+```
+# Two-way (j == k): on-site co-location of self and j
+H_coupling_2way(self, r) = Σ_j coupling[self, j, j] × cplpq(j, j, r)
+
+# Three-way (j < k): all three co-located at the same site
+H_coupling_3way(self, r) = Σ_{j<k} coupling[self, j, k] × cplpq(j, k, r)
+```
+
+where `cplpq(j, k, pos)` returns 1 if both species `j` and `k` occupy site `pos`, 0 otherwise. The coupling matrix has two symmetries:
+- **j,k symmetry**: `coupling[i,j,k] = coupling[i,k,j]`
+- **First-two-index symmetry**: All BulkMonomer participants share the same coupling value. E.g., `couplingPot!(a, b, c, -0.5)` sets `coupling[a,b,c] = coupling[b,a,c] = coupling[c,a,b] = -0.5`.
+
+**Key design principle**: Coupling energy is "owned by self" — only the species that owns the coupling (has a `couplingMat` field) has its Hamiltonian updated. All BulkMonomer participants own the coupling due to first-two-index symmetry. Partners' `deltaHP` does NOT include coupling contributions.
+
+**API**:
+```julia
+# Three-way coupling: all three species co-located at the same site
+couplingPot!(a, b, c, energy)
+
+# Two-way coupling: two species co-located at the same site (on-site, distinct from intMat)
+couplingPot!(a, b, energy)
+
+# a, b, c: any AbstractMonomer (but at least one must be BulkMonomer to own it)
+# energy: Float64 — coupling strength (negative = attractive/cooperative)
+```
+
+**Restrictions**:
+- `FastBulkMonomer` does NOT support couplings (throws `ErrorException`)
+- Only `BulkMonomer` can own couplings (has `couplingMat`, `couplingIdx` fields)
+- Partners can be any species (BulkMonomer, PolyMonomer, etc.)
+- Two-way `couplingMat[i,j,j]` is distinct from nearest-neighbor `intMat[i,j]`
+
+**Example: Cooperative binding with on-site coupling**:
+```julia
+tf1 = BulkMonomer(name="TF1", length=100)
+tf2 = BulkMonomer(name="TF2", length=50)
+dna = poly.monomers[1]  # PolyMonomer from a Polymer
+
+# Nearest-neighbor interactions (standard intMat)
+intPot!(tf1, -1.0)               # TF1 self-interaction
+intPot!(tf2, -1.0)               # TF2 self-interaction
+intPot!(tf1, dna, -0.5)          # TF1-DNA nearest-neighbor binding
+intPot!(tf2, dna, -0.5)          # TF2-DNA nearest-neighbor binding
+
+# Two-way on-site coupling: TF1 and TF2 at the same site
+couplingPot!(tf1, tf2, -0.2)     # On-site co-localization bonus
+
+# Three-way on-site coupling: TF1, TF2, and DNA all at the same site
+couplingPot!(tf1, tf2, dna, -0.3)  # Extra stabilization when all three co-locate
+```
+
+**Observable signature**:
+- Enhanced co-localization at sites where multiple coupled species overlap
+- Energy distributions shifted more negative at multi-species co-location sites
+- Two-way coupling shifts the on-site penalty/reward independently of nearest-neighbor `intMat`
+
 ---
 
 ## 3. Key Metrics & Interpretations
 
 ### 3.1 Hamiltonian (Energy)
 
-**Definition**: `H = Σ_ij ε_ij n_i n_j` (sum over all occupied neighbor pairs)
+**Definition**: `H = Σ_ij ε_ij n_i n_j + Σ_{i,j<k} coupling_i[j,k] × nnpq_terms` (sum over all occupied neighbor pairs, plus three-way coupling terms)
 
 **What it tells you**:
 - More negative = more favorable interactions
@@ -245,6 +307,12 @@ tf_density = zeros(Float64, (L, L, L))
 - `ε = -4.0`: Binding probability ~ e^(-4) ≈ 1.8% (essentially locked)
 
 **Warning**: `|ε| > 5.0` often causes numerical issues (overflow, extreme jamming)
+
+**Three-way coupling strengths**:
+- Cooperative enhancement: `coupling = -0.1 to -0.5` (modest context-dependent stabilization)
+- Strong cooperative coupling: `coupling = -0.5 to -1.0`
+- Typically `|coupling| < |ε_two-way|` (coupling is a correction to two-way interactions)
+- Sign convention: negative = cooperative (enhanced by context), positive = competitive (suppressed)
 
 ### 4.4 Time Scales
 

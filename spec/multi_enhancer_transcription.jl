@@ -4,17 +4,17 @@
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 l = Lattice(;
-    boxlength = 42,
+    boxlength = 16,
     nspecies = 2  # base (1), pattern (2), tf (3), rnap (4)
 )
 
 # heterogeneous polymer with patterned regions
 poly = Polymer(;
     length = 16,
-    maxlength = 400,
+    maxlength = 16,
     initShape = "line",
     nMonomerTypes = 8,  # base, pattern
-    initPos = [21, 21, 21],
+    initPos = [1, 8, 8],
     pattern = :uniform
 )
 
@@ -55,24 +55,23 @@ t_max = 0.1    # runtime in minutes (initial test)
 step = 10000
 smallstep = step
 
-vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (concentration)
-alphas = []
+vals = range(0.1, stop=0.9, length=9)  # parallelized parameters (concentration)
+alphas = zeros(9)
 nrepeats = 1
 
-# for (i, v) in enumerate(vals)
-#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
-# end
-
-# alphas = [0,10,20,30]    # distance between tf and rnap binding sites
-
-for dist in [0, 10, 20, 30]
-    for int in [0.0, -0.1, -0.5]
-        for len in [10, 100]
-            push!(alpha, (dist, int, len))
-        end
-    end
+for (i, v) in enumerate(vals)
+    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
+# for dist in [0, 10, 20, 30]
+#     for int in [0.0, -0.1, -0.5]
+#         for len in [10, 100]
+#             push!(alphas, (dist, int, len))
+#         end
+#     end
+# end
+
+alphas = [0.1]    # concentration
 betas = [0]           # nothing
 nparams = length(alphas)
 
@@ -88,7 +87,7 @@ function target!(res, args...)
     slist, keya, alpha, beta, blurb = args
 
     poly, tf, rnap = slist
-    tf_rnap_dist, tf_pattern2_int, tf_rnap_len = alpha
+    concentration = alpha
 
     base = poly.monomers[1]
 
@@ -102,7 +101,9 @@ function target!(res, args...)
     mainPattern3 = poly.monomers[7]
     tailPattern3 = poly.monomers[8]
 
-    concentration = 0.015
+    # concentration = 0.02
+    tf_rnap_dist = 5
+    tf_rnap_len = 5
     temperature = 0.66
     transcription_threshold = 0.1  # threshold for transcription activity
     
@@ -116,17 +117,19 @@ function target!(res, args...)
     intPot!(tailPattern3, rnap, -0.0)      # (weak)
     
     # enhancers
-    intPot!(mainPattern1, tf, -0.5)    # pattern-tf (weak)
-    intPot!(mainPattern2, tf, tf_pattern2_int)    # pattern-tf (med)
+    intPot!(mainPattern1, tf, -0.0)    # pattern-tf (weak)
+    intPot!(mainPattern2, tf, 0.0)    # pattern-tf (med)
     intPot!(mainPattern3, tf, -0.0)    # pattern-tf (strong)
     
     # tf (type 3)
-    intPot!(tf, -1.0 / temperature)    # tf self-interaction
+    # intPot!(tf, -1.0 / temperature)    # tf self-interaction
 
-    # rnap (type 4)
-    intPot!(rnap, tf, tf_rnap_intpot)
+    # Set three-way coupling
+    # couplingPot!(tf, rnap, mainPattern2, 0.0)   # TF only binds p2 when rnap bound
+    # couplingPot!(rnap, tf, mainPattern2, 0.0)   # RNAP only binds p2 when tf bound
 
     tf.length = Int32(round(l.boxlength^3 * concentration))
+    # rnap.length = Int32(round(l.boxlength^3 * 0.02))
     rnap.length = 2
 
     updateMonomers!(poly, base.intIdx)
@@ -179,21 +182,21 @@ function target!(res, args...)
     # build polymer patterns
     patternVec = zeros(Int32, poly.maxlength)
     p1_start, p1_end = 1, tf_rnap_len
-    p2_start, p2_end = p1_end+1+tf_rnap_dist, p1_end+3+tf_rnap_dist
-    p3_start, p3_end = 351, 360
+    p2_start, p2_end = p1_end+1+tf_rnap_dist, p1_end+1+tf_rnap_dist
+    p3_start, p3_end = 13, 13
     transcr_init_site_length = 1
 
     patternVec[1:p1_start-1] .= headPattern1.intIdx         # base type (40 beads)
     patternVec[p1_start:p1_end] .= mainPattern1.intIdx      # pattern 1 (8 beads)
     patternVec[p1_end+1:p2_start-1] .= tailPattern1.intIdx
 
-    patternVec[p2_start-1:p2_end] .= mainPattern2.intIdx
+    patternVec[p2_start:p2_end] .= mainPattern2.intIdx
     patternVec[p2_end+1:p3_start-1] .= tailPattern2.intIdx
 
-    patternVec[p3_start-1:p3_end] .= mainPattern3.intIdx
-    patternVec[p3_end+1:poly.maxlength-7] .= tailPattern3.intIdx
+    patternVec[p3_start:p3_end] .= mainPattern3.intIdx
+    patternVec[p3_end+1:poly.maxlength-1] .= tailPattern3.intIdx
 
-    patternVec[poly.maxlength-6:poly.maxlength] .= base.intIdx
+    patternVec[poly.maxlength:poly.maxlength] .= base.intIdx
 
     growPolymer!(poly, minAttempts = 900000)
     updatePattern!(l, poly, patternVec)

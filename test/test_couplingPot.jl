@@ -1,320 +1,367 @@
-# Test file for Section 3: couplingPot! function
-# Tests the three-way coupling initialization interface
+# Test suite for couplingPot! — on-site coupling API
+# Covers three-way (3-arg), two-way (2-arg), symmetry, validation, PolyMonomer support
 
 using Test
 using Droplet
 
-println("Testing couplingPot! (Section 3)")
+println("Testing couplingPot! (site-coupling)")
 println("=" ^ 50)
 
 # =============================================================================
 # PART 1: Basic functionality
 # =============================================================================
 
-@testset "couplingPot! - basic setting and retrieval" begin
+@testset "couplingPot! 3-arg - basic set/get" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    # Set up two-way interactions first
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    intPot!(a, b, 0.0)
-    intPot!(a, c, 0.0)
-    intPot!(b, c, 0.0)
-    
-    # Set three-way coupling
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+
     couplingPot!(a, b, c, -0.5)
-    
-    # Verify coupling was set
     @test getCouplingPot(a, b, c) == -0.5
 end
 
-@testset "couplingPot! - symmetry in j,k enforced" begin
+@testset "couplingPot! 2-arg - basic set/get" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+
+    couplingPot!(a, b, -0.5)
+    @test getCouplingPot(a, b) == -0.5
+end
+
+@testset "couplingPot! 3-arg - j,k symmetry" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+
     couplingPot!(a, b, c, -0.5)
-    
-    # Both orderings should return the same value
     @test getCouplingPot(a, b, c) == getCouplingPot(a, c, b)
     @test getCouplingPot(a, b, c) == -0.5
-    @test getCouplingPot(a, c, b) == -0.5
 end
 
 # =============================================================================
-# PART 2: Validation - distinct species required
+# PART 2: First-two-index symmetry (owner symmetry)
 # =============================================================================
 
-@testset "couplingPot! - error when i === j" begin
+@testset "3-arg symmetry - all BulkMonomer" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    
+    c = BulkMonomer(; name="C", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+
+    couplingPot!(a, b, c, -0.7)
+
+    # All three BulkMonomers should see the same coupling value
+    @test getCouplingPot(a, b, c) == -0.7
+    @test getCouplingPot(b, a, c) == -0.7
+    @test getCouplingPot(c, a, b) == -0.7
+
+    # j,k symmetry also holds for each owner
+    @test getCouplingPot(b, c, a) == -0.7
+    @test getCouplingPot(c, b, a) == -0.7
+end
+
+@testset "3-arg symmetry - one PolyMonomer" begin
+    poly = Polymer(; length=5, maxlength=10, nMonomerTypes=1)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm = poly.monomers[1]
+
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+    intPot!(a, pm, 0.0); intPot!(b, pm, 0.0)
+
+    couplingPot!(a, b, pm, -0.4)
+
+    # Both BulkMonomers see same value
+    @test getCouplingPot(a, b, pm) == -0.4
+    @test getCouplingPot(b, a, pm) == -0.4
+
+    # j,k symmetry
+    @test getCouplingPot(a, pm, b) == -0.4
+    @test getCouplingPot(b, pm, a) == -0.4
+
+    # PolyMonomer has no couplingMat
+    @test !hasfield(typeof(pm), :couplingMat)
+end
+
+@testset "2-arg symmetry" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+
+    couplingPot!(a, b, -0.6)
+
+    # Both see the same value
+    @test getCouplingPot(a, b) == -0.6
+    @test getCouplingPot(b, a) == -0.6
+end
+
+@testset "2-arg symmetry - PolyMonomer partner" begin
+    poly = Polymer(; length=5, maxlength=10, nMonomerTypes=1)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm = poly.monomers[1]
+    a = BulkMonomer(; name="A", length=5)
+    intPot!(a, -1.0); intPot!(a, pm, 0.0)
+
+    couplingPot!(a, pm, -0.3)
+    @test getCouplingPot(a, pm) == -0.3
+    # PolyMonomer cannot own coupling → no getCouplingPot(pm, a)
+end
+
+# =============================================================================
+# PART 3: Validation
+# =============================================================================
+
+@testset "couplingPot! - error: self === partner (3-arg)" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0)
     @test_throws ErrorException couplingPot!(a, a, b, -0.5)
 end
 
-@testset "couplingPot! - error when j === k" begin
+@testset "couplingPot! - error: self === context (3-arg)" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    
-    @test_throws ErrorException couplingPot!(a, b, b, -0.5)
-end
-
-@testset "couplingPot! - error when i === k" begin
-    a = BulkMonomer(; name="A", length=5)
-    b = BulkMonomer(; name="B", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0)
     @test_throws ErrorException couplingPot!(a, b, a, -0.5)
 end
 
+@testset "couplingPot! - j === k delegates to 2-arg" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+
+    # Should NOT error (j == k delegates to two-way)
+    couplingPot!(a, b, b, -0.5)
+    @test getCouplingPot(a, b) == -0.5
+    # Owner symmetry via delegation
+    @test getCouplingPot(b, a) == -0.5
+end
+
+@testset "couplingPot! - error: self === partner (2-arg)" begin
+    a = BulkMonomer(; name="A", length=5)
+    intPot!(a, -1.0)
+    @test_throws ErrorException couplingPot!(a, a, -0.5)
+end
+
+@testset "couplingPot! - error: FastBulkMonomer (3-arg)" begin
+    f = FastBulkMonomer(; name="F", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    c = BulkMonomer(; name="C", length=5)
+    intPot!(f, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+    @test_throws ErrorException couplingPot!(f, b, c, -0.5)
+end
+
+@testset "couplingPot! - error: FastBulkMonomer (2-arg)" begin
+    f = FastBulkMonomer(; name="F", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(f, -1.0); intPot!(b, -1.0)
+    @test_throws ErrorException couplingPot!(f, b, -0.5)
+end
+
 # =============================================================================
-# PART 3: Auto-initialization of structures
+# PART 4: Auto-initialization
 # =============================================================================
 
 @testset "couplingPot! - auto-initializes intSpecies" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    # Don't call intPot! first - couplingPot! should auto-initialize
+
     @test a.intSpecies === nothing
-    @test b.intSpecies === nothing
-    @test c.intSpecies === nothing
-    
+
     couplingPot!(a, b, c, -0.5)
-    
-    # Now all should have intSpecies
+
     @test a.intSpecies !== nothing
     @test b.intSpecies !== nothing
     @test c.intSpecies !== nothing
-    @test a.intIdx !== nothing
-    @test b.intIdx !== nothing
-    @test c.intIdx !== nothing
 end
 
-@testset "couplingPot! - initializes couplingIdx and couplingSpecies" begin
+@testset "couplingPot! - auto-init coupling for all BulkMonomer participants" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+
     @test a.couplingIdx === nothing
-    @test a.couplingSpecies === nothing
-    @test a.couplingMat === nothing
-    
+    @test b.couplingIdx === nothing
+    @test c.couplingIdx === nothing
+
     couplingPot!(a, b, c, -0.5)
-    
+
+    # All three should have coupling structures
     @test a.couplingIdx !== nothing
-    @test a.couplingSpecies !== nothing
-    @test a.couplingMat !== nothing
-    @test a.couplingIdx == 1  # First BulkMonomer in coupling list
+    @test b.couplingIdx !== nothing
+    @test c.couplingIdx !== nothing
+    # All share the same couplingMat
+    @test a.couplingMat === b.couplingMat
+    @test b.couplingMat === c.couplingMat
+end
+
+@testset "couplingPot! 2-arg - auto-init coupling for both" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+
+    couplingPot!(a, b, -0.5)
+
+    @test a.couplingIdx !== nothing
+    @test b.couplingIdx !== nothing
+    @test a.couplingMat === b.couplingMat
 end
 
 # =============================================================================
-# PART 4: Multiple couplings and species
+# PART 5: Multiple couplings and species
 # =============================================================================
 
-@testset "couplingPot! - multiple (j,k) pairs work correctly" begin
+@testset "couplingPot! - multiple (j,k) pairs" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
     d = BulkMonomer(; name="D", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    intPot!(d, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0); intPot!(d, -1.0)
+
     couplingPot!(a, b, c, -0.5)
     couplingPot!(a, b, d, -0.3)
     couplingPot!(a, c, d, -0.2)
-    
+
     @test getCouplingPot(a, b, c) == -0.5
     @test getCouplingPot(a, b, d) == -0.3
     @test getCouplingPot(a, c, d) == -0.2
-    
-    # Symmetry still holds
-    @test getCouplingPot(a, c, b) == -0.5
-    @test getCouplingPot(a, d, b) == -0.3
-    @test getCouplingPot(a, d, c) == -0.2
+    @test getCouplingPot(a, c, b) == -0.5  # j,k symmetry
 end
 
-@testset "couplingPot! - multiple BulkMonomers can have independent couplings" begin
+@testset "couplingPot! - shared coupling values across owners" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
-    # A has coupling with B,C
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+
     couplingPot!(a, b, c, -0.5)
-    
-    # B has different coupling with A,C
-    couplingPot!(b, a, c, -0.8)
-    
-    @test getCouplingPot(a, b, c) == -0.5
-    @test getCouplingPot(b, a, c) == -0.8
-    
-    # They should be independent
-    @test getCouplingPot(a, b, c) != getCouplingPot(b, a, c)
+
+    # Not independent — all three see the same value
+    @test getCouplingPot(a, b, c) == getCouplingPot(b, a, c)
+    @test getCouplingPot(b, a, c) == getCouplingPot(c, a, b)
 end
 
-@testset "couplingPot! - adding new species expands matrices correctly" begin
+@testset "couplingPot! - matrix expansion on new species" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+
     couplingPot!(a, b, c, -0.5)
-    
-    # Now add a new species D
+
+    # Add new species D
     d = BulkMonomer(; name="D", length=5)
     intPot!(d, -1.0)
-    intPot!(a, d, 0.0)  # This should expand intMat
-    
-    # Original coupling should still work
+    intPot!(a, d, 0.0)
+
+    # Original coupling preserved
     @test getCouplingPot(a, b, c) == -0.5
-    
+
     # Can add new coupling involving D
     couplingPot!(a, b, d, -0.3)
-    
     @test getCouplingPot(a, b, d) == -0.3
-    @test getCouplingPot(a, b, c) == -0.5  # Original still preserved
+    @test getCouplingPot(a, b, c) == -0.5
 end
 
-@testset "couplingPot! - coupling values survive matrix sync" begin
+@testset "couplingPot! - values survive intMat sync" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    # Set up A's couplings
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
     couplingPot!(a, b, c, -0.5)
-    
-    # Create independent species and link them
+
+    # Link new species
     d = BulkMonomer(; name="D", length=5)
     e = BulkMonomer(; name="E", length=5)
-    intPot!(d, -1.0)
-    intPot!(e, -1.0)
+    intPot!(d, -1.0); intPot!(e, -1.0)
     intPot!(d, e, 0.0)
-    
-    # Now link the networks by setting interaction between a and d
     intPot!(a, d, 0.0)
-    
-    # Original coupling should be preserved
+
     @test getCouplingPot(a, b, c) == -0.5
 end
 
 # =============================================================================
-# PART 5: PolyMonomer support
+# PART 6: PolyMonomer support
 # =============================================================================
 
-@testset "couplingPot! - PolyMonomer as partner" begin
+@testset "couplingPot! - PolyMonomer as partner (3-arg)" begin
     poly = Polymer(; length=10, maxlength=20, nMonomerTypes=1)
     initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=-0.5)
     pm = poly.monomers[1]
-    
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(a, pm, 0.0)
-    intPot!(b, pm, 0.0)
-    
-    # PolyMonomer as partner (j)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+    intPot!(a, pm, 0.0); intPot!(b, pm, 0.0)
+
     couplingPot!(a, pm, b, -0.5)
-    
     @test getCouplingPot(a, pm, b) == -0.5
-    @test getCouplingPot(a, b, pm) == -0.5  # Symmetry
+    @test getCouplingPot(a, b, pm) == -0.5  # j,k symmetry
+    @test getCouplingPot(b, a, pm) == -0.5  # owner symmetry
 end
 
-@testset "couplingPot! - PolyMonomer as context" begin
+@testset "couplingPot! - PolyMonomer as context (3-arg)" begin
     poly = Polymer(; length=10, maxlength=20, nMonomerTypes=1)
     initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=-0.5)
     pm = poly.monomers[1]
-    
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(a, pm, 0.0)
-    intPot!(b, pm, 0.0)
-    
-    # PolyMonomer as context (k)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+    intPot!(a, pm, 0.0); intPot!(b, pm, 0.0)
+
     couplingPot!(a, b, pm, -0.5)
-    
     @test getCouplingPot(a, b, pm) == -0.5
-    @test getCouplingPot(a, pm, b) == -0.5  # Symmetry
+    @test getCouplingPot(b, a, pm) == -0.5  # owner symmetry
+end
+
+@testset "couplingPot! - PolyMonomer as partner (2-arg)" begin
+    poly = Polymer(; length=10, maxlength=20, nMonomerTypes=1)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=-0.5)
+    pm = poly.monomers[1]
+    a = BulkMonomer(; name="A", length=5)
+    intPot!(a, -1.0); intPot!(a, pm, 0.0)
+
+    couplingPot!(a, pm, -0.3)
+    @test getCouplingPot(a, pm) == -0.3
 end
 
 # =============================================================================
-# PART 6: Zero coupling and edge cases
+# PART 7: Edge cases
 # =============================================================================
 
-@testset "couplingPot! - zero coupling can be set" begin
+@testset "couplingPot! - zero coupling" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
     couplingPot!(a, b, c, 0.0)
-    
     @test getCouplingPot(a, b, c) == 0.0
 end
 
-@testset "couplingPot! - overwriting existing coupling" begin
+@testset "couplingPot! - overwrite coupling" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
     couplingPot!(a, b, c, -0.5)
     @test getCouplingPot(a, b, c) == -0.5
-    
-    # Overwrite
     couplingPot!(a, b, c, -0.8)
     @test getCouplingPot(a, b, c) == -0.8
+    # Owner symmetry of overwrite
+    @test getCouplingPot(b, a, c) == -0.8
 end
 
 @testset "getCouplingPot - returns nothing when not initialized" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
     @test getCouplingPot(a, b, c) === nothing
+    @test getCouplingPot(a, b) === nothing
 end
 
 @testset "getCouplingPot - returns nothing for unknown species" begin
@@ -322,45 +369,18 @@ end
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
     d = BulkMonomer(; name="D", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
     couplingPot!(a, b, c, -0.5)
-    
-    # d is not in the interaction network
     @test getCouplingPot(a, b, d) === nothing
-    @test getCouplingPot(a, d, c) === nothing
 end
 
-# =============================================================================
-# PART 7: FastBulkMonomer exclusion
-# =============================================================================
-
-@testset "couplingPot! - error for FastBulkMonomer as self" begin
-    f = FastBulkMonomer(; name="F", length=5)
-    b = BulkMonomer(; name="B", length=5)
-    c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(f, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    
-    # FastBulkMonomer as self should fail with explicit error
-    @test_throws ErrorException couplingPot!(f, b, c, -0.5)
-end
-
-@testset "couplingPot! - FastBulkMonomer allowed as partner or context" begin
+@testset "couplingPot! - FastBulkMonomer allowed as partner/context" begin
     a = BulkMonomer(; name="A", length=5)
     f = FastBulkMonomer(; name="F", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(f, -1.0)
-    intPot!(c, -1.0)
-    
-    # FastBulkMonomer as partner - should work
+    intPot!(a, -1.0); intPot!(f, -1.0); intPot!(c, -1.0)
+
+    # FastBulkMonomer as partner — should work (only self is guarded)
     couplingPot!(a, f, c, -0.5)
     @test getCouplingPot(a, f, c) == -0.5
 end
@@ -369,28 +389,34 @@ end
 # PART 8: Matrix dimensions
 # =============================================================================
 
-@testset "couplingPot! - couplingMat has correct dimensions" begin
+@testset "couplingPot! - correct dimensions after 3-arg" begin
     a = BulkMonomer(; name="A", length=5)
     b = BulkMonomer(; name="B", length=5)
     c = BulkMonomer(; name="C", length=5)
-    
-    intPot!(a, -1.0)
-    intPot!(b, -1.0)
-    intPot!(c, -1.0)
-    intPot!(a, b, 0.0)
-    intPot!(a, c, 0.0)
-    intPot!(b, c, 0.0)
-    
+    intPot!(a, -1.0); intPot!(b, -1.0); intPot!(c, -1.0)
+    intPot!(a, b, 0.0); intPot!(a, c, 0.0); intPot!(b, c, 0.0)
+
     couplingPot!(a, b, c, -0.5)
-    
-    # couplingMat should be m × n × n where:
-    # m = number of BulkMonomers in couplingSpecies (1, just a)
-    # n = number of species in intMat (3: a, b, c)
-    @test size(a.couplingMat, 1) == 1  # Only 'a' has couplings
+
+    # couplingMat should be m × n × n
+    # m = 3 (all three BulkMonomers are coupling participants now)
+    # n = 3 (species count in intMat)
+    @test size(a.couplingMat, 1) == 3
     @test size(a.couplingMat, 2) == size(a.intMat, 1)
     @test size(a.couplingMat, 3) == size(a.intMat, 1)
 end
 
+@testset "couplingPot! - correct dimensions after 2-arg" begin
+    a = BulkMonomer(; name="A", length=5)
+    b = BulkMonomer(; name="B", length=5)
+    intPot!(a, -1.0); intPot!(b, -1.0)
+
+    couplingPot!(a, b, -0.5)
+
+    # m = 2 (both BulkMonomers)
+    @test size(a.couplingMat, 1) == 2
+    @test size(a.couplingMat, 2) == size(a.intMat, 1)
+end
 
 println()
 println("All couplingPot! tests completed!")
