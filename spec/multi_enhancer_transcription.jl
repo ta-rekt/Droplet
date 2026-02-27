@@ -51,17 +51,17 @@ output metrics: rnap contact probability at TI site
 
 init_from_checkpoint = false
 
-t_max = 3    # runtime in minutes (initial test)
+t_max = 0.1    # runtime in minutes (initial test)
 step = 10000
 smallstep = step
 
-vals = exp.(range(-5, stop=-1, length=16))  # parallelized parameters (concentration)
-alphas = zeros(16)
-nrepeats = 1
+# vals = exp.(range(-5, stop=-1, length=32))  # parallelized parameters (concentration)
+# alphas = zeros(32)
+# nrepeats = 1
 
-for (i, v) in enumerate(vals)
-    alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
-end
+# for (i, v) in enumerate(vals)
+#     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
+# end
 
 # for dist in [0, 10, 20, 30]
 #     for int in [0.0, -0.1, -0.5]
@@ -71,7 +71,7 @@ end
 #     end
 # end
 
-# alphas = [0.1]    # concentration
+alphas = [0.1]    # concentration
 betas = [0]           # nothing
 nparams = length(alphas)
 
@@ -123,16 +123,15 @@ function target!(res, args...)
     # intPot!(tf, -1.0 / temperature)    # tf self-interaction
 
     # set two-way coupling
-    couplingPot!(tf, mainPattern2, -3.0)
+    couplingPot!(tf, mainPattern2, 0.0)
     couplingPot!(rnap, mainPattern2, 0.0)
 
     # Set three-way coupling
-    couplingPot!(tf, rnap, mainPattern2, 0.0)   # TF only binds p2 when rnap bound
-    couplingPot!(rnap, tf, mainPattern2, 0.0)   # RNAP only binds p2 when tf bound
+    couplingPot!(tf, rnap, mainPattern2, -3.0)   # TF only binds p2 when rnap bound
 
     tf.length = Int32(round(l.boxlength^3 * concentration))
-    # rnap.length = Int32(round(l.boxlength^3 * 0.02))
-    rnap.length = 2
+    rnap.length = Int32(round(l.boxlength^3 * 0.3))
+    # rnap.length = 2
 
     updateMonomers!(poly, base.intIdx)
 
