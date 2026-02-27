@@ -10,11 +10,11 @@ l = Lattice(;
 
 # heterogeneous polymer with patterned regions
 poly = Polymer(;
-    length = 16,
-    maxlength = 16,
+    length = 32,
+    maxlength = 400,
     initShape = "line",
     nMonomerTypes = 8,  # base, pattern
-    initPos = [8, 21, 21],
+    initPos = [5, 21, 21],
     pattern = :uniform
 )
 
@@ -56,22 +56,20 @@ step = 10000
 smallstep = step
 
 # vals = exp.(range(-5, stop=-1, length=32))  # parallelized parameters (concentration)
-# alphas = zeros(32)
+alphas = []
 # nrepeats = 1
 
 # for (i, v) in enumerate(vals)
 #     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 # end
 
-# for dist in [0, 10, 20, 30]
-#     for int in [0.0, -0.1, -0.5]
-#         for len in [10, 100]
-#             push!(alphas, (dist, int, len))
-#         end
-#     end
-# end
+for dist in [0, 10, 20, 30]
+    for conc in range(0.01, stop=0.02, length=16)
+        push!(alphas, (dist, conc))
+    end
+end
 
-alphas = [0.1]    # concentration
+alphas = [(0, 0.01)]
 betas = [0]           # nothing
 nparams = length(alphas)
 
@@ -87,7 +85,7 @@ function target!(res, args...)
     slist, keya, alpha, beta, blurb = args
 
     poly, tf, rnap = slist
-    concentration = alpha
+    probe_dist, concentration = alpha
 
     base = poly.monomers[1]
 
@@ -101,9 +99,8 @@ function target!(res, args...)
     mainPattern3 = poly.monomers[7]
     tailPattern3 = poly.monomers[8]
 
-    # concentration = 0.02
-    tf_rnap_dist = 5
-    tf_rnap_len = 5
+    enhancer_len = 100
+    tf_rnap_coupling = -0.0
     temperature = 0.66
     transcription_threshold = 0.1  # threshold for transcription activity
     
@@ -117,20 +114,20 @@ function target!(res, args...)
     # intPot!(tailPattern3, rnap, -0.0)      # (weak)
     
     # enhancers
-    intPot!(mainPattern1, tf, -0.0)    # pattern-tf
+    intPot!(mainPattern1, tf, -0.6)    # pattern-tf
     
     # tf (type 3)
-    # intPot!(tf, -1.0 / temperature)    # tf self-interaction
+    intPot!(tf, -1.0 / temperature)    # tf self-interaction
 
     # set two-way coupling
     couplingPot!(tf, mainPattern2, 0.0)
-    couplingPot!(rnap, mainPattern2, 0.0)
+    couplingPot!(rnap, mainPattern2, -0.5)
 
     # Set three-way coupling
-    couplingPot!(tf, rnap, mainPattern2, -3.0)   # TF only binds p2 when rnap bound
+    couplingPot!(tf, rnap, mainPattern2, tf_rnap_coupling)   # TF only binds p2 when rnap bound
 
     tf.length = Int32(round(l.boxlength^3 * concentration))
-    rnap.length = Int32(round(l.boxlength^3 * 0.3))
+    rnap.length = Int32(round(l.boxlength^3 * 0.1))
     # rnap.length = 2
 
     updateMonomers!(poly, base.intIdx)
@@ -180,9 +177,9 @@ function target!(res, args...)
 
     # build polymer patterns
     patternVec = zeros(Int32, poly.maxlength)
-    p1_start, p1_end = 1, tf_rnap_len
-    p2_start, p2_end = p1_end+1+tf_rnap_dist, p1_end+1+tf_rnap_dist
-    p3_start, p3_end = 13, 13
+    p1_start, p1_end = 1, enhancer_len
+    p2_start, p2_end = p1_end+1+probe_dist, p1_end+1+probe_dist
+    p3_start, p3_end = 351, 360
     transcr_init_site_length = 1
 
     patternVec[1:p1_start-1] .= headPattern1.intIdx         # base type (40 beads)
