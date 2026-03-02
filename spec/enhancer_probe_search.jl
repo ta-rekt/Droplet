@@ -50,17 +50,18 @@ is a Hill function of coupling energy.
 With nucleation however, it might be that bound times are sub-exponential. That would
 mean that you can get sharper binding curves than Hill. Let's see.
 
-swept parameters: probe-enhancer interaction strength, distance
+swept parameters: tf_concentration
 output metrics: RMS probe-enhancer distance, binding activity, bound/unbound times
+local_concentration at probe
 """
 
 init_from_checkpoint = false
 
-t_max = 0.1    # runtime in minutes (initial test)
+t_max = 120    # runtime in minutes (initial test)
 step = 10000
-smallstep = step
+smallstep = 2000
 
-vals = range(-5, stop=-1, length=32)  # parallelized parameters (concentration)
+vals = exp.(range(-7, stop=-3.5, length=32))  # parallelized parameters (tf_concentration)
 alphas = zeros(32)
 nrepeats = 1
 
@@ -68,7 +69,7 @@ for (i, v) in enumerate(vals)
     alphas[(i-1)*nrepeats+1:i*nrepeats] = ones(nrepeats) .* v
 end
 
-alphas = [-2.0]
+alphas = [exp(-5.0)]   # tf concentration
 betas = [0]           # nothing
 nparams = length(alphas)
 
@@ -84,7 +85,8 @@ function target!(res, args...)
     slist, keya, alpha, beta, blurb = args
 
     poly, tf, rnap = slist
-    probe_enhancer_intpot = alpha
+    tf_concentration = alpha
+    rnap_concentration = 0.02
 
     base = poly.monomers[1]
 
@@ -96,7 +98,7 @@ function target!(res, args...)
 
     probe_dist = 20
     enhancer_len = 10
-    tf_rnap_coupling = -0.0
+    tf_rnap_coupling = -7.75
     temperature = 0.66
     
     # polymer self-interaction
@@ -106,22 +108,20 @@ function target!(res, args...)
     end
     
     # enhancers
-    intPot!(mainPattern1, mainPattern2, probe_enhancer_intpot)    # pattern-tf
+    intPot!(mainPattern1, tf, -0.5)    # pattern-tf
     
     # tf (type 3)
-    # intPot!(tf, -1.0 / temperature)    # tf self-interaction
+    intPot!(tf, -1.0 / temperature)    # tf self-interaction
 
     # set two-way coupling
-    # couplingPot!(tf, mainPattern2, 0.0)
-    # couplingPot!(rnap, mainPattern2, -0.5)
+    couplingPot!(tf, mainPattern2, 0.0)
+    couplingPot!(rnap, mainPattern2, -0.5)
 
     # Set three-way coupling
-    # couplingPot!(tf, rnap, mainPattern2, tf_rnap_coupling)   # TF only binds p2 when rnap bound
+    couplingPot!(tf, rnap, mainPattern2, tf_rnap_coupling)   # TF only binds p2 when rnap bound
 
-    # tf.length = Int32(round(l.boxlength^3 * concentration))
-    # rnap.length = Int32(round(l.boxlength^3 * 0.1))
-    rnap.length = 2
-    tf.length = 2
+    tf.length = Int32(round(l.boxlength^3 * tf_concentration))
+    rnap.length = Int32(round(l.boxlength^3 * rnap_concentration))
 
     updateMonomers!(poly, base.intIdx)
 
@@ -155,6 +155,7 @@ function target!(res, args...)
     transcription_activity = []
     tf_rnap_activity = []
     probe_enhancer_activity = []
+    local_concentration = []
     on_times = []
     off_times = []
     pattern_dists = []
@@ -200,19 +201,19 @@ function target!(res, args...)
                 if mod(nmoves, step) == 0
                     ham!(s)
 
-                    # ccs = cc(tf)
-                    # droplets = filter(x -> length(x) >= minsize, ccs)
-                    # droplet_sizes = map(x -> length(x), droplets)
+                    ccs = cc(tf)
+                    droplets = filter(x -> length(x) >= minsize, ccs)
+                    droplet_sizes = map(x -> length(x), droplets)
 
                     # compute polymer hamiltonian (stored in poly, not monomers)
                     if i == tf.intIdx + 1
                         push!(hams_poly, poly.ham)
 
-                    # elseif s.intIdx == rnap.intIdx
-                    #     push!(hams_rnap, getHam(s))
+                    elseif s.intIdx == rnap.intIdx
+                        push!(hams_rnap, getHam(s))
 
-                    # elseif s.intIdx == tf.intIdx
-                    #     push!(hams_tf, getHam(s))
+                    elseif s.intIdx == tf.intIdx
+                        push!(hams_tf, getHam(s))
                     end
 
                     # push!(max_droplet_size, maximum(droplet_sizes, init=1))
@@ -229,6 +230,7 @@ function target!(res, args...)
                     contacts_rnap = 0
                     contacts_tf_rnap = 0
                     contacts_enhancer = 0
+                    local_tf = 0
                     
                     # get tail key for mainPattern2 — the tail IS the probe bead
                     if haskey(poly.patternTails, mainPattern2.intIdx)
@@ -244,10 +246,12 @@ function target!(res, args...)
                                 
                                 # measure species occupancy at this probe site
                                 pos = poly.pos[current_key][1:3]
-                                # contacts_tf += Int(tf.latS[pos[1], pos[2], pos[3]] > 0)
-                                # contacts_rnap += Int(rnap.latS[pos[1], pos[2], pos[3]] > 0)
-                                # contacts_tf_rnap += Int(tf.latS[pos[1], pos[2], pos[3]] > 0 && 
-                                #                         rnap.latS[pos[1], pos[2], pos[3]] > 0)
+                                contacts_tf += Int(tf.latS[pos[1], pos[2], pos[3]] > 0)
+                                contacts_rnap += Int(rnap.latS[pos[1], pos[2], pos[3]] > 0)
+                                contacts_tf_rnap += Int(tf.latS[pos[1], pos[2], pos[3]] > 0 && 
+                                                        rnap.latS[pos[1], pos[2], pos[3]] > 0)
+
+                                local_tf += nnp(mainPattern2, tf, pos) / 6
 
                                 mlatS = getLatS(mainPattern2)
                                 contacts_enhancer += Int(mlatS[pos[1], pos[2], pos[3]] 
@@ -262,12 +266,13 @@ function target!(res, args...)
                         end
                     end
                     
-                    # current_transcription_activity = contacts_rnap / transcr_init_site_length
+                    current_transcription_activity = contacts_rnap / transcr_init_site_length
 
-                    # push!(binding_activity, contacts_tf / transcr_init_site_length)
-                    # push!(transcription_activity, current_transcription_activity)
-                    # push!(tf_rnap_activity, contacts_tf_rnap / transcr_init_site_length)
+                    push!(binding_activity, contacts_tf / transcr_init_site_length)
+                    push!(transcription_activity, current_transcription_activity)
+                    push!(tf_rnap_activity, contacts_tf_rnap / transcr_init_site_length)
                     push!(probe_enhancer_activity, contacts_enhancer / transcr_init_site_length)
+                    push!(local_concentration, local_tf / transcr_init_site_length)
 
                     # measure distance between probe and TF binding site
                     _, _, dist = get_pattern_centers(poly, 
@@ -304,20 +309,22 @@ function target!(res, args...)
     res["step"] = step
     res["smallstep"] = smallstep
     res["temperature"] = temperature
-    # res["concentration"] = concentration
+    res["tf_concentration"] = tf_concentration
+    res["rnap_concentration"] = rnap_concentration
     res["interaction_matrix"] = tf.intMat
     res["boxlength"] = l.boxlength
     res["length_poly"] = lengths
     res["length_tf"] = tf.length
     res["max_droplet_size"] = max_droplet_size
     res["hamiltonian_poly"] = hams_poly
-    # res["hamiltonian_tf"] = hams_tf
-    # res["hamiltonian_rnap"] = hams_rnap
+    res["hamiltonian_tf"] = hams_tf
+    res["hamiltonian_rnap"] = hams_rnap
     res["acceptance_rate"] = accs
-    # res["binding_activity"] = binding_activity
-    # res["transcription_activity"] = transcription_activity
-    # res["tf_rnap_activity"] = tf_rnap_activity
+    res["binding_activity"] = binding_activity
+    res["transcription_activity"] = transcription_activity
+    res["tf_rnap_activity"] = tf_rnap_activity
     res["probe_enhancer_activity"] = probe_enhancer_activity
+    res["local_concentration"] = local_concentration
     res["on_times"] = on_times
     res["off_times"] = off_times
     res["pattern_distances"] = pattern_dists

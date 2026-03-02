@@ -1,6 +1,5 @@
-
 export coords_equal, getLatS, getTempVec, getBoxlength, getPolyMonomer, 
-       getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, cplpq, nnIdxs!, splitDroplet!,
+       getMonomerPotentials, boxmod!, vol, onEdge, nn, nnp, nlp, cplpq, nnIdxs!, splitDroplet!,
        dropletBbox, fillBbox!, clearBbox!, getHam, getDeltaHam, getDeltaHP,
        setHam, setDeltaHam, setDeltaHP, isneighbor, isInPatternRegion
 
@@ -235,6 +234,7 @@ end
 
 
 # Number of nearest neighbors between species s and p at a given position
+# # "nnp" = number of nearest partners
 function nnp(s::AbstractSpecies, 
              p::AbstractSpecies, 
              pos::Union{SubArray{Int32}, Vector{Int32}})
@@ -264,6 +264,7 @@ end
 
 # Number of nearest neighbors for PolyMonomer-to-PolyMonomer interactions
 # Counts only sites occupied by target monomer type (matching intIdx)
+# # "nnp" = number of nearest partners
 function nnp(s::AbstractPolyMonomer, 
              target::AbstractPolyMonomer, 
              pos::Union{SubArray{Int32}, Vector{Int32}})
@@ -293,6 +294,7 @@ end
 
 # Number of nearest neighbors for BulkMonomer-to-PolyMonomer interactions
 # Counts only sites occupied by target monomer type (matching intIdx)
+# # "nnp" = number of nearest partners
 function nnp(s::AbstractBulkMonomer, 
              target::AbstractPolyMonomer, 
              pos::Union{SubArray{Int32}, Vector{Int32}})
@@ -311,6 +313,84 @@ function nnp(s::AbstractBulkMonomer,
         n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
 
         pos[i] += 1
+    end
+
+    # clear temporary containers
+    clamp!(tempVec, 0, 0)
+
+    return n
+end
+
+
+# Number of local neighbors for BulkMonomer-to-PolyMonomer interactions
+# Counts only sites occupied by target monomer type (matching intIdx)
+# "nlp" = number of local partners
+function nlp(s::AbstractBulkMonomer, 
+             target::AbstractPolyMonomer, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(target)
+
+    for dx in Int32(-1):Int32(1), dy in Int32(-1):Int32(1), dz in Int32(-1):Int32(1)
+        tempVec[1] = pos[1] + dx
+        tempVec[2] = pos[2] + dy
+        tempVec[3] = pos[3] + dz
+        boxmod!(tempVec, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+    end
+
+    # clear temporary containers
+    clamp!(tempVec, 0, 0)
+
+    return n
+end
+
+
+# Number of local neighbors for PolyMonomer-to-PolyMonomer interactions
+# Counts only sites occupied by target monomer type (matching intIdx)
+# "nlp" = number of local partners
+function nlp(s::AbstractPolyMonomer, 
+             target::AbstractPolyMonomer, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(target)
+
+    for dx in Int32(-1):Int32(1), dy in Int32(-1):Int32(1), dz in Int32(-1):Int32(1)
+        tempVec[1] = pos[1] + dx
+        tempVec[2] = pos[2] + dy
+        tempVec[3] = pos[3] + dz
+        boxmod!(tempVec, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+    end
+
+    # clear temporary containers
+    clamp!(tempVec, 0, 0)
+
+    return n
+end
+
+
+# Number of local neighbors for PolyMonomer-to-BulkMonomer interactions
+# Counts only sites occupied by target species
+# "nlp" = number of local partners
+function nlp(s::AbstractPolyMonomer, 
+             target::AbstractBulkMonomer, 
+             pos::Union{SubArray{Int32}, Vector{Int32}})
+    n = 0
+    tempVec = getTempVec(s)
+    boxlength = getBoxlength(s)
+    pLatS = getLatS(target)
+
+    for dx in Int32(-1):Int32(1), dy in Int32(-1):Int32(1), dz in Int32(-1):Int32(1)
+        tempVec[1] = pos[1] + dx
+        tempVec[2] = pos[2] + dy
+        tempVec[3] = pos[3] + dz
+        boxmod!(tempVec, tempVec, Int32(1), boxlength)
+        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
     end
 
     # clear temporary containers

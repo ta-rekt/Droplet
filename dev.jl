@@ -716,11 +716,3 @@ let
 
     savefig("media/figures/20260218/fisher_rate_with_local_gradient_enhancer.png")
 end
-
-## 1010011111110000100000101010111100010100001100101110000
-# Debug coupling machinery
-
-let
-    
-
-end

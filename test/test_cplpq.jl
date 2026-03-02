@@ -1,5 +1,6 @@
 # Test suite for cplpq — on-site co-location check
 # Replaces the old nnpq tests after switching to site-coupling semantics
+# Also includes tests for nlp — local neighbor counting
 
 using Test
 using Droplet
@@ -279,5 +280,107 @@ end
     @test cplpq(a, b, Int32[4, 3, 3]) == 1  # both present
     @test cplpq(a, b, Int32[5, 3, 3]) == 0  # A present, B absent
     @test cplpq(a, b, Int32[8, 8, 8]) == 0  # A absent, B present
+end
+
+
+# =============================================================================
+# PART 6: nlp (number of local partners) tests
+# =============================================================================
+
+@testset "nlp - BulkMonomer to PolyMonomer" begin
+    l = Lattice(; boxlength=15, nspecies=2)
+    poly = Polymer(; length=5, maxlength=10, nMonomerTypes=1)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm = poly.monomers[1]
+    a = BulkMonomer(; name="A", length=1, chemPot=0.0)
+    intPot!(a, 0.0); intPot!(a, pm, 0.0)
+    init!(l, [poly, a])
+
+    # Get a polymer bead position
+    poly_pos = Int32[poly.pos[poly.head][1], poly.pos[poly.head][2], poly.pos[poly.head][3]]
+    
+    # Place bulk monomer at an adjacent position
+    adj_pos = Int32[poly_pos[1] + 1, poly_pos[2], poly_pos[3]]
+    a.latS .= 0
+    a.pos[1][1], a.pos[1][2], a.pos[1][3] = adj_pos[1], adj_pos[2], adj_pos[3]
+    a.latS[adj_pos[1], adj_pos[2], adj_pos[3]] = 1
+    
+    # Count local neighbors from bulk monomer to polymer monomer
+    # The 3x3x3 cube around adj_pos should include poly_pos
+    count = nlp(a, pm, adj_pos)
+    @test count >= 1  # Should count at least the polymer bead we know is there
+end
+
+@testset "nlp - PolyMonomer to PolyMonomer (heterogeneous)" begin
+    l = Lattice(; boxlength=15, nspecies=1)
+    poly = Polymer(; length=10, maxlength=20, nMonomerTypes=2, pattern=:block)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm1 = poly.monomers[1]
+    pm2 = poly.monomers[2]
+    init!(l, [poly])
+
+    # Find positions for pm1 and pm2
+    pm1_pos = nothing
+    for i in 1:poly.length
+        p = poly.pos[i]
+        if p[6] == pm1.intIdx
+            pm1_pos = Int32[p[1], p[2], p[3]]
+            break
+        end
+    end
+    @test pm1_pos !== nothing
+
+    # Count local neighbors of type pm2 around pm1's position
+    count = nlp(pm1, pm2, pm1_pos)
+    @test count >= 0  # Should be non-negative
+    
+    # Count local neighbors of type pm1 around pm1's position (should include self)
+    self_count = nlp(pm1, pm1, pm1_pos)
+    @test self_count >= 1  # Should count at least itself
+end
+
+@testset "nlp - PolyMonomer to BulkMonomer" begin
+    l = Lattice(; boxlength=15, nspecies=2)
+    poly = Polymer(; length=5, maxlength=10, nMonomerTypes=1)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm = poly.monomers[1]
+    a = BulkMonomer(; name="A", length=3, chemPot=0.0)
+    intPot!(a, 0.0); intPot!(a, pm, 0.0)
+    init!(l, [poly, a])
+
+    # Get a polymer bead position
+    poly_pos = Int32[poly.pos[poly.head][1], poly.pos[poly.head][2], poly.pos[poly.head][3]]
+    
+    # Place bulk monomers around the polymer position
+    a.latS .= 0
+    a.pos[1][1], a.pos[1][2], a.pos[1][3] = poly_pos[1] + 1, poly_pos[2], poly_pos[3]
+    a.latS[poly_pos[1] + 1, poly_pos[2], poly_pos[3]] = 1
+    a.pos[2][1], a.pos[2][2], a.pos[2][3] = poly_pos[1], poly_pos[2] + 1, poly_pos[3]
+    a.latS[poly_pos[1], poly_pos[2] + 1, poly_pos[3]] = 2
+    a.pos[3][1], a.pos[3][2], a.pos[3][3] = poly_pos[1], poly_pos[2], poly_pos[3] + 1
+    a.latS[poly_pos[1], poly_pos[2], poly_pos[3] + 1] = 3
+    
+    # Count local neighbors from polymer monomer to bulk monomer
+    count = nlp(pm, a, poly_pos)
+    @test count >= 3  # Should count at least the 3 bulk monomers we placed
+end
+
+@testset "nlp - empty neighborhood" begin
+    l = Lattice(; boxlength=20, nspecies=2)
+    poly = Polymer(; length=5, maxlength=10, nMonomerTypes=1)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm = poly.monomers[1]
+    a = BulkMonomer(; name="A", length=1, chemPot=0.0)
+    intPot!(a, 0.0); intPot!(a, pm, 0.0)
+    init!(l, [poly, a])
+
+    # Place bulk monomer far from polymer
+    a.latS .= 0
+    a.pos[1][1], a.pos[1][2], a.pos[1][3] = 19, 19, 19
+    a.latS[19, 19, 19] = 1
+    
+    # Count local neighbors around bulk monomer (should be 0 polymer beads nearby)
+    count = nlp(a, pm, Int32[19, 19, 19])
+    @test count == 0
 end
 
