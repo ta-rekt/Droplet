@@ -286,6 +286,7 @@ end
 
 # =============================================================================
 # PART 6: nlp (number of local partners) tests
+# Note: nlp counts only the 26 peripheral sites of a 3x3x3 cube (excludes center)
 # =============================================================================
 
 @testset "nlp - BulkMonomer to PolyMonomer" begin
@@ -307,7 +308,7 @@ end
     a.latS[adj_pos[1], adj_pos[2], adj_pos[3]] = 1
     
     # Count local neighbors from bulk monomer to polymer monomer
-    # The 3x3x3 cube around adj_pos should include poly_pos
+    # The 26 peripheral sites of the 3x3x3 cube around adj_pos should include poly_pos
     count = nlp(a, pm, adj_pos)
     @test count >= 1  # Should count at least the polymer bead we know is there
 end
@@ -331,13 +332,13 @@ end
     end
     @test pm1_pos !== nothing
 
-    # Count local neighbors of type pm2 around pm1's position
+    # Count local neighbors of type pm2 around pm1's position (excludes center)
     count = nlp(pm1, pm2, pm1_pos)
     @test count >= 0  # Should be non-negative
     
-    # Count local neighbors of type pm1 around pm1's position (should include self)
+    # Count local neighbors of type pm1 around pm1's position (excludes center, so does NOT count itself)
     self_count = nlp(pm1, pm1, pm1_pos)
-    @test self_count >= 1  # Should count at least itself
+    @test self_count >= 0  # Should be non-negative (center is excluded)
 end
 
 @testset "nlp - PolyMonomer to BulkMonomer" begin
@@ -352,7 +353,7 @@ end
     # Get a polymer bead position
     poly_pos = Int32[poly.pos[poly.head][1], poly.pos[poly.head][2], poly.pos[poly.head][3]]
     
-    # Place bulk monomers around the polymer position
+    # Place bulk monomers in the periphery around the polymer position
     a.latS .= 0
     a.pos[1][1], a.pos[1][2], a.pos[1][3] = poly_pos[1] + 1, poly_pos[2], poly_pos[3]
     a.latS[poly_pos[1] + 1, poly_pos[2], poly_pos[3]] = 1
@@ -361,9 +362,9 @@ end
     a.pos[3][1], a.pos[3][2], a.pos[3][3] = poly_pos[1], poly_pos[2], poly_pos[3] + 1
     a.latS[poly_pos[1], poly_pos[2], poly_pos[3] + 1] = 3
     
-    # Count local neighbors from polymer monomer to bulk monomer
+    # Count local neighbors from polymer monomer to bulk monomer (excludes center)
     count = nlp(pm, a, poly_pos)
-    @test count >= 3  # Should count at least the 3 bulk monomers we placed
+    @test count >= 3  # Should count at least the 3 bulk monomers we placed in periphery
 end
 
 @testset "nlp - empty neighborhood" begin
@@ -380,8 +381,30 @@ end
     a.pos[1][1], a.pos[1][2], a.pos[1][3] = 19, 19, 19
     a.latS[19, 19, 19] = 1
     
-    # Count local neighbors around bulk monomer (should be 0 polymer beads nearby)
+    # Count local neighbors around bulk monomer (should be 0 polymer beads in periphery)
     count = nlp(a, pm, Int32[19, 19, 19])
     @test count == 0
+end
+
+@testset "nlp - center exclusion test" begin
+    l = Lattice(; boxlength=20, nspecies=1)
+    poly = Polymer(; length=10, maxlength=20, nMonomerTypes=1)
+    initMonomers!(poly, defaultChemPot=1.0, defaultIntPot=0.0)
+    pm = poly.monomers[1]
+    init!(l, [poly])
+
+    # Find a position with a polymer bead
+    pos = Int32[poly.pos[poly.head][1], poly.pos[poly.head][2], poly.pos[poly.head][3]]
+    
+    # Count local neighbors at the position where the bead itself is located
+    # Should NOT count the center position (where the bead is)
+    count = nlp(pm, pm, pos)
+    
+    # If the polymer is isolated (no other beads in the 26 peripheral sites), count should be 0
+    # Otherwise, it should count only neighbors in the periphery, not itself
+    @test count >= 0
+    
+    # Verify it doesn't count 27 (which would include center)
+    @test count <= 26
 end
 

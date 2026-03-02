@@ -334,11 +334,13 @@ function nlp(s::AbstractBulkMonomer,
     pLatS = getLatS(target)
 
     for dx in Int32(-1):Int32(1), dy in Int32(-1):Int32(1), dz in Int32(-1):Int32(1)
-        tempVec[1] = pos[1] + dx
-        tempVec[2] = pos[2] + dy
-        tempVec[3] = pos[3] + dz
-        boxmod!(tempVec, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+        if !(dx == 0 && dy == 0 && dz == 0)
+            tempVec[1] = pos[1] + dx
+            tempVec[2] = pos[2] + dy
+            tempVec[3] = pos[3] + dz
+            boxmod!(tempVec, tempVec, Int32(1), boxlength)
+            n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+        end
     end
 
     # clear temporary containers
@@ -360,11 +362,13 @@ function nlp(s::AbstractPolyMonomer,
     pLatS = getLatS(target)
 
     for dx in Int32(-1):Int32(1), dy in Int32(-1):Int32(1), dz in Int32(-1):Int32(1)
-        tempVec[1] = pos[1] + dx
-        tempVec[2] = pos[2] + dy
-        tempVec[3] = pos[3] + dz
-        boxmod!(tempVec, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+        if !(dx == 0 && dy == 0 && dz == 0)
+            tempVec[1] = pos[1] + dx
+            tempVec[2] = pos[2] + dy
+            tempVec[3] = pos[3] + dz
+            boxmod!(tempVec, tempVec, Int32(1), boxlength)
+            n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] == target.intIdx)
+        end
     end
 
     # clear temporary containers
@@ -386,11 +390,13 @@ function nlp(s::AbstractPolyMonomer,
     pLatS = getLatS(target)
 
     for dx in Int32(-1):Int32(1), dy in Int32(-1):Int32(1), dz in Int32(-1):Int32(1)
-        tempVec[1] = pos[1] + dx
-        tempVec[2] = pos[2] + dy
-        tempVec[3] = pos[3] + dz
-        boxmod!(tempVec, tempVec, Int32(1), boxlength)
-        n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
+        if !(dx == 0 && dy == 0 && dz == 0)
+            tempVec[1] = pos[1] + dx
+            tempVec[2] = pos[2] + dy
+            tempVec[3] = pos[3] + dz
+            boxmod!(tempVec, tempVec, Int32(1), boxlength)
+            n += (pLatS[tempVec[1], tempVec[2], tempVec[3]] > 0)
+        end
     end
 
     # clear temporary containers
