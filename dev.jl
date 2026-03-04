@@ -535,44 +535,6 @@ end
 ## 1010011111110000100000101010111100010100001100101110000
 # Compute Fisher information rate from a concentration profile
 
-"""
-Compute closed-form rates from parameters.
-
-Arguments
-- phi_R, phi_T: constants ϕ_R, ϕ_T
-- eta_BI, eta_UA, epsilon: η_BI, η_UA, ε
-- K: overall scale, defined as K = k_off^u  (i.e. k^{u}_{off})
-
-Returns rates in the order:
-[k_b^off, k_u^off, k_on^b, k_off^b, k_u^on, k_b^on, k_off^u]
-"""
-function rates_closed_form(phi_R, phi_T, eta_BI, eta_UA, epsilon, K)
-    a = exp(-eta_BI)     # e^{-η_BI}
-    b = exp(-eta_UA)     # e^{-η_UA}
-    g = exp(-epsilon)    # e^{-ε}
-
-    # Scale choice: K = k_off^u
-    k_off_u = K
-    k_on_u  = b * K
-
-    # Subscript-u and subscript-b "off"
-    denom_uoff = a * phi_T - 1
-    k_u_off = K * (1 - b * phi_R) / denom_uoff
-    k_b_off = a * k_u_off
-
-    # Subscript-u and subscript-b "on"
-    denom_uon = a * g * phi_T - 1
-    k_u_on = K * (b * phi_R - 1) / denom_uon
-    k_b_on = a * g * k_u_on
-
-    # Superscript-b rates
-    denom_b = b * g * phi_R - 1
-    k_off_b = K * (1 - b * phi_R) / denom_b
-    k_on_b  = b * g * k_off_b
-
-    return [k_b_off, k_u_off, k_on_b, k_off_b, k_u_on, k_b_on, k_off_u, k_on_u]
-end
-
 let
     using JSON
     using Plots
@@ -581,16 +543,21 @@ let
     # Load the JSON data
     # json_path1 = "data/20260218/spherical_phi_vs_phi_inf_run_enhancer2.json"
     # json_path2 = "data/20260218/spherical_phi_vs_phi_inf_run_enhancer2_collapsed.json"
-    json_path1 = "data/20260303/empirical_phi_local_9_nuc.json"
-    data1 = JSON.parsefile(json_path1)
+    # data1 = JSON.parsefile(json_path1)
     # data2 = JSON.parsefile(json_path2)
     
-    # Extract the arrays and convert to Float64
-    phi_inf_values1 = Float64.(data1["concentration"])
+    # # Extract the arrays and convert to Float64
+    # phi_inf_values1 = Float64.(data1["phi_inf_values"])
     # phi_inf_values2 = Float64.(data2["phi_inf_values"])
-    phi_at_probe1 = Float64.(data1["local_concentration_smoothed"])
+    # phi_at_probe1 = Float64.(data1["phi_at_probe"])
     # phi_at_probe2 = Float64.(data2["phi_at_probe"])
     # phi_at_probe = similar(phi_at_probe1)
+
+    json_path1 = "data/20260303/empirical_phi_local_d_30.json"
+    data1 = JSON.parsefile(json_path1)
+    
+    phi_inf_values1 = Float64.(data1["concentration"])
+    phi_at_probe1 = Float64.(data1["local_concentration_smoothed"])
     phi_at_probe = phi_at_probe1
 
     # for (idx, (phi1, phi2)) in enumerate(zip(phi_at_probe1, phi_at_probe2))
@@ -651,25 +618,33 @@ let
         maxevals = nothing,
     )
 
-    phi_R = 0.02
-    eta_BI = 0.0
+    # kboff, kuoff, konb, koffb, kuon, kbon, koffu = 1, 1e-5, 1, 1e-5, 1, 1e-5, 1
+
     eta_UA = -0.5
+    eta_BI = 0.0
     epsilon = -7.75
-    K = 0.0
 
-    for (idx, phi_T) in enumerate(phi_at_probe)    
+    K = 1
+    koffu = K
+    kuoff = K
+    koffb = K
+    kuon = K
+    konu = exp(-eta_UA)*K
+    kboff = exp(-eta_BI)*K
+    konb = exp(-eta_UA-epsilon)*K
+    kbon = exp(-eta_BI-epsilon)*K
 
-        # obtain rates from energies
-        kboff, kuoff, konb, koffb, kuon, kbon, koffu, konu = rates_closed_form(
-            phi_R, phi_T, eta_BI, eta_UA, epsilon, K
-        )
+    rates = [kboff, kuoff, konb, koffb, kuon, kbon, koffu]
+    kmax = maximum(rates)
 
-        d0.logrates = [kboff, kuoff, konb, koffb, kuon, kbon, koffu]
+    d0.logrates = log10.(rates)
 
-        d1 = deepcopy(d0)
-        d2 = deepcopy(d0)
+    d1 = deepcopy(d0)
+    d2 = deepcopy(d0)
 
-        d0.cr = phi_T
+    for (idx, phi) in enumerate(phi_at_probe)    
+
+        d0.cr = phi
         d0.cw = phi_inf_values1[idx]
         
         # take a step in phi_infty
@@ -680,7 +655,7 @@ let
         d1.cr = phi_func(d1.cw)
         d2.cr = phi_func(d2.cw)
 
-        # @show d0.cr, d1.cr, h
+        @show d0.cr, d1.cr, h
 
         initAcc!(d0)
         initAcc!(d1)
@@ -690,19 +665,9 @@ let
         fisher_at_probe[idx] = FisherRateAcc(d0, d1, d2)
     end
 
-    for (idx, phi_T) in enumerate(phi_inf_values1)    
+    for (idx, phi) in enumerate(phi_inf_values1)    
 
-        # obtain rates from energies
-        kboff, kuoff, konb, koffb, kuon, kbon, koffu, konu = rates_closed_form(
-            phi_R, phi_T, eta_BI, eta_UA, epsilon, K
-        )
-
-        d0.logrates = [kboff, kuoff, konb, koffb, kuon, kbon, koffu]
-
-        d1 = deepcopy(d0)
-        d2 = deepcopy(d0)
-
-        d0.cr = phi_T
+        d0.cr = phi
         h = 0.02 * d0.cr
         d1.cr = d0.cr - h
         d2.cr = d0.cr - 2*h
@@ -723,7 +688,7 @@ let
     pl1 = plot(
         phi_inf_values1, phi_at_probe,
         xlabel="\$\\phi_\\infty\$",
-        ylabel="\$\\phi(z=0.2R)\$",
+        ylabel="\$\\phi(z)\$",
         title="Probe concentration vs bulk concentration",
         legend=false,
         linewidth=1,
@@ -733,7 +698,7 @@ let
     pl2 = plot(
         phi_inf_values1, activity_at_probe,
         xlabel="\$\\phi_\\infty\$",
-        ylabel="\$p_{ss}(\\phi(r_0=0.2R))\$",
+        ylabel="\$p_{ss}(\\phi(r_0))\$",
         title="Steady-state activity vs bulk concentration",
         legend=false,
         linewidth=1,
@@ -766,13 +731,13 @@ let
         color=:green,
         linestyle=:dash,
         label="control",
-        legend=:bottom,
+        legend=:topright,
         yscale=:log10
     )
 
-    hline!([0.16], label="bound", linestyle=:dot)
+    hline!([0.16*kmax], label="\$0.16k_{max}\$")
     
     display(plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 800)))
 
-    savefig("media/figures/20260303/fisher_rate_with_local_gradient_empirial_9_nuc.png")
+    savefig("media/figures/20260303/fisher_rate_local_d_30.png")
 end
