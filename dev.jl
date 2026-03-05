@@ -553,7 +553,7 @@ let
     # phi_at_probe2 = Float64.(data2["phi_at_probe"])
     # phi_at_probe = similar(phi_at_probe1)
 
-    json_path1 = "data/20260303/empirical_phi_local_d_30.json"
+    json_path1 = "data/20260304/empirical_phi_local_proximal_promoter_d_30.json"
     data1 = JSON.parsefile(json_path1)
     
     phi_inf_values1 = Float64.(data1["concentration"])
@@ -618,21 +618,21 @@ let
         maxevals = nothing,
     )
 
-    # kboff, kuoff, konb, koffb, kuon, kbon, koffu = 1, 1e-5, 1, 1e-5, 1, 1e-5, 1
+    kboff, kuoff, konb, koffb, kuon, kbon, koffu = 1, 1e-5, 1, 1e-5, 1, 1e-5, 1
 
-    eta_UA = -0.5
-    eta_BI = 0.0
-    epsilon = -7.75
+    # eta_UA = -0.5
+    # eta_BI = 0.0
+    # epsilon = -7.75
 
-    K = 1
-    koffu = K
-    kuoff = K
-    koffb = K
-    kuon = K
-    konu = exp(-eta_UA)*K
-    kboff = exp(-eta_BI)*K
-    konb = exp(-eta_UA-epsilon)*K
-    kbon = exp(-eta_BI-epsilon)*K
+    # K = 1
+    # koffu = K
+    # kuoff = K
+    # koffb = K
+    # kuon = K
+    # konu = exp(-eta_UA)*K
+    # kboff = exp(-eta_BI)*K
+    # konb = exp(-eta_UA-epsilon)*K
+    # kbon = exp(-eta_BI-epsilon)*K
 
     rates = [kboff, kuoff, konb, koffb, kuon, kbon, koffu]
     kmax = maximum(rates)
@@ -731,7 +731,7 @@ let
         color=:green,
         linestyle=:dash,
         label="control",
-        legend=:topright,
+        legend=:topleft,
         yscale=:log10
     )
 
@@ -739,5 +739,5 @@ let
     
     display(plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 800)))
 
-    savefig("media/figures/20260303/fisher_rate_local_d_30.png")
+    savefig("media/figures/20260304/fisher_rate_local_proximal_promoter_d_30.png")
 end

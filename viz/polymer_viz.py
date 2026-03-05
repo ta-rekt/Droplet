@@ -103,17 +103,14 @@ def polymer_bar(monomer_types, mono_colors, mono_labels=None,
                 center_pos = (i + j) / 2.0
                 label = mono_labels[current_type]
                 ax.text(center_pos, y_center - bar_height/2 - 0.05, label,
-                       ha='center', va='top', fontsize=9, weight='bold')
+                       ha='center', va='top', fontsize=14)
                 i = j
             else:
                 i += 1
     
     # Set axis limits and remove axes
     ax.set_xlim(0, n_beads)
-    y_margin = 0.15 if mono_labels else 0.0
-    y_min = 0.5 - bar_height/2 - y_margin
-    y_max = 0.5 + bar_height/2 + 0.1
-    ax.set_ylim(y_min, y_max)
+    ax.set_ylim(0, bar_height)
     ax.set_aspect('equal')
     ax.axis('off')
     
