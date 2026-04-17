@@ -31,6 +31,23 @@ function build_mat(weighted_edges, input_edges, c::T) where T<:Any
     return Q
 end
 
+export update_mat!
+function update_mat!(Q, N, input_edges, c_prev, c_new)
+
+    # up input edges
+    for (n1, n2) in input_edges
+        Q[n1, n2] = Q[n1, n2] * (c_new / c_prev)
+    end
+
+    # normalize
+    for ri in 1:N
+        Z = sum(view(Q, ri, :))
+        Q[ri, ri] = -Z
+    end
+
+    return Q
+end
+
 export init_Qs!
 function init_Qs!(m::LLROptModel)
     m.Q_c = build_mat(m.weighted_edges, m.input_edges, m.c)

@@ -39,7 +39,11 @@ let
 
         ### save checkpoint
         checkpoint_at_param = string(checkpoint_path, "_keya", keya)
-        checkpoint!(checkpoint_at_param, slist)
+        try
+            checkpoint!(checkpoint_at_param, slist)
+        catch e
+            @warn "checkpoint! skipped for this slist type: $(typeof(slist))"
+        end
 
     end
     

@@ -13,7 +13,7 @@ end
 @time let
     date = "20251208"
     outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
+    Base.Filesystemkpath(outdir)
     outfile = "test"
     outpath = string(outdir, outfile)
 
@@ -142,7 +142,7 @@ end
 @time let
     date = "20251208"
     outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
+    Base.Filesystemkpath(outdir)
     outfile = "test"
     outpath = string(outdir, outfile)
 
@@ -308,7 +308,7 @@ end
 @time let
     date = "20251208"
     outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
+    Base.Filesystemkpath(outdir)
     outfile = "test"
     outpath = string(outdir, outfile)
 
@@ -404,7 +404,7 @@ end
 
     date = "20251208"
     outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
+    Base.Filesystemkpath(outdir)
     outfile = "test"
     outpath = string(outdir, outfile)
 
@@ -448,7 +448,7 @@ end
 @time let
     date = "20251208"
     outdir = "data/$(date)/"
-    Base.Filesystem.mkpath(outdir)
+    Base.Filesystemkpath(outdir)
     outfile = "sphere_test"
     outpath = string(outdir, outfile)
 
@@ -740,4 +740,185 @@ let
     display(plot(pl1, pl2, pl3; layout = (3, 1), size = (600, 800)))
 
     savefig("media/figures/20260304/fisher_rate_local_proximal_promoter_d_100.png")
+end
+
+
+## 1010011111110000100000101010111100010100001100101110000
+# Generate ON/OFF runs
+
+let
+    using JSON
+    using Plots
+
+    # json_path1 = "data/20260304/empirical_phi_local_proximal_promoter_d_100.json"
+    # data1 = JSON.parsefile(json_path1)
+
+    ## load circuit specifications
+    circuits_file = "/home/tohme/.julia/dev/Droplet/spec/circuits.json"
+    circuit_specs = Dict()
+
+    open(circuits_file, "r") do f
+        circuit_specs = JSON.parse(f)
+    end
+
+    circuitId = "1bs"
+    circuit = circuit_specs[circuitId]
+    edges = circuit["edges"]
+    input_edges = circuit["input_edges"]
+    nstates = circuit["nstates"]
+    off_ind = circuit["off_indicator"]
+    on_ind = BitArray(1 .- off_ind)
+    start_state = circuit["start_state"]
+    hitting_set = circuit["hitting_set"]
+
+    reltol = 1e-10
+    eps = 1e-15
+
+    d0 = OneBurstDecoyModel(;
+        circuitId = circuitId,
+        nstates = nstates,
+        edges = edges,
+        input_edges = input_edges,
+        logrates = nothing,
+        cr = 1,
+        cw = nothing,
+        gamma = nothing,
+        ind_set = on_ind,
+        start_state = start_state,
+        hitting_set = hitting_set,
+        eps = eps,
+        reltol = reltol,
+        maxevals = nothing,
+    )
+
+    # energies
+    eta_UA = -0.5
+    eta_BI = 0.0
+    epsilon = -7.75
+
+    # rnap concentration
+    phi_R = 0.02
+
+    # transition rates
+    K = 0.5
+    kuoff = K*exp(eta_BI)
+    koffb = K*exp(eta_UA+epsilon)
+    kuon = K*exp(eta_BI+epsilon)
+    koffu = K*exp(eta_UA)
+    konu = K*phi_R
+    kboff = K
+    konb = K*phi_R
+    kbon = K
+
+    rates = [kboff, kuoff, konb, koffb, kuon, kbon, koffu, konu]
+    kmax = maximum(rates)
+
+    d0.logrates = log10.(rates)
+
+    nruns = 1
+    nsteps = 100000
+    idist = ones(4) ./ 4
+
+    function _idist0(idist, set_ind)
+        idist0 = idist[findall(set_ind)]
+        idist0 ./= sum(idist0)
+        return idist0
+    end
+
+    # initialize data containers
+    state_trajs = zeros((nruns, nsteps))
+    time_trajs = zeros((nruns, nsteps))
+    state_traj = zeros(nsteps)
+    time_traj = zeros(nsteps)
+    on_times = Dict()
+    off_times = Dict()
+    llr = Dict()
+    res_times = Dict()
+
+    phi_global = range(0.003, stop=0.018, length=16)
+
+    _idist0_on = _idist0(idist, on_ind)
+    _idist0_off = _idist0(idist, off_ind)
+
+    # loop across concentrations
+    for (idx, phi) in enumerate(phi_global)    
+        d0.cr = phi
+
+        # equivalent to initFull without rate constraints
+        initFreeWeights!(d0)
+        initOneBurst!(d0)
+
+        # Gillespie simulation
+        state_traj, time_traj = generate(nsteps, d0.Q, idist)
+
+        # residence times
+        s_in_on, rt, onrt, offrt = get_residence_time(state_traj, time_traj, on_ind)
+
+        res_times[idx] = rt
+        on_times[idx] = onrt
+        off_times[idx] = offrt
+        # llr[idx] = llr_traj
+    end
+
+    # Generate complementary CDFs from on_times and off_times
+    phi_key = 1
+    
+    on_times_sorted = sort(on_times[phi_key])
+    off_times_sorted = sort(off_times[phi_key])
+    
+    ccdf_on = 1.0 .- collect(1:length(on_times_sorted)) ./ length(on_times_sorted)
+    ccdf_off = 1.0 .- collect(1:length(off_times_sorted)) ./ length(off_times_sorted)
+    
+    # pl1 = plot(
+    #     on_times_sorted, log10.(ccdf_on),
+    #     xlabel="Duration (time units)",
+    #     ylabel="Complementary CDF",
+    #     title="ON state residence times",
+    #     legend=false,
+    #     color=:green,
+    #     linewidth=1,
+    #     # yscale=:log10,
+    #     xlim=(1, 100000),
+    #     xscale=:log10
+    # )
+
+    # plot!(pl1,
+    #     on_times_sorted[1:50000], -on_times_sorted[1:50000].*0.12,
+    #     xlabel="Duration (time units)",
+    #     ylabel="Complementary CDF",
+    #     title="ON state residence times",
+    #     legend=false,
+    #     color=:black,
+    #     linewidth=1,
+    #     # yscale=:log10,
+    #     xlim=(1, 100000),
+    #     xscale=:log10
+    # )
+    
+    # pl2 = plot(
+    #     off_times_sorted, log10.(ccdf_off),
+    #     xlabel="Duration (time units)",
+    #     ylabel="Complementary CDF",
+    #     title="OFF state residence times",
+    #     legend=false,
+    #     color=:red,
+    #     linewidth=1,
+    #     # yscale=:log10,
+    #     xlim=(1, 10000),
+    #     xscale=:log10
+    # )
+    
+    # display(plot(pl1, pl2; layout = (1, 2), size = (600, 300)))
+
+    # savefig("media/figures/20260415/on_off_times_test.png")
+    
+    # Save llr trajectories to JSON
+    Base.Filesystem.mkpath("data/20260415/")
+    llr_data = Dict(
+        "phi_global" => collect(phi_global),
+        "llr" => Dict(string(k) => v for (k, v) in llr)
+    )
+    open("data/20260415/llr_trajs.json", "w") do f
+        JSON.print(f, llr_data, 4)
+    end
 end
