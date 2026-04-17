@@ -31,4 +31,6 @@ using Random
     include("test_ham_coupling.jl")
     include("test_deltaHam_coupling.jl")
     include("test_integration_coupling.jl")
+    # Time-varying Gillespie
+    include("test_generate_tv.jl")
 end

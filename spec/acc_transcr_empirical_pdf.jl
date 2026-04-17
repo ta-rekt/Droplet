@@ -145,7 +145,7 @@ function target!(res, args...)
         bw = (hi - lo) / nbins
         inv_bw = 1.0 / bw
         counts = zeros(Int, nbins)
-        for k in 1:length(col)
+        for k in eachindex(col)
             b = clamp(floor(Int, (col[k] - lo) * inv_bw) + 1, 1, nbins)
             counts[b] += 1
         end
