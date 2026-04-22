@@ -110,15 +110,17 @@ end
 
 ## . - -- .- .-.- . .- .-- -.- .- .- --.-.... - -.-
 export sharpness
-function sharpness(d0::OneBurstDecoyModel, 
-                   d1::OneBurstDecoyModel,
-                   d2::OneBurstDecoyModel)
+function sharpness(d::OneBurstDecoyModel, h::Float64=0.01)
 
-    # Note: removed cr monotonicity assertions to support non-monotonic concentration profiles
-    h = d0.cw - d1.cw
-    @assert d2.cw ≈ d0.cw - 2*h
+    d1 = deepcopy(d)
+    d2 = deepcopy(d)
+    d1.cr = d.cr - h
+    d2.cr = d.cr - 2*h
+    
+    initAcc!(d1)
+    initAcc!(d2)
 
-    pi0 = pi_on(d0)
+    pi0 = pi_on(d)
     pi1 = pi_on(d1)
     pi2 = pi_on(d2)
 
@@ -127,17 +129,15 @@ function sharpness(d0::OneBurstDecoyModel,
     dpion = pi2 - 4*pi1 + 3*pi0
     dpion /= (2 * h)
 
-    return abs(d0.cw * dpion)
+    return abs(d.cr * dpion)
 end
 
 ## . - -- .- .-.- . .- .-- -.- .- .- - -.-.... - -.-
 export FisherRateAcc
-function FisherRateAcc(d0::OneBurstDecoyModel, 
-                       d1::OneBurstDecoyModel,
-                       d2::OneBurstDecoyModel)               
+function FisherRateAcc(d::OneBurstDecoyModel, h::Float64=0.01)
 
-    sharp = sharpness(d0, d1, d2)
-    var = variance(d0)
+    sharp = sharpness(d, h)
+    var = variance(d)
 
     return sharp^2 / var
 end

@@ -8,6 +8,7 @@ module Droplet
     using DataStructures
     using OrderedCollections
     using TimerOutputs
+    using Printf
 
     include("types.jl")
     include("interactions.jl")

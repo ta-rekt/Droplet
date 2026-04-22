@@ -1,5 +1,7 @@
 ## load circuit specifications
 
+using Printf
+
 circuits_file = "/home/tohme/.julia/dev/Droplet/spec/circuits.json"
 circuit_specs = JSON.parsefile(circuits_file)
 
@@ -57,15 +59,16 @@ slist = [d0]
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 # --- time-varying parameters ---
-nruns_per_trace = 100        # Gillespie runs per MC trace
-Tc = 50.0                    # concentration update interval (CTMC time units per MC frame)
-snapshot_interval = 1000.0   # snapshot every dt continuous time units
-nbins = 50
+nruns_per_trace = 1000        # Gillespie runs per MC trace
+Tc = 1.0                     # concentration update interval (CTMC time units per MC frame)
+snapshot_interval = 100.0   # snapshot every dt continuous time units
+nbins = 300
 
 mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260415"
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.018, length=16))
+# alphas = [0.003]
 betas = [0]
 nparams = length(alphas)
 

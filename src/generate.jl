@@ -39,7 +39,7 @@ function generate_tv(Q, input_edges, N, c_series, T, idist)
 
     # base rates (at c=1) for input edges — allows direct assignment, no ratio issues
     c0 = c_series[1]
-    base_rates = [Q[n1, n2] / max(c0, 1e-30) for (n1, n2) in input_edges]
+    base_rates = [Q[n1, n2] / max(c0, 1e-10) for (n1, n2) in input_edges]
 
     function _update_Q!(c)
         for (j, (n1, n2)) in enumerate(input_edges)

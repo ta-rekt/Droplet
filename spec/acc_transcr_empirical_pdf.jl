@@ -59,14 +59,14 @@ slist = [d0]
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 nruns = 1000
-nsteps = 1000000
+nsteps = 100000
 t_max = 1000000.0             # total continuous time window
 snapshot_interval = 1000.0   # snapshot every dt continuous time units
 nbins = 50
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.018, length=16))  # tf concentration
-# alphas = [0.003]
+# alphas = [0.010]
 betas = [0]
 nparams = length(alphas)
 
@@ -173,6 +173,10 @@ function target!(res, args...)
     initOneBurst!(d0)
     _generate_acc_on!(acc_on, d0.Q)
 
+    _pi_on = pi_on(d0)
+    _variance = variance(d0)
+    _fisher_rate_acc = FisherRateAcc(d0)
+
     # --- 2. generate trajectories under alpha_next (for the alternative histogram) ---
     acc_on_next = zeros(nruns, nsnapshots)
     d0.cr = alpha_next
@@ -240,9 +244,15 @@ function target!(res, args...)
     res["snapshot_interval"] = snapshot_interval
     res["t_grid"] = t_grid
     res["nbins"] = nbins
+    res["p_on"] = _pi_on
+    res["sigma_sq"] = _variance
+    res["fisher_rate_acc"] = _fisher_rate_acc
 
     # store LLR traces: run index -> vector of snapshots
     res["llr"] = Dict(k => llr[k, :] for k in 1:nruns)
+
+    # store accumulated transcription traces
+    res["acc_on"] = Dict(k => acc_on[k, :] for k in 1:nruns)
 
     t_current = (time_ns() - t_start) / 6e10
     res["runtime_min"] = t_current
