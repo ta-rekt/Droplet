@@ -59,12 +59,12 @@ slist = [d0]
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 # --- time-varying parameters ---
-nruns_per_trace = 1000        # Gillespie runs per MC trace
+nruns_per_trace = 100        # Gillespie runs per MC trace
 Tc = 1.0                     # concentration update interval (CTMC time units per MC frame)
 snapshot_interval = 100.0   # snapshot every dt continuous time units
-nbins = 300
+nbins = 50
 
-mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260415"
+mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260410"
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.018, length=16))
@@ -78,16 +78,33 @@ For each global concentration alpha, load 16 MC traces, run $(nruns_per_trace) G
 trajectories per trace via generate_tv, snapshot accumulated ON-time, compute LLR.
 """
 
+# --- moving-average smoother ---
+function _moving_average(v::Vector{Float64}, w::Int)
+    n = length(v)
+    out = similar(v)
+    half = w ÷ 2
+    cumsum_v = cumsum(v)
+    for i in 1:n
+        lo = max(1, i - half)
+        hi = min(n, i + half)
+        out[i] = (cumsum_v[hi] - (lo > 1 ? cumsum_v[lo-1] : 0.0)) / (hi - lo + 1)
+    end
+    return out
+end
+
+
+const _MA_WINDOW = 500   # moving-average window for MC concentration traces
+
 # --- load MC concentration traces for a given alpha ---
 function _load_mc_traces(alpha)
-    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_d_50_c_%.3f", alpha))
+    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_d_50_ctrol_c_%.3f", alpha))
     traces = Vector{Float64}[]
     for f in sort(readdir(folder))
         endswith(f, ".json") || continue
         data = JSON.parsefile(joinpath(folder, f))
         for ka in keys(data)
             lc = Float64.(data[ka]["1"]["local_concentration"])
-            push!(traces, lc)
+            push!(traces, _moving_average(lc, _MA_WINDOW))
         end
     end
     return traces
@@ -108,12 +125,21 @@ function target!(res, args...)
     dc = alpha_next - alpha
 
     # load MC traces
-    traces = _load_mc_traces(alpha)
-    traces_next = _load_mc_traces(alpha_next)
-    ntraces = length(traces)
+    traces_raw = _load_mc_traces(alpha)
+    traces_raw_next = _load_mc_traces(alpha_next)
+    ntraces = length(traces_raw)
+    min_len = minimum(length.(vcat(traces_raw, traces_raw_next)))
+
+    traces, traces_next = Vector(), Vector()
+    for k in range(1, 16)
+        phi_local_avg = sum(traces_raw[k])/length(traces_raw[k])
+        phi_local_next_avg = sum(traces_raw_next[k])/length(traces_raw_next[k])
+
+        push!(traces, ones(min_len) .* phi_local_avg)
+        push!(traces_next, ones(min_len) .* phi_local_next_avg)
+    end
 
     # use shortest trace to define t_max
-    min_len = minimum(length.(vcat(traces, traces_next)))
     t_max_local = min_len * Tc
     t_grid = collect(snapshot_interval:snapshot_interval:t_max_local)
     nsnapshots = length(t_grid)
@@ -213,7 +239,8 @@ function target!(res, args...)
         for k in 1:nruns_total
             if bw_a > 0.0
                 c_loo = counts_a[bin_indices_a[k]] - 1
-                log_p_alpha = c_loo > 0 ? log(c_loo / ((nruns_total - 1) * bw_a)) : log(1.0 / (2 * nruns_total * bw_a))
+                log_p_alpha = (c_loo > 0 ? log(c_loo / ((nruns_total - 1) * bw_a)) 
+                                         : log(1.0 / (2 * nruns_total * bw_a)))
             else
                 log_p_alpha = 0.0
             end
@@ -238,6 +265,7 @@ function target!(res, args...)
     res["t_grid"] = t_grid
     res["nbins"] = nbins
     res["llr"] = Dict(k => llr[k, :] for k in 1:nruns_total)
+    res["acc_on"] = Dict(k => acc_on[k, :] for k in 1:nruns_total)
 
     t_current = (time_ns() - t_start) / 6e10
     res["runtime_min"] = t_current
