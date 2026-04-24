@@ -64,7 +64,7 @@ Tc = 1.0                     # concentration update interval (CTMC time units pe
 snapshot_interval = 100.0   # snapshot every dt continuous time units
 nbins = 50
 
-mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260410"
+mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260420"
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.018, length=16))
@@ -93,11 +93,11 @@ function _moving_average(v::Vector{Float64}, w::Int)
 end
 
 
-const _MA_WINDOW = 500   # moving-average window for MC concentration traces
+const _MA_WINDOW = 2000   # moving-average window for MC concentration traces
 
 # --- load MC concentration traces for a given alpha ---
 function _load_mc_traces(alpha)
-    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_d_50_ctrol_c_%.3f", alpha))
+    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_d_50_c_%.3f", alpha))
     traces = Vector{Float64}[]
     for f in sort(readdir(folder))
         endswith(f, ".json") || continue
@@ -105,6 +105,7 @@ function _load_mc_traces(alpha)
         for ka in keys(data)
             lc = Float64.(data[ka]["1"]["local_concentration"])
             push!(traces, _moving_average(lc, _MA_WINDOW))
+            # push!(traces, lc)
         end
     end
     return traces
@@ -125,19 +126,19 @@ function target!(res, args...)
     dc = alpha_next - alpha
 
     # load MC traces
-    traces_raw = _load_mc_traces(alpha)
-    traces_raw_next = _load_mc_traces(alpha_next)
-    ntraces = length(traces_raw)
-    min_len = minimum(length.(vcat(traces_raw, traces_raw_next)))
+    traces = _load_mc_traces(alpha)
+    traces_next = _load_mc_traces(alpha_next)
+    ntraces = length(traces)
+    min_len = minimum(length.(vcat(traces, traces_next)))
 
-    traces, traces_next = Vector(), Vector()
-    for k in range(1, 16)
-        phi_local_avg = sum(traces_raw[k])/length(traces_raw[k])
-        phi_local_next_avg = sum(traces_raw_next[k])/length(traces_raw_next[k])
+    # traces, traces_next = Vector(), Vector()
+    # for k in range(1, ntraces)
+    #     phi_local_avg = sum(traces_raw[k])/length(traces_raw[k])
+    #     phi_local_next_avg = sum(traces_raw_next[k])/length(traces_raw_next[k])
 
-        push!(traces, ones(min_len) .* phi_local_avg)
-        push!(traces_next, ones(min_len) .* phi_local_next_avg)
-    end
+    #     push!(traces, ones(min_len) .* phi_local_avg)
+    #     push!(traces_next, ones(min_len) .* phi_local_next_avg)
+    # end
 
     # use shortest trace to define t_max
     t_max_local = min_len * Tc
