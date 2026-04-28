@@ -59,12 +59,12 @@ slist = [d0]
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 # --- time-varying parameters ---
-nruns_per_trace = 100        # Gillespie runs per MC trace
+nruns_per_trace = 400        # Gillespie runs per MC trace
 Tc = 1.0                     # concentration update interval (CTMC time units per MC frame)
 snapshot_interval = 100.0   # snapshot every dt continuous time units
 nbins = 50
 
-mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260420"
+mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260423"
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.018, length=16))

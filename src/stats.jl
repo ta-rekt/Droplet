@@ -138,51 +138,6 @@ function extractCoords!(p::Polymer, coords::Matrix)
     return coords
 end
 
-# helper function to calculate pattern center positions
-# patterns: vector of tuples [(start1, end1), (start2, end2), ...]
-function get_pattern_centers(poly::Polymer, patterns::Vector{Tuple{Int,Int}})
-    if length(patterns) != 2
-        error("get_pattern_centers requires exactly 2 patterns, got $(length(patterns))")
-    end
-    
-    # check if polymer is long enough for patterns
-    max_bead = maximum([p[2] for p in patterns])
-    if poly.length < max_bead
-        return nothing, nothing, Inf
-    end
-    
-    centers = [zeros(3) for _ in patterns]
-    pattern_lengths = [p[2] - p[1] + 1 for p in patterns]
-    
-    # iterate through polymer linked list
-    key = poly.head
-    bead_num = 1
-    
-    for i in 1:poly.length
-        pos = poly.pos[key][1:3]
-        
-        # check which pattern(s) this bead belongs to
-        for (pidx, (pstart, pend)) in enumerate(patterns)
-            if bead_num >= pstart && bead_num <= pend
-                centers[pidx] .+= pos
-            end
-        end
-        
-        key = poly.pos[key][5]  # next bead
-        bead_num += 1
-    end
-    
-    # normalize by pattern lengths
-    for (i, plen) in enumerate(pattern_lengths)
-        centers[i] ./= plen
-    end
-    
-    # euclidean distance between the two centers
-    dist = sqrt(sum((centers[1] .- centers[2]).^2))
-    
-    return centers[1], centers[2], dist
-end
-
 # find patterns in a polymer based on monomer type (intIdx)
 # Returns a Dict mapping each intIdx to a vector of (start_bead, end_bead) tuples
 # where start_bead and end_bead are 1-based indices counting from the polymer's head
@@ -247,6 +202,51 @@ function find_patterns(poly::Polymer)
     return patterns
 end
 
+
+# helper function to calculate pattern center positions
+# patterns: vector of tuples [(start1, end1), (start2, end2), ...]
+function get_pattern_centers(poly::Polymer, patterns::Vector{Tuple{Int,Int}})
+    if length(patterns) != 2
+        error("get_pattern_centers requires exactly 2 patterns, got $(length(patterns))")
+    end
+    
+    # check if polymer is long enough for patterns
+    max_bead = maximum([p[2] for p in patterns])
+    if poly.length < max_bead
+        return nothing, nothing, Inf
+    end
+    
+    centers = [zeros(3) for _ in patterns]
+    pattern_lengths = [p[2] - p[1] + 1 for p in patterns]
+    
+    # iterate through polymer linked list
+    key = poly.head
+    bead_num = 1
+    
+    for i in 1:poly.length
+        pos = poly.pos[key][1:3]
+        
+        # check which pattern(s) this bead belongs to
+        for (pidx, (pstart, pend)) in enumerate(patterns)
+            if bead_num >= pstart && bead_num <= pend
+                centers[pidx] .+= pos
+            end
+        end
+        
+        key = poly.pos[key][5]  # next bead
+        bead_num += 1
+    end
+    
+    # normalize by pattern lengths
+    for (i, plen) in enumerate(pattern_lengths)
+        centers[i] ./= plen
+    end
+    
+    # euclidean distance between the two centers
+    dist = sqrt(sum((centers[1] .- centers[2]).^2))
+    
+    return centers[1], centers[2], dist
+end
 
 # ->>> new dispatch
 function get_pattern_centers(poly1::Polymer, poly2::Polymer, patterns::Vector{Tuple{Int,Int}})
