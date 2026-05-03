@@ -102,8 +102,8 @@ function proposeMove!(p::Polymer)
 
     for (i, idx, sign) in zip(range(1, 4), COORD_MOVES, MOVE_ORIENTATIONS)
         
-        for i in range(1, 3)
-            p.moveVec[i] = 0
+        for j in range(1, 3)
+            p.moveVec[j] = 0
         end
         
         typ = p.moveTypes[i]

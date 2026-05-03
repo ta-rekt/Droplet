@@ -59,10 +59,10 @@ slist = [d0]
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 # --- time-varying parameters ---
-nruns_per_trace = 400        # Gillespie runs per MC trace
+nruns_per_trace = 1000        # Gillespie runs per MC trace
 Tc = 1.0                     # concentration update interval (CTMC time units per MC frame)
 snapshot_interval = 100.0   # snapshot every dt continuous time units
-nbins = 50
+nbins = 100
 
 mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260423"
 
@@ -265,8 +265,11 @@ function target!(res, args...)
     res["snapshot_interval"] = snapshot_interval
     res["t_grid"] = t_grid
     res["nbins"] = nbins
-    res["llr"] = Dict(k => llr[k, :] for k in 1:nruns_total)
-    res["acc_on"] = Dict(k => acc_on[k, :] for k in 1:nruns_total)
+    res["llr_drift"] = sum(llr[:,end]) / (nruns_total * t_grid[end])
+    res["llr_drift_stdev"] = std(llr[:, end]) / (sqrt(nruns_total) * t_grid[end])
+
+    # res["llr"] = Dict(k => llr[k, :] for k in 1:nruns_total)
+    # res["acc_on"] = Dict(k => acc_on[k, :] for k in 1:nruns_total)
 
     t_current = (time_ns() - t_start) / 6e10
     res["runtime_min"] = t_current

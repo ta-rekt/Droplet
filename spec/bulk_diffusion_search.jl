@@ -4,20 +4,24 @@
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 l = Lattice(;
-    boxlength = 8,
+    boxlength = 200,
     nspecies = 2
 )
 
 # Transcription factor
 tf = BulkMonomer(;
     length = 1,
-    initShape = "uniform"
+    initShape = "line",
+    initPos = [100, 100, 100]
+    # initParams = 1
 )
 
 # RNA Polymerase
 rnap = BulkMonomer(;
     length = 1,
-    initShape = "uniform"
+    initShape = "line",
+    initPos = [100, 100, 100]
+    # initParams = 1
 )
 
 # list containing all species
@@ -33,19 +37,22 @@ when it is initialized at a certain distance in the lattice. Can have two
 versions, with and without bulk. To compare with calculations of search time 
 and bound time distributions.
 
+Also look at the single and pairwise MSD scaling.
+
 swept parameters: none (identical repeats)
 output metrics: inter-particle distance, bound/unbound times
 """
 
 init_from_checkpoint = false
 
-t_max = 10    # runtime in minutes (initial test)
-step = 1000
+t_max = 0.05    # runtime in minutes (initial test)
+maxiters = 100000
+step = 1
 smallstep = step
 
 #vals = range(0.005, stop=0.03, length=32)  # parallelized parameters (tf_concentration)
 vals = [0]
-alphas = zeros(32)
+alphas = zeros(1)
 nrepeats = 1
 
 for (i, v) in enumerate(vals)
@@ -72,7 +79,7 @@ function target!(res, args...)
     temperature = 0.66
     
     # enhancers
-    intPot!(tf, rnap, -2)
+    # intPot!(tf, rnap, -2.0)
 
     tf.length = 1
     rnap.length = 1
@@ -86,8 +93,8 @@ function target!(res, args...)
     end
 
     # moving species
-    movingsps = [(rnap, rnap.intIdx + 1),
-                 (tf, tf.intIdx)]
+    movingsps = [(rnap, tf.intIdx+1)
+        (tf, tf.intIdx)]
 
     nmoves = 0
     niter = 0
@@ -95,14 +102,15 @@ function target!(res, args...)
 
     hams_tf = []
     hams_rnap = []
+    accs = []
     binding_activity = []
-    local_concentration = []
     on_times = []
     off_times = []
     pattern_dists = []
+    tf_pos = []
     
     # transcription state tracking
-    is_transcribing = false
+    is_bound = false
     moves_in_state = 0
     
     # initial values
@@ -110,7 +118,7 @@ function target!(res, args...)
     push!(hams_rnap, rnap.ham)
 
     # run simulation
-    while t_current <= t_max
+    while niter <= maxiters
         t_current = (time_ns() - t_start) / 6e10
         niter += 1
 
@@ -133,6 +141,8 @@ function target!(res, args...)
                     elseif s.intIdx == tf.intIdx
                         push!(hams_tf, getHam(s))
                     end
+
+                    push!(accs, nmoves / (niter * length(movingsps)))
                 end
 
                 if mod(nmoves, smallstep) == 0
@@ -142,36 +152,26 @@ function target!(res, args...)
                     local_tf = 0
             
                     # measure species occupancy at this probe site
-                    # pos = ...
-                    contacts_tf += Int(tf.latS[pos[1], pos[2], pos[3]] > 0)
-                    contacts_rnap += Int(rnap.latS[pos[1], pos[2], pos[3]] > 0)
+                    pos = tf.pos[1][1:3]
                     contacts_tf_rnap += Int(tf.latS[pos[1], pos[2], pos[3]] > 0 && 
                                             rnap.latS[pos[1], pos[2], pos[3]] > 0)
 
-                    local_tf += nlp(mainPattern2, tf, pos) / 26
+                    push!(binding_activity, contacts_tf_rnap)
 
-                    mlatS = getLatS(mainPattern2)
-                    contacts_enhancer += nnp(mainPattern2, mainPattern1, pos) / 6
-                    
-                    current_transcription_activity = contacts_rnap / transcr_init_site_length
-
-                    push!(binding_activity, contacts_tf / transcr_init_site_length)
-                    push!(probe_enhancer_activity, contacts_enhancer / transcr_init_site_length)
-                    push!(local_concentration, local_tf / transcr_init_site_length)
-
-                    # measure distance between probe and TF binding site
-                    _, _, dist = get_pattern_centers(poly, 
-                                    [(p1_start, p1_end),(p2_start, p2_end)])
+                    # measure distance between RNAP and TF particles
+                    dist = sum((pos .- rnap.pos[1][1:3]).^2)^(0.5)
                     push!(pattern_dists, dist)
+
+                    # track position
+                    push!(tf_pos, pos)
                     
                     # track on/off transitions
-                    was_transcribing = is_transcribing
-                    # is_transcribing = current_transcription_activity >= transcription_threshold
-                    is_transcribing = contacts_enhancer > 0 
+                    was_bound = is_bound
+                    is_bound = contacts_tf_rnap > 0 
                     
-                    if is_transcribing != was_transcribing
+                    if is_bound != was_bound
                         # state transition occurred
-                        if was_transcribing
+                        if was_bound
                             # transitioned from ON to OFF
                             push!(on_times, moves_in_state)
                         else
@@ -194,33 +194,34 @@ function target!(res, args...)
     res["step"] = step
     res["smallstep"] = smallstep
     res["temperature"] = temperature
-    res["tf_concentration"] = tf_concentration
-    res["rnap_concentration"] = rnap_concentration
+    res["tf_concentration"] = tf.length
+    res["rnap_concentration"] = rnap.length
     res["interaction_matrix"] = tf.intMat
     res["boxlength"] = l.boxlength
-    res["length_poly"] = lengths
-    res["probe_distance"] = probe_dist
-    res["enhancer_length"] = enhancer_len
-    res["tf_rnap_coupling"] = tf_rnap_coupling
+    res["length_poly"] = 0
+    res["probe_distance"] = 0
+    res["enhancer_length"] = 0
+    res["tf_rnap_coupling"] = 0
     res["length_tf"] = tf.length
-    res["max_droplet_size"] = max_droplet_size
-    res["hamiltonian_poly"] = hams_poly
-    res["hamiltonian_tf"] = hams_tf
-    res["hamiltonian_rnap"] = hams_rnap
+    res["max_droplet_size"] = 0
+    res["hamiltonian_poly"] = 0
+    res["hamiltonian_tf"] = 0
+    res["hamiltonian_rnap"] = 0
     res["acceptance_rate"] = accs
     res["binding_activity"] = binding_activity
-    res["transcription_activity"] = transcription_activity
-    res["tf_rnap_activity"] = tf_rnap_activity
-    res["probe_enhancer_activity"] = probe_enhancer_activity
-    res["local_concentration"] = local_concentration
+    res["transcription_activity"] = []
+    res["tf_rnap_activity"] = []
+    res["probe_enhancer_activity"] = []
+    res["bound_times"] = []
     res["on_times"] = on_times
     res["off_times"] = off_times
     res["pattern_distances"] = pattern_dists
+    res["probe_positions"] = tf_pos
     
     # extract polymer coordinates into a matrix
-    poly_coords = zeros(Int32, poly.length, 4)
-    extractCoords!(poly, poly_coords)
-    res["final_coordinates_poly"] = poly_coords
+    # poly_coords = zeros(Int32, poly.length, 4)
+    # extractCoords!(poly, poly_coords)
+    res["final_coordinates_poly"] = []
     
     # extract tf coordinates into a matrix
     tf_coords = zeros(Int32, tf.length, 4)

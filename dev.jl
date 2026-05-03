@@ -448,7 +448,7 @@ end
 @time let
     date = "20251208"
     outdir = "data/$(date)/"
-    Base.Filesystemkpath(outdir)
+    Base.Filesystem.mkpath(outdir)
     outfile = "sphere_test"
     outpath = string(outdir, outfile)
 
@@ -464,9 +464,9 @@ end
     normalHist = zeros(100)
 
     sphere = FastBulkMonomer(;
-        length = sphere_length,
-        initShape = "sphere",
-        initParams = sphere_radius,
+        length = 1,
+        initShape = "line",
+        # initParams = 2,
         initPos = [20, 20, 20]
     )
 

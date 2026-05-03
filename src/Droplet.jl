@@ -1,5 +1,6 @@
 module Droplet
 
+    using Statistics
     using StatsBase
     using Distributions
     using Serialization

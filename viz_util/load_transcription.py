@@ -45,7 +45,7 @@ def make_groups(param_dir_pairs):
     return list(param_dir_pairs)
 
 
-def load(groups, n1=10, n=5000):
+def load(groups, n1=10, n=5000, keys=None):
     """
     Load data from all groups.
 
@@ -63,20 +63,20 @@ def load(groups, n1=10, n=5000):
 
     run_ids[k][m] is a (data_dir, alpha_index) tuple identifying each run.
     """
-    keys = [
-        "on_times",
-        "off_times",
-        "bound_times",
-        "unbound_times",
-        "pattern_distances",
-        "transcription_activity",
-        "binding_activity",
-        "local_concentration",
-    ]
+    if keys is None:
+        keys = [    
+            "on_times",
+            "off_times",
+            "bound_times",
+            "unbound_times",
+            "pattern_distances",
+            "transcription_activity",
+            "binding_activity",
+            "local_concentration",
+        ]
     # skips[key] = how many leading elements to drop
-    skips = {k: n1 for k in ["on_times", "off_times", "bound_times", "unbound_times"]}
-    skips.update({k: n for k in ["pattern_distances", "transcription_activity",
-                                  "binding_activity", "local_concentration"]})
+    skips = {k: n1 for k in keys[:4]}
+    skips.update({k: n for k in keys[4:]})
 
     result = {k: [] for k in keys}
     run_ids = []   # run_ids[k] = list of (data_dir, alpha_index) in order
