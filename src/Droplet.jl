@@ -19,6 +19,7 @@ module Droplet
     include("port.jl")
     include("init.jl")
     include("utils.jl")
+    include("gillespie.jl")
     include("stats.jl")
     include("ctmc.jl")
     include("generate.jl")

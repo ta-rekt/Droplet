@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Droplet is a Julia package for lattice Monte Carlo simulations of biomolecular condensates (transcription factors, RNAP, DNA, polymers, enhancers/promoters). The Julia core (`src/`) defines species types and Metropolis dynamics; experiments are written as small spec files that get executed in parallel by a sweep driver and post-processed by Python dashboards loaded from `viz.ipynb`.
+Droplet is a Julia package for lattice Monte Carlo simulations of polymers and biomolecular condensates (transcription factors, RNAP, DNA polymers). The Julia core (`src/`) defines species types and Metropolis dynamics; experiments are written as small spec files that get executed in parallel by a sweep driver and post-processed by Python dashboards loaded from `viz.ipynb`.
 
 ## Running Simulations
 

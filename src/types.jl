@@ -14,7 +14,7 @@ abstract type AbstractPolyMonomer <: AbstractMonomer end
 abstract type AbstractFastBulkMonomer <: AbstractBulkMonomer end 
 
 export Species, Polymer, PolyMonomer, BulkMonomer, FastBulkMonomer, Lattice,
-       OneBurstDecoyModel, LLROptModel
+       KMCSystem, OneBurstDecoyModel, LLROptModel
 
 ######## Generic species #######
 # MARK: -Generic
@@ -154,6 +154,7 @@ Base.@kwdef mutable struct BulkMonomer <: AbstractBulkMonomer
 
     chemPot::Union{Nothing,Float64} = nothing   # monomer chemical potential
     intPot::Union{Nothing,Float64} = nothing   # monomer interaction potential
+    k0::Float64 = 1.0   # KMC base hop rate (sets simulation time unit)
 
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing
@@ -264,10 +265,34 @@ end
 ######## Lattice #######
 
 Base.@kwdef mutable struct Lattice
-    boxlength::Int32     # lattice linear dimension 
+    boxlength::Int32     # lattice linear dimension
     nspecies::Int32      # number of species
     lat::Union{Nothing, Array{Int32,4}} = nothing  # lattice array
     speciesDir::Union{Nothing, Dict{Int32,Int32}} = nothing    # id-indexed locations of each species in the lattice array
+end
+
+
+######## KMCSystem #######
+# MARK: -KMCSystem
+
+# Kinetic Monte Carlo (Gillespie) state container.
+# Each "slot" encodes a candidate hop (speciesIdx, particleId, dir ∈ 1..6).
+# Slot id = species_offset[speciesIdx] + (particleId - 1) * 6 + dir.
+Base.@kwdef mutable struct KMCSystem
+    slist::AbstractVector             # species participating in KMC
+    beta::Float64 = 1.0               # inverse temperature
+    rates::Vector{Float64} = Float64[]
+    fenwick::Vector{Float64} = Float64[]
+    species_offset::Vector{Int} = Int[]
+    nslots::Int = 0
+    Q::Float64 = 0.0
+    t_sim::Float64 = 0.0
+    n_events::Int = 0
+    src::Vector{Int32} = zeros(Int32, 3)
+    dst::Vector{Int32} = zeros(Int32, 3)
+    refresh_set::Set{Int} = Set{Int}()
+    nbuf::Vector{Int32} = zeros(Int32, 3)
+    ybuf::Vector{Int32} = zeros(Int32, 3)
 end
 
 
