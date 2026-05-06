@@ -190,12 +190,17 @@ function removeBond!(p::Polymer)
     return p
 end
 
-# Finds the bead coordinates, neighbording beads, and vector of the bond 
-# to which the bead selected by p.moveIdx belongs
-function identifyBond!(p::Polymer)
+# Finds the bead coordinates, neighbording beads, and vector of the bond
+# to which the bead selected by p.moveIdx (or the bead key passed via `ki`)
+# belongs. Pass `ki` directly to bypass the keys_vec[moveIdx] lookup —
+# necessary for KMC where the slot-encoded bondIdx maps to a stable bead key.
+function identifyBond!(p::Polymer; ki::Union{Nothing, Int32}=nothing)
 
-    @assert p.moveIdx >= 1 && p.moveIdx <= p.length begin
-        "p.moveIdx must be between 1 and Species length (# of monomers)"
+    if ki === nothing
+        @assert p.moveIdx >= 1 && p.moveIdx <= p.length begin
+            "p.moveIdx must be between 1 and Species length (# of monomers)"
+        end
+        ki = p.keys_vec[p.moveIdx]
     end
 
     # Initialize bond coordinate buffers if needed (lazy initialization for restored/manually-created polymers)
@@ -205,7 +210,7 @@ function identifyBond!(p::Polymer)
     end
 
     # pointers to the two beads (i and j) to be moved
-    p.ki = p.keys_vec[p.moveIdx]
+    p.ki = ki
     p.kj = p.pos[p.ki][5]
 
     # previous and next beads along the chain

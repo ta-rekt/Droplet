@@ -33,4 +33,10 @@ using Random
     include("test_integration_coupling.jl")
     # Time-varying Gillespie
     include("test_generate_tv.jl")
+    # Lattice KMC (Metropolis-rate Gillespie) v1: BulkMonomer
+    include("test_kmc_phase1.jl")
+    include("test_kmc_phase2.jl")
+    include("test_kmc_phase3.jl")
+    include("test_kmc_phase4.jl")
+    include("test_kmc_phase5.jl")
 end

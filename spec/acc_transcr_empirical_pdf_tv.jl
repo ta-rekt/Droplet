@@ -64,7 +64,7 @@ Tc = 1.0                     # concentration update interval (CTMC time units pe
 snapshot_interval = 100.0   # snapshot every dt continuous time units
 nbins = 100
 
-mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260423"
+mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260503"
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.018, length=16))
