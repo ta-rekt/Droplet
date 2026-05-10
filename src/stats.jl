@@ -536,10 +536,13 @@ function updateNormalHistogram!(
         
         # bin index
         bin_idx = Int(floor(nbins * dist / maxDistance)) + 1
+
+        # width of spherical bin
+        dr = maxDistance / nbins
         
         # accumulate count if within bounds of density vector
         if bin_idx <= nbins
-            hist[bin_idx] += nbins / (4 * pi * dist^2 * maxDistance)
+            hist[bin_idx] += 1 / (4 * pi * dist^2 * dr)
             count += 1
         end
     end

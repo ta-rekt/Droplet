@@ -9,6 +9,8 @@ Key improvements for numerical stability:
 """
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_bvp
 from scipy.optimize import fsolve, brentq
@@ -33,8 +35,8 @@ class Parameters:
     
     # Coupling parameters (Eq. 15c)
     omega_b: float = -0.3
-    chi_bb: float = -0.5
-    chi_bm: float = -1.0
+    chi_bb: float = 0.0
+    chi_bm: float = 0.0
     
     # Gradient penalty
     kappa: float = 1.0
