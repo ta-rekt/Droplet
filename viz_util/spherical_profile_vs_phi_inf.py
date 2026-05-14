@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_bvp
 import json
 import os
-from bvp_solver_v2 import (Parameters, solve_auto, make_ode, make_bc, 
+from viz_util.bvp_solver_membrane import (Parameters, solve_auto, make_ode, make_bc, 
                             compute_mu_inf, clip01)
 
 

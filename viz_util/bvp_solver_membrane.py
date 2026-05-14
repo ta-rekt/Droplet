@@ -9,8 +9,6 @@ Key improvements for numerical stability:
 """
 
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_bvp
 from scipy.optimize import fsolve, brentq
@@ -35,8 +33,8 @@ class Parameters:
     
     # Coupling parameters (Eq. 15c)
     omega_b: float = -0.3
-    chi_bb: float = 0.0
-    chi_bm: float = 0.0
+    chi_bb: float = -0.5
+    chi_bm: float = -1.0
     
     # Gradient penalty
     kappa: float = 1.0
@@ -166,6 +164,12 @@ def dfm_dphim(phim: np.ndarray, p: Parameters) -> np.ndarray:
     phim_c = clip01(phim, p.eps)
     return (1.0/p.nm) * (regularized_log(phim_c, p.eps) - regularized_log(1-phim_c, p.eps)) + \
            p.chi_m * (1.0 - 2.0*phim_c) + p.omega_m
+
+# def fm(phim: np.ndarray, p: Parameters) -> np.ndarray:
+#     return np.zeros_like(phim)
+
+# def dfm_dphim(phim: np.ndarray, p: Parameters) -> np.ndarray:
+#     return np.zeros_like(phim)
 
 
 def J(phi: np.ndarray, phim: np.ndarray, p: Parameters) -> np.ndarray:
