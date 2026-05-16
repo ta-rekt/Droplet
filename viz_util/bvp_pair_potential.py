@@ -19,10 +19,10 @@ from viz_util.bvp_solver import (
 p = Parameters(
     nb=1.0,
     chi_b=2.5,      # moderate Flory-Huggins bulk interaction (above spinodal threshold)
-    omega_b=-0.5,   # surface attraction to bulk species
+    omega_b=-0.1,   # surface attraction to bulk species
     kappa=1,
     phi_inf=0.15,    # far-field volume fraction (below spinodal)
-    L=5.0,
+    L=15.0,
     eps = 1e-6,
     R=5,
     conserve_volume=True
