@@ -24,9 +24,10 @@ p = Parameters(
     chi_b=2.5,      # moderate Flory-Huggins bulk interaction (above spinodal threshold)
     omega_b=-0.3,   # surface attraction to bulk species
     kappa=1,
-    phi_inf=0.25,    # far-field volume fraction (below spinodal)
-    L=10.0,
-    R=50,
+    phi_inf=0.10,    # far-field volume fraction (below spinodal)
+    L=5.0,
+    R=5,
+    eps=1e-8,
     conserve_volume=True
 )
 
@@ -39,7 +40,7 @@ def phi_profile(z, p):
     h0 = p.omega_b
     lam = np.sqrt(alpha/p.kappa)
 
-    return (p.phi_inf - h0 * p.R * np.exp(- lam * z) 
+    return ( - h0 * p.R * np.exp(- lam * z) 
             / ((z + p.R) * p.kappa * (lam + 1 / p.R)))
 
 # ── Solve ─────────────────────────────────────────────────────────────────────
@@ -67,7 +68,7 @@ fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 # Left: concentration profile
 ax = axes[0]
 ax.plot(z, phi, color="#2563EB", lw=2, label=r"$\phi(z)$")
-ax.plot(z, phi_profile(z, p), color="orange", linestyle="dashed", label="analytical")
+ax.plot(z, phi[-1]+phi_profile(z, p), color="orange", linestyle="dashed", label="analytical")
 # ax.set_yscale('log')
 
 ax.axhline(p.phi_inf, color="gray", ls="--", lw=1, label=r"$\phi_\infty$")

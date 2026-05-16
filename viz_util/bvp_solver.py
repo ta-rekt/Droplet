@@ -64,6 +64,9 @@ class Parameters:
     # constraint.  mu_inf becomes an unknown parameter solved for by BVP.
     conserve_volume: bool = False
 
+    # Parallel plate mode: solve the planar problem with two plates
+    parallel_plates: bool = False
+
     @property
     def is_spherical(self) -> bool:
         """True when R is finite (spherical geometry)."""
@@ -109,6 +112,23 @@ def d2fb_dphi2(phi: np.ndarray, p: Parameters) -> np.ndarray:
     phi_c = clip01(phi, p.eps)
     return (1.0/p.nb) * (1.0/phi_c + 1.0/(1-phi_c)) - 2.0*p.chi_b
 
+
+def psi_linear(z: np.ndarray, p: Parameters):
+    """Linearized solution to the equilibrium concentration profile"""
+    alpha = d2fb_dphi2(p.phi_inf, p)
+    h0 = p.omega_b
+    lam = np.sqrt(alpha/p.kappa)
+    psi = ( - h0 * p.R * np.exp(- lam * z) 
+            / ((z + p.R) * p.kappa * (lam + 1 / p.R)))
+    dpsi = psi * (- lam - 1 / (z + p.R))
+    return psi, dpsi, lam
+
+def F(phi: np.ndarray, laplacian: np.ndarray, p: Parameters):
+    """Total free energy of the system"""
+    dr = p.L / len(phi)  # volume element: (4*np.pi*(p.R + z)
+
+    return (np.sum(dr * (fb(phi, p) - p.kappa * phi * laplacian / 2) )
+            + 2 * np.pi * p.R**2 * p.omega_b * phi[0])
 
 def compute_spinodal(p: Parameters) -> Tuple[float, float]:
     """
@@ -261,6 +281,16 @@ def make_bc(p: Parameters):
     if p.conserve_volume:
         phi_tot = compute_phi_tot(p)
 
+        if not p.is_spherical and p.parallel_plates:
+            def bc(ya, yb, p_param):
+                return np.array([
+                    -p.kappa * ya[1] + p.omega_b,
+                    -p.kappa * yb[1] - p.omega_b,
+                    ya[2],
+                    yb[2] - phi_tot,
+                ])
+            return bc
+
         def bc(ya, yb, p_param):
             return np.array([
                 -p.kappa * ya[1] + p.omega_b,
@@ -365,7 +395,7 @@ def solve_bvp_robust(
 
             for current_tol in [tol, tol * 10, tol * 100]:
                 try:
-                    kwargs = dict(tol=current_tol, max_nodes=50000, verbose=0)
+                    kwargs = dict(tol=current_tol, max_nodes=100000, verbose=0)
                     if p.conserve_volume:
                         kwargs['p'] = [mu_inf]
                     sol = solve_bvp(ode, bc, z, y_guess, **kwargs)
@@ -770,12 +800,12 @@ def test_residual_check():
 
     # Interior ODE residual via centred finite differences
     z_test    = np.linspace(0.02 * p.L, 0.98 * p.L, 100)
-    h         = 1e-5
-    phi_c, _  = sol.sol(z_test)
-    phi_p, _  = sol.sol(z_test + h)
-    phi_m2, _ = sol.sol(z_test - h)
-    ddphi     = (phi_p - 2.0 * phi_c + phi_m2) / h ** 2
-    ode_res   = np.max(np.abs(p.kappa * ddphi - (dfb_dphi(phi_c, p) - mu_inf / p.nb)))
+    h         = 0.05
+    phi_c,  _      = sol.sol(z_test)
+    _,      dphi_p = sol.sol(z_test + h)
+    _,      dphi_m = sol.sol(z_test - h)
+    ddphi          = (dphi_p - dphi_m) / (2.0 * h)
+    ode_res        = np.max(np.abs(p.kappa * ddphi - (dfb_dphi(phi_c, p) - mu_inf / p.nb)))
 
     # Boundary conditions
     phi0, dphi0 = sol.sol(np.array([0.0]))[:, 0]
@@ -891,7 +921,7 @@ def test_kappa_scaling():
         delta  = abs(phi[0] - p.phi_inf)
         if delta < 1e-3:
             return 1.0
-        return np.trapezoid(np.abs(phi - p.phi_inf), z) / delta
+        return np.trapz(np.abs(phi - p.phi_inf), z) / delta
 
     w1       = estimate_width(sol1, p1)
     w2       = estimate_width(sol2, p2)
@@ -1039,7 +1069,7 @@ def test_conserve_volume_mass():
     z = np.linspace(0.0, p.L, 4000)
     phi = sol.sol(z)[0]
     w = _integral_weight(z, p)
-    integral = np.trapezoid(w * phi, z)
+    integral = np.trapz(w * phi, z)
     phi_tot  = compute_phi_tot(p)
     phiL     = float(sol.sol(np.array([p.L]))[0, 0])
 
