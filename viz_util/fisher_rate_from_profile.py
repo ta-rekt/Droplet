@@ -15,6 +15,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import numpy as np
 import matplotlib
+from dataclasses import dataclass
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -23,11 +24,16 @@ from viz_util.bvp_solver import (
     compute_binodal, psi_linear, F, compute_mu_inf
 )
 
+@dataclass
+class Probe:
+    kb: float = 1.0
+    ku: float = 1.0
+
 # ── Parameters ────────────────────────────────────────────────────────────
 p = Parameters(
     nb=1.0,
     chi_b=2.5,     
-    omega_b=-0.2,   
+    omega_b=-0.4,   
     kappa=1,
     phi_inf=0.1,   
     L=20.0,
@@ -70,30 +76,50 @@ def compute_P_eq(p: Parameters, d: np.ndarray) -> np.ndarray:
 
 
 # ── Mean probe concentration varying total phi volume ─────────────────────
-n_params = 50
+n_params = 100
 phi_probe = np.zeros(n_params)
-phi_inf_vals = np.linspace(0.001, 0.15, n_params)
+phi_tf_vals = np.linspace(0.003, 0.15, n_params)
 dr = (p.L-p.R) / nsteps
 
-for i, _phi in enumerate(phi_inf_vals):
+for i, _phi in enumerate(phi_tf_vals):
     p.phi_inf = _phi
-
     P_eq, Phi_d, U_lin = compute_P_eq(p, d)
-
     phi_probe[i] = np.sum(P_eq * Phi_d)
 
 
+# ── Fisher rate ───────────────────────────────────────────────────────────
+def fisher_rate(p2: Probe, 
+                phi_probe: np.ndarray,
+                phi_tf: np.ndarray) -> np.ndarray:
+    
+    # fisher rate without microcondensation, 2 state probe
+    fisher_base = phi_tf * p2.kb * p2.ku / (p2.kb + p2.ku)
+
+    # fisher rate accounting for probe-enhancer microcondensation
+    dphi_probe = np.gradient(phi_probe, phi_tf)
+    inv_taub = phi_probe * p2.kb * p2.ku / (p2.kb + p2.ku)
+    fisher_probe = phi_tf**2 * inv_taub * (dphi_probe / phi_probe)**2
+
+    return fisher_base, fisher_probe
+
+probe = Probe(
+    ku = 1.0, 
+    kb = 1.0,
+)
+fisher_base, fisher_probe = fisher_rate(probe, phi_probe, phi_tf_vals)
+
 # ── Plot ──────────────────────────────────────────────────────────────────
-fig, axes = plt.subplots(2,1, figsize=(5, 5.0))
+fig, axes = plt.subplots(3,1, figsize=(5, 8.0))
 
 p.phi_inf = 0.1
 P_eq, Phi_d, U_lin = compute_P_eq(p, d)
 
 # Left: concentration profile
 axl = axes[0]
+axl.set_title("Linear")
 axl.set_ylabel(r"$U(d)$", color="black")
 axl.plot(d, U_lin, color="black", lw=2, label=r"$U(d)$")
-axl.set_xlabel("d (distance between surfaces)")
+axl.set_xlabel("d (distance between surfaces)", fontsize=12)
 axl.set_ylim(-1.10*np.max(np.abs(U_lin)), 1.10*np.max(np.abs(U_lin)))
 
 axr = axl.twinx()
@@ -103,11 +129,17 @@ axr.set_ylim(-1.10*np.max(P_eq), 1.10*np.max(P_eq))
 
 axl = axes[1]
 axl.set_ylabel(r"$\phi_{probe}$", color="black")
-axl.plot(phi_inf_vals, phi_probe, color="black", lw=2, label="Linear")
-axl.plot(phi_inf_vals, phi_inf_vals, color="black", lw=1, linestyle="dashed")
+axl.plot(phi_tf_vals, phi_probe, color="C2", lw=2)
+axl.plot(phi_tf_vals, phi_tf_vals, color="C2", lw=1.5, linestyle="dashed")
 axl.set_xlabel(r"$\phi_{TF}$ (total volume fraction)", fontsize=12)
-# axl.set_ylim(-1.10*np.max(np.abs(U_lin)), 1.10*np.max(np.abs(U_lin)))
 
+axl = axes[2]
+axl.set_ylabel(r"Fisher information rate", color="black")
+axl.plot(phi_tf_vals, fisher_base, color="red", lw=1.5, label="control",linestyle="dashed")
+axl.plot(phi_tf_vals, fisher_probe, color="red", lw=2, label="with interaction")
+axl.set_xlabel(r"$\phi_{TF}$ (total volume fraction)", fontsize=12)
+axl.set_yscale('log')
+axl.legend()
 
 # ── Save ──────────────────────────────────────────────────────────────────
 fig.tight_layout()

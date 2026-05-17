@@ -123,9 +123,14 @@ def psi_linear(z: np.ndarray, p: Parameters):
     dpsi = psi * (- lam - 1 / (z + p.R))
     return psi, dpsi, lam
 
-def F(phi: np.ndarray, laplacian: np.ndarray, p: Parameters):
+def F(phi: np.ndarray, dphi: np.ndarray, d: np.ndarray, p: Parameters):
     """Total free energy of the system"""
-    dr = p.L / len(phi)  # volume element: (4*np.pi*(p.R + z)
+    dr = p.L / len(phi)
+
+    if p.is_spherical:
+        laplacian = np.gradient(dphi) + 2 * dphi / d
+    else:
+        laplacian = np.gradient(dphi)
 
     return (np.sum(dr * (fb(phi, p) - p.kappa * phi * laplacian / 2) )
             + 2 * np.pi * p.R**2 * p.omega_b * phi[0])
