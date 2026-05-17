@@ -47,13 +47,37 @@ p = Parameters(
 s = 100   # inter-bead distance
 a = 1   # Kuhn length
 
-# ── Equilibrium distance distribution ─────────────────────────────────────
+# ── Distance distribution ─────────────────────────────────────────────────
 nsteps = 1000
 r = np.linspace(0, p.L, nsteps)     # distance from center
 d = np.linspace(0, p.L-p.R, nsteps) # distance from surface
 
 def compute_P_eq(p: Parameters, d: np.ndarray) -> np.ndarray:
     """Compute the equilibrium distribution of bead separation on a polymer"""
+
+    sol = solve_auto(p, verbose=False)
+    
+    # profile
+    phi = sol.sol(d)[0]
+    psi_lin = psi_linear(d, p)[0]
+
+    # potential
+    U_lin = 4 * np.pi * p.R**2 * p.omega_b * psi_lin
+
+    # equilibrium distribution
+    P_eq_unnorm = (d+p.R)**2 * np.exp(-3*(d+p.R)**2/(2*s*a**2) - U_lin)
+    P_eq = P_eq_unnorm / np.sum(P_eq_unnorm)
+
+    # concentration at the probe as a function of distance
+    phi_boundary = phi[-1]
+    Phi_d = phi_boundary + psi_lin[0] + psi_lin 
+
+    return P_eq, Phi_d, U_lin
+
+
+def compute_P_eq_full(p: Parameters, d: np.ndarray) -> np.ndarray:
+    """Compute the equilibrium distribution of bead separation on a polymer
+    using the nonlinear profile from the BVP solver"""
 
     sol = solve_auto(p, verbose=False)
     

@@ -58,13 +58,11 @@ def W(phi: np.ndarray, dphi: np.ndarray, d: np.ndarray, p: Parameters):
     return (np.sum(dr * (fb(psi, p) - p.kappa * psi * d2psi))
             + p.omega_b * (phi[0] + psi_end))
 
-nsteps = 500
+nsteps = 1000
 dr = p.L / nsteps
 n_distances = 100
 distances = np.linspace(0.05*p.L, p.L, n_distances)
-# W_d_joint = np.zeros(n_distances)
-# W_d_single = np.zeros(n_distances)
-F_full = np.zeros(n_distances)
+U_full = np.zeros(n_distances)
 
 for i, dist in enumerate(distances):
     # set distance between plates
@@ -84,7 +82,7 @@ for i, dist in enumerate(distances):
     W_d_single = W(phi_single, dphi_single, d, p)
 
     R = 5.0
-    F_full[i] = (W_d_joint - 2*W_d_single) * dr * np.pi * R
+    U_full[i] = (W_d_joint - 2*W_d_single) * np.pi * R
 
 
 # ── Plot ──────────────────────────────────────────────────────────────────────
@@ -116,7 +114,7 @@ ax.grid(True, alpha=0.3)
 
 ax2 = axes[1]
 
-ax2.plot(distances, F_full)
+ax2.plot(distances, U_full)
 ax2.set_xlabel("Sphere separation")
 
 

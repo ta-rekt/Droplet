@@ -677,6 +677,37 @@ def solve_auto(p: Parameters, verbose: bool = True) -> Optional[object]:
 # TEST CASES
 # ============================================================
 
+def test_free_energy():
+
+    p = Parameters(
+        nb=1.0,
+        chi_b=2.5,     
+        omega_b=-0.4,   
+        kappa=1,
+        phi_inf=0.1,   
+        L=20.0,
+        eps=1e-6,
+        R=2.0,
+        conserve_volume=True,
+        parallel_plates = False
+    )
+
+    nsteps = 1000
+    r = np.linspace(0, p.L, nsteps)
+
+    sol = solve_auto(p, verbose=False)
+    
+    # profile
+    phi, dphi, iphi = sol.sol(r)
+    psi = phi - phi[-1]
+    psi_lin, dpsi_lin, _ = psi_linear(r, p)
+
+    # potential
+    U_lin = 4 * np.pi * p.R**2 * p.omega_b * psi_lin
+    F_full = F(psi, dphi, r, p)
+
+    return np.all(np.abs(U_lin - F_full) < 1e-5)
+
 def test_uniform_solution():
     """
     TEST 1: omega_b = 0.
@@ -1106,6 +1137,7 @@ def run_all_tests():
         ("Spherical geometry",                         test_spherical_geometry),
         ("Conserved mode, ideal limit",                test_conserve_volume_ideal),
         ("Conserved mode, mass conservation",          test_conserve_volume_mass),
+        ("Total free energy",                          test_free_energy),
     ]
 
     results = [(name, fn()) for name, fn in tests]
