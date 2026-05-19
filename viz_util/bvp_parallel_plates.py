@@ -10,9 +10,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from dataclasses import replace
 from viz_util.bvp_solver import (
     Parameters, solve_auto, d2fb_dphi2, dfb_dphi, fb, compute_spinodal,
-    compute_binodal, psi_linear, F, compute_mu_inf
+    compute_binodal, psi_linear, excess_free_energy, compute_mu_inf,
 )
 
 # ── Parameters ───────────────────────────────────────────────────────────────

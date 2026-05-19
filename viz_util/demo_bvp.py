@@ -14,21 +14,21 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from viz_util.bvp_solver import (
-    Parameters, solve_auto, compute_spinodal, compute_binodal,
+    Parameters, solve_auto, solve_bvp_robust, compute_spinodal, compute_binodal,
     dfb_dphi, d2fb_dphi2, compute_mu_inf
 )
 
 # ── Parameters ───────────────────────────────────────────────────────────────
 p = Parameters(
     nb=1.0,
-    chi_b=2.5,      # moderate Flory-Huggins bulk interaction (above spinodal threshold)
-    omega_b=-0.3,   # surface attraction to bulk species
+    chi_b=4,      # moderate Flory-Huggins bulk interaction (above spinodal threshold)
+    omega_b=-1.5,   # surface attraction to bulk species
     kappa=1,
-    phi_inf=0.10,    # far-field volume fraction (below spinodal)
+    phi_inf=0.010,    # far-field volume fraction (below spinodal)
     L=5.0,
-    R=5,
+    R=10.0,
     eps=1e-8,
-    conserve_volume=True
+    conserve_volume=False
 )
 
 # ── Thierry's formula ─────────────────────────────────────────────────────────
@@ -45,6 +45,7 @@ def phi_profile(z, p):
 
 # ── Solve ─────────────────────────────────────────────────────────────────────
 print("Solving BVP …")
+# sol = solve_bvp_robust(p, verbose=True)
 sol = solve_auto(p, verbose=True)
 
 if sol is None or not sol.success:
@@ -93,7 +94,7 @@ ax.grid(True, alpha=0.3)
 
 # Right: gradient profile
 ax2 = axes[1]
-ax2.plot(z, dphi, color="#059669", lw=2)
+ax2.plot(z, dphi, color="#06A975", lw=2)
 ax2.axhline(0, color="gray", ls="--", lw=1)
 ax2.set_xlabel(r"Distance from surface $z$", fontsize=12)
 ax2.set_ylabel(r"$\partial_z\phi$", fontsize=12)

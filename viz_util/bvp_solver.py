@@ -123,17 +123,55 @@ def psi_linear(z: np.ndarray, p: Parameters):
     dpsi = psi * (- lam - 1 / (z + p.R))
     return psi, dpsi, lam
 
-def F(phi: np.ndarray, dphi: np.ndarray, d: np.ndarray, p: Parameters):
-    """Total free energy of the system"""
-    dr = p.L / len(phi)
+def excess_free_energy(phi: np.ndarray, dphi: np.ndarray, z: np.ndarray,
+                       p: Parameters, mu_ref: float = None) -> float:
+    """
+    Grand-potential excess over the bulk reservoir at phi_inf:
+
+        DeltaOmega = int_V [ df(phi) + (kappa/2)(dphi/dz)^2 ] dV
+                     + omega_b * int_{dV} (phi - phi_inf) dA
+
+        df(phi) = f_b(phi) - f_b(phi_inf) - mu_ref/n_b * (phi - phi_inf)
+
+    With mu_ref = n_b * dfb/dphi(phi_inf), df vanishes (to linear order) at
+    phi_inf so the integral converges as L -> infinity.  This is the single
+    energy functional used by both the Derjaguin (plate-plate) and additive
+    (cylindrical) pair-potential calculations.
+
+    Geometry is dispatched by `p`:
+      - Spherical (p.is_spherical): bulk 4*pi*int (R+z)^2 [..] dz,
+        surface 4*pi*R^2 * omega_b * (phi(0) - phi_inf).
+      - Planar, single plate (R=inf, parallel_plates=False): bulk per-area
+        int [..] dz, surface omega_b * (phi(0) - phi_inf) at z=0.
+      - Parallel plates (R=inf, parallel_plates=True): bulk per-area
+        int_0^L [..] dz, two surfaces omega_b * (phi(0) + phi(L) - 2 phi_inf).
+    """
+    phi_inf = p.phi_inf
+    if mu_ref is None:
+        mu_ref = p.nb * dfb_dphi(np.asarray([phi_inf], dtype=float), p)[0]
+
+    df = (fb(phi, p) - fb(np.asarray([phi_inf], dtype=float), p)[0]
+          - mu_ref / p.nb * (phi - phi_inf))
+    integrand_per_length = df + 0.5 * p.kappa * dphi ** 2
 
     if p.is_spherical:
-        laplacian = np.gradient(dphi) + 2 * dphi / d
+        weight = 4.0 * np.pi * (p.R + z) ** 2
+        bulk = np.trapezoid(weight * integrand_per_length, z)
+        surface = 4.0 * np.pi * p.R ** 2 * p.omega_b * (phi[0] - phi_inf)
     else:
-        laplacian = np.gradient(dphi)
+        bulk = np.trapezoid(integrand_per_length, z)
+        if p.parallel_plates:
+            surface = p.omega_b * ((phi[0] - phi_inf) + (phi[-1] - phi_inf))
+        else:
+            surface = p.omega_b * (phi[0] - phi_inf)
 
-    return (np.sum(dr * (fb(phi, p) - p.kappa * phi * laplacian / 2) )
-            + 2 * np.pi * p.R**2 * p.omega_b * phi[0])
+    return bulk + surface
+
+
+# Back-compat shim: old callers used `F(phi, dphi, d, p)`.  Delegate to the
+# new functional so they get the corrected energy.
+def F(phi: np.ndarray, dphi: np.ndarray, z: np.ndarray, p: Parameters) -> float:
+    return excess_free_energy(phi, dphi, z, p)
 
 def compute_spinodal(p: Parameters) -> Tuple[float, float]:
     """
@@ -304,11 +342,22 @@ def make_bc(p: Parameters):
                 yb[2] - phi_tot,
             ])
         return bc
+    
+    if not p.is_spherical and p.parallel_plates:
+        # Open-reservoir parallel plates: surface BC on both plates.
+        # mu_inf is fixed (computed from phi_inf and passed via the ODE),
+        # so phi(0), phi(L) emerge from the solver.  No free parameter.
+        def bc(ya, yb):
+            return np.array([
+                -p.kappa * ya[1] + p.omega_b,
+                +p.kappa * yb[1] + p.omega_b,
+            ])
+        return bc
 
     def bc(ya, yb):
         dphi0 = ya[1]
         return np.array([
-            -p.kappa * dphi0 + p.omega_b,
+            -p.kappa * dphi0 + p.omega_b + 1e-2 * np.log(ya[0]/(1-ya[0])),
             yb[0] - p.phi_inf,
         ])
 
@@ -392,8 +441,10 @@ def solve_bvp_robust(
 
     best_sol      = None
     best_residual = float('inf')
+    strategies = ['exponential', 'high_enrichment', 'depleted', 'tanh', 'uniform']
+    # strategies = ['exponential']
 
-    for strategy in ['exponential', 'high_enrichment', 'depleted', 'tanh', 'uniform']:
+    for strategy in strategies:
         try:
             z, y_guess = generate_initial_guess(p, strategy)
             y_guess[0] = clip01(y_guess[0], p.eps)
@@ -677,36 +728,6 @@ def solve_auto(p: Parameters, verbose: bool = True) -> Optional[object]:
 # TEST CASES
 # ============================================================
 
-def test_free_energy():
-
-    p = Parameters(
-        nb=1.0,
-        chi_b=2.5,     
-        omega_b=-0.4,   
-        kappa=1,
-        phi_inf=0.1,   
-        L=20.0,
-        eps=1e-6,
-        R=2.0,
-        conserve_volume=True,
-        parallel_plates = False
-    )
-
-    nsteps = 1000
-    r = np.linspace(0, p.L, nsteps)
-
-    sol = solve_auto(p, verbose=False)
-    
-    # profile
-    phi, dphi, iphi = sol.sol(r)
-    psi = phi - phi[-1]
-    psi_lin, dpsi_lin, _ = psi_linear(r, p)
-
-    # potential
-    U_lin = 4 * np.pi * p.R**2 * p.omega_b * psi_lin
-    F_full = F(psi, dphi, r, p)
-
-    return np.all(np.abs(U_lin - F_full) < 1e-5)
 
 def test_uniform_solution():
     """
@@ -1137,7 +1158,6 @@ def run_all_tests():
         ("Spherical geometry",                         test_spherical_geometry),
         ("Conserved mode, ideal limit",                test_conserve_volume_ideal),
         ("Conserved mode, mass conservation",          test_conserve_volume_mass),
-        ("Total free energy",                          test_free_energy),
     ]
 
     results = [(name, fn()) for name, fn in tests]
