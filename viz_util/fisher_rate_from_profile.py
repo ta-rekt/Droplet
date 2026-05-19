@@ -36,13 +36,13 @@ class Probe:
 # ── Parameters ────────────────────────────────────────────────────────────
 p = Parameters(
     nb=1.0,
-    chi_b=2.5,
-    omega_b=-0.1,
+    chi_b=4.0,
+    omega_b=-1.5,
     kappa=1,
     phi_inf=0.1,
     L=20.0,
     eps=1e-6,
-    R=2.0,
+    R=5.0,
     conserve_volume=True,
     parallel_plates=False,
 )
@@ -53,7 +53,7 @@ a = 1     # Kuhn length
 
 # Geometry / numerics
 nsteps   = 1000
-L_ISO    = 15.0    # single-sphere / single-plate reference domain
+L_ISO    = 10.0    # single-sphere / single-plate reference domain
 N_ISO    = 200     # discretisation of the single-sphere profile
 N_DGRID  = 40      # number of pair separations evaluated for U(d)
 N_RHO    = 80      # cylindrical-integration grid (radial)
@@ -349,8 +349,8 @@ def fisher_rate(p2: Probe, phi_probe: np.ndarray, phi_tf: np.ndarray):
 if __name__ == "__main__":
     import datetime
 
-    n_params    = 10
-    phi_tf_vals = np.linspace(0.01, 0.15, n_params)
+    n_params    = 20
+    phi_tf_vals = np.linspace(0.001, 0.01, n_params)
     d_grid      = np.linspace(0.02 * p.R, L_ISO, N_DGRID)
 
     phi_probe_lin  = np.zeros(n_params)
