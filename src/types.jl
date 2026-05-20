@@ -14,7 +14,7 @@ abstract type AbstractPolyMonomer <: AbstractMonomer end
 abstract type AbstractFastBulkMonomer <: AbstractBulkMonomer end 
 
 export Species, Polymer, PolyMonomer, BulkMonomer, FastBulkMonomer, Lattice,
-       OneBurstDecoyModel, LLROptModel
+       KMCSystem, KMCPolymerState, OneBurstDecoyModel, LLROptModel
 
 ######## Generic species #######
 # MARK: -Generic
@@ -83,6 +83,11 @@ Base.@kwdef mutable struct Polymer <: AbstractPolymer
     length::Int32        # number of beads
     maxlength::Int32     # max number of beads
     nMonomerTypes::Union{Nothing, Int32} = nothing  # number of distinct PolyMonomer
+
+    # KMC base rates per move type (sets simulation time unit; unused by Metropolis)
+    k0_add::Float64 = 1.0
+    k0_kink::Float64 = 1.0
+    k0_remove::Float64 = 1.0
     
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing    # box linear dimension
@@ -154,6 +159,7 @@ Base.@kwdef mutable struct BulkMonomer <: AbstractBulkMonomer
 
     chemPot::Union{Nothing,Float64} = nothing   # monomer chemical potential
     intPot::Union{Nothing,Float64} = nothing   # monomer interaction potential
+    k0::Float64 = 1.0   # KMC base hop rate (sets simulation time unit)
 
     # key vector, position and initial, final bead positions
     boxlength::Union{Nothing, Int32} = nothing
@@ -264,10 +270,56 @@ end
 ######## Lattice #######
 
 Base.@kwdef mutable struct Lattice
-    boxlength::Int32     # lattice linear dimension 
+    boxlength::Int32     # lattice linear dimension
     nspecies::Int32      # number of species
     lat::Union{Nothing, Array{Int32,4}} = nothing  # lattice array
     speciesDir::Union{Nothing, Dict{Int32,Int32}} = nothing    # id-indexed locations of each species in the lattice array
+end
+
+
+######## KMCSystem #######
+# MARK: -KMCSystem
+
+# Per-polymer KMC state: maps stable bondIdx ∈ 0..maxlength-2 to bead keys, with
+# a free-list to recycle bondIdxs across add/remove events.
+mutable struct KMCPolymerState
+    bondIdx_of_key::Dict{Int32, Int}
+    key_at_bondIdx::Vector{Int32}     # length = maxlength; 0 = unused
+    free_bondIdxs::Vector{Int}
+end
+
+# Kinetic Monte Carlo (Gillespie) state container.
+# Each "slot" encodes a candidate move:
+#   BulkMonomer: (speciesIdx, particleId ∈ 1..length, dir ∈ 1..6)
+#                slot = offset + (particleId - 1) * 6 + dir
+#   Polymer:     (speciesIdx, bondIdx ∈ 0..maxlength-1, dir ∈ 1..4)
+#                slot = offset + bondIdx * 4 + dir
+#                (bondIdx is per-bead/stable; the chain tail's batch is always
+#                 inactive, and unallocated bondIdxs likewise contribute 0.)
+# Per-species slot count comes from `nslots(s)`.
+Base.@kwdef mutable struct KMCSystem
+    slist::AbstractVector             # species participating in KMC
+    beta::Float64 = 1.0               # inverse temperature
+    rates::Vector{Float64} = Float64[]
+    fenwick::Vector{Float64} = Float64[]
+    species_offset::Vector{Int} = Int[]
+    nslots::Int = 0
+    Q::Float64 = 0.0
+    t_sim::Float64 = 0.0
+    n_events::Int = 0
+    src::Vector{Int32} = zeros(Int32, 3)
+    dst::Vector{Int32} = zeros(Int32, 3)
+    refresh_set::Set{Int} = Set{Int}()
+    nbuf::Vector{Int32} = zeros(Int32, 3)
+    ybuf::Vector{Int32} = zeros(Int32, 3)
+    cbuf1::Vector{Int32} = zeros(Int32, 3)
+    cbuf2::Vector{Int32} = zeros(Int32, 3)
+    polymer_states::IdDict{AbstractPolymer, KMCPolymerState} = IdDict{AbstractPolymer, KMCPolymerState}()
+    # Polymer rate-refresh policy (only consulted when slist contains a Polymer):
+    #   :fine_polymer   — incremental, enumerate beads near move centers (default)
+    #   :simple_polymer — incremental, refresh ALL polymer slots after each event
+    #   :rebuild_all    — full rebuildQ! after each event (v2.2 reference)
+    refresh_mode::Symbol = :fine_polymer
 end
 
 

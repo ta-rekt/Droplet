@@ -1,5 +1,6 @@
 module Droplet
 
+    using Statistics
     using StatsBase
     using Distributions
     using Serialization
@@ -8,6 +9,7 @@ module Droplet
     using DataStructures
     using OrderedCollections
     using TimerOutputs
+    using Printf
 
     include("types.jl")
     include("interactions.jl")
@@ -17,7 +19,10 @@ module Droplet
     include("port.jl")
     include("init.jl")
     include("utils.jl")
+    include("gillespie.jl")
     include("stats.jl")
     include("ctmc.jl")
+    include("generate.jl")
+    include("get_residence_time.jl")
 
 end # module Droplet

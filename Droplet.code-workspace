@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../LLROpt"
+		}
+	],
+	"settings": {
+		"julia.environmentPath": "/home/tohme/.julia/dev/Droplet"
+	}
+}

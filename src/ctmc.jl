@@ -31,6 +31,23 @@ function build_mat(weighted_edges, input_edges, c::T) where T<:Any
     return Q
 end
 
+export update_mat!
+function update_mat!(Q, N, input_edges, c_prev, c_new)
+
+    # up input edges
+    for (n1, n2) in input_edges
+        Q[n1, n2] = Q[n1, n2] * (c_new / c_prev)
+    end
+
+    # normalize
+    for ri in 1:N
+        Z = sum(view(Q, ri, :))
+        Q[ri, ri] = -Z
+    end
+
+    return Q
+end
+
 export init_Qs!
 function init_Qs!(m::LLROptModel)
     m.Q_c = build_mat(m.weighted_edges, m.input_edges, m.c)
@@ -93,15 +110,17 @@ end
 
 ## . - -- .- .-.- . .- .-- -.- .- .- --.-.... - -.-
 export sharpness
-function sharpness(d0::OneBurstDecoyModel, 
-                   d1::OneBurstDecoyModel,
-                   d2::OneBurstDecoyModel)
+function sharpness(d::OneBurstDecoyModel, h::Float64=0.01)
 
-    # Note: removed cr monotonicity assertions to support non-monotonic concentration profiles
-    h = d0.cw - d1.cw
-    @assert d2.cw ≈ d0.cw - 2*h
+    d1 = deepcopy(d)
+    d2 = deepcopy(d)
+    d1.cr = d.cr - h
+    d2.cr = d.cr - 2*h
+    
+    initAcc!(d1)
+    initAcc!(d2)
 
-    pi0 = pi_on(d0)
+    pi0 = pi_on(d)
     pi1 = pi_on(d1)
     pi2 = pi_on(d2)
 
@@ -110,17 +129,15 @@ function sharpness(d0::OneBurstDecoyModel,
     dpion = pi2 - 4*pi1 + 3*pi0
     dpion /= (2 * h)
 
-    return abs(d0.cw * dpion)
+    return abs(d.cr * dpion)
 end
 
 ## . - -- .- .-.- . .- .-- -.- .- .- - -.-.... - -.-
 export FisherRateAcc
-function FisherRateAcc(d0::OneBurstDecoyModel, 
-                       d1::OneBurstDecoyModel,
-                       d2::OneBurstDecoyModel)               
+function FisherRateAcc(d::OneBurstDecoyModel, h::Float64=0.01)
 
-    sharp = sharpness(d0, d1, d2)
-    var = variance(d0)
+    sharp = sharpness(d, h)
+    var = variance(d)
 
     return sharp^2 / var
 end

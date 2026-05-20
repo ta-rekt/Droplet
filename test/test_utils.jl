@@ -275,7 +275,7 @@ end
     # B at (4,3,3), (8,8,8)
     b.pos[1][1], b.pos[1][2], b.pos[1][3] = 4, 3, 3; b.latS[4,3,3] = 1
     b.pos[2][1], b.pos[2][2], b.pos[2][3] = 8, 8, 8; b.latS[8,8,8] = 2
-
+    
     # Only A[2] and B[1] co-locate at (4,3,3)
     @test cplpq(a, b, Int32[3, 3, 3]) == 0  # A present, B absent
     @test cplpq(a, b, Int32[4, 3, 3]) == 1  # both present
