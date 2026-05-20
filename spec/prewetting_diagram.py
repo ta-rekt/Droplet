@@ -27,17 +27,18 @@ fixed = dict(
     nb=1.0,
     chi_b=4,
     kappa=1.0,
-    L=10.0,
+    L=5.0,
     eps=1e-8,
     conserve_volume=False,
     parallel_plates=False,
-    z_grid_n=100,
+    z_grid_n=200,
 )
 
-alphas = np.linspace(0.001, 0.01, 50)
-# betas  = np.linspace(0.5, 5.0, 50)
-betas = np.array([5, 6, 7, 8, 9, 10])
+alphas = np.linspace(0.006, 0.01, 50)
+betas = np.array([10])
 gammas = np.linspace(-1.0, -1.5, 50)
+# alphas = np.array([0.01])
+# gammas = np.array([-1.5])
 
 nparams = len(alphas)
 

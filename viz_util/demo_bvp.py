@@ -15,14 +15,14 @@ import matplotlib.pyplot as plt
 
 from viz_util.bvp_solver import (
     Parameters, solve_auto, solve_bvp_robust, compute_spinodal, compute_binodal,
-    dfb_dphi, d2fb_dphi2, compute_mu_inf
+    dfb_dphi, d2fb_dphi2, compute_mu_inf, excess_free_energy
 )
 
 # ── Parameters ───────────────────────────────────────────────────────────────
 p = Parameters(
     nb=1.0,
     chi_b=4,      # moderate Flory-Huggins bulk interaction (above spinodal threshold)
-    omega_b=-1.5,   # surface attraction to bulk species
+    omega_b=-1.3,   # surface attraction to bulk species
     kappa=1,
     phi_inf=0.010,    # far-field volume fraction (below spinodal)
     L=5.0,
@@ -33,7 +33,7 @@ p = Parameters(
 
 # ── Thierry's formula ─────────────────────────────────────────────────────────
 
-def phi_profile(z, p):
+def phi_linear(z, p):
 
     alpha = d2fb_dphi2(p.phi_inf, p)
 
@@ -45,34 +45,43 @@ def phi_profile(z, p):
 
 # ── Solve ─────────────────────────────────────────────────────────────────────
 print("Solving BVP …")
-# sol = solve_bvp_robust(p, verbose=True)
-sol = solve_auto(p, verbose=True)
-
-if sol is None or not sol.success:
-    print("Solver failed – try adjust parameters.")
-    sys.exit(1)
-
+phi_infs = np.linspace(0.0095, 0.0105, 10)
 z = np.linspace(0, p.L, 500)
-if p.conserve_volume:
-    phi, dphi, iphi = sol.sol(z)
-else:
-    phi, dphi = sol.sol(z)
+phi_profiles = np.zeros((10, 500))
+phi_profiles_lin = np.zeros((10, 500))
+
+for k, phi_inf in enumerate(phi_infs):
+    p.phi_inf = phi_inf
+    sol = solve_bvp_robust(p, verbose=True)
+    # sol = solve_auto(p, verbose=True)
+
+    if sol is None or not sol.success:
+        print("Solver failed – try adjust parameters.")
+        sys.exit(1)
+
+    if p.conserve_volume:
+        phi_profiles[k], dphi, iphi = sol.sol(z)
+    else:
+        phi_profiles[k], dphi = sol.sol(z)
+
+    phi_profiles_lin[k] = phi_profiles[k, -1] + phi_linear(z, p)
 
 print(f"\nSolution summary:")
-print(f"  φ(0)  = {phi[0]:.4f}   (surface bulk composition)")
-print(f"  φ(L)  = {phi[-1]:.4f}  (should ≈ φ_inf = {p.phi_inf})")
+print(f"  φ(0)  = {phi_profiles[0][0]:.4f}   (surface bulk composition)")
+print(f"  φ(L)  = {phi_profiles[0][-1]:.4f}  (should ≈ φ_inf = {p.phi_inf})")
 print("mu_infinity = {}".format(-dfb_dphi(p.phi_inf, p)))
 
 # ── Plot ──────────────────────────────────────────────────────────────────────
-fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+fig, axes = plt.subplots(1, 1, figsize=(5, 3.5))
 
 # Left: concentration profile
-ax = axes[0]
-ax.plot(z, phi, color="#2563EB", lw=2, label=r"$\phi(z)$")
-ax.plot(z, phi[-1]+phi_profile(z, p), color="orange", linestyle="dashed", label="analytical")
-# ax.set_yscale('log')
+ax = axes
+ax.plot(z, phi_profiles.T, color="#2563EB", lw=1)  #label=r"$\phi(z)$"
+ax.plot(z, phi_profiles[0], color="#2563EB", lw=1, label=r"exact solution")
+ax.plot(z, phi_profiles_lin.T, color="orange", lw=1, linestyle="dashed")  #label="analytical"
+ax.plot(z, phi_profiles_lin[0], color="orange", lw=1, linestyle="dashed", label="linear approx.")
 
-ax.axhline(p.phi_inf, color="gray", ls="--", lw=1, label=r"$\phi_\infty$")
+# ax.axhline(p.phi_inf, color="gray", ls="--", lw=1, label=r"$\phi_\infty$")
 phi_spin_low, phi_spin_high = compute_spinodal(p)
 if phi_spin_low is not None:
     ax.axhspan(phi_spin_low, phi_spin_high, alpha=0.10, color="red",
@@ -83,37 +92,20 @@ if phi_bin_low is not None:
                label=f"binodal ({phi_bin_low:.2f}, {phi_bin_high:.2f})")
     ax.axhline(phi_bin_high, color="purple", ls="-.", lw=1.2)
 ax.axvline(0, color="k", lw=0.8, ls=":")
-ax.scatter([0], np.array([phi[0]]), color="#2563EB", zorder=5, s=50)
+# ax.scatter(np.zeros(10), np.array([phi_profiles[:, 0]]), color="#2563EB", zorder=5, s=50)
 ax.set_xlabel(r"Distance from surface $z$", fontsize=12)
 ax.set_ylabel(r"Volume fraction $\phi$", fontsize=12)
 ax.set_title("Bulk concentration profile", fontsize=13)
+# ax.set_ylim(0.05, 0.2)
 ax.set_xlim(0, p.L)
-# ax.set_ylim(0.0, 0.2)
+# ax.set_xlim(0, 1.5)
 ax.legend(fontsize=10)
 ax.grid(True, alpha=0.3)
+fig.suptitle(rf"$R={p.R}$, $\chi_b={p.chi_b}$, $\omega_b={p.omega_b}$")
 
-# Right: gradient profile
-ax2 = axes[1]
-ax2.plot(z, dphi, color="#06A975", lw=2)
-ax2.axhline(0, color="gray", ls="--", lw=1)
-ax2.set_xlabel(r"Distance from surface $z$", fontsize=12)
-ax2.set_ylabel(r"$\partial_z\phi$", fontsize=12)
-ax2.set_title("Composition gradient", fontsize=13)
-ax2.set_xlim(0, p.L)
-ax2.grid(True, alpha=0.3)
-
-# Parameter annotation
-param_text = (
-    rf"$\chi_b={p.chi_b}$,"
-    "\n"
-    rf"$\omega_b={p.omega_b}$, $\mu_\infty={compute_mu_inf(p)}$"
-    "\n"
-    rf"$\kappa={p.kappa}$, $\phi_\infty={p.phi_inf}$, $L={p.L}$"
-)
-fig.text(0.5, -0.04, param_text, ha="center", fontsize=9, color="0.4")
 
 fig.tight_layout()
-out = "media/figures/20260509/bvp_concentration_profile_no_mem.png"
+out = "media/figures/20260519/bvp_concentration_profiles_R_10.png"
 os.makedirs(os.path.dirname(out), exist_ok=True)
 fig.savefig(out, dpi=150, bbox_inches="tight")
 print(f"\nSaved figure → {out}")

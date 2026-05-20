@@ -22,15 +22,16 @@ import matplotlib.pyplot as plt
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
-DATA_DIR  = "data/20260518/prewetting_diagram_test"
+EXP_NAME = "prewetting_diagram_R_inf"
 Y_AXIS    = "omega_b"
 X_AXIS    = "phi_inf"
-SLICE_AT  = 10.0                       # value for the third axis; None => median
+SLICE_AT  = None                       # value for the third axis; None => median
 OUT_DATE  = date.today().strftime("%Y%m%d")
-OUT_PATH  = f"media/figures/{OUT_DATE}/prewetting_phase_diagram.png"
+DATA_DIR  = f"data/{OUT_DATE}/{EXP_NAME}"
+OUT_PATH  = f"media/figures/{OUT_DATE}/{EXP_NAME}.png"
 
-assert Y_AXIS in ("R", "omega_b", "phi_inf")
-assert X_AXIS in ("R", "omega_b", "phi_inf") and Y_AXIS != X_AXIS
+assert X_AXIS in ("R", "omega_b", "phi_inf")
+assert Y_AXIS in ("R", "omega_b", "phi_inf") and Y_AXIS != X_AXIS
 SLICE_KEY = ({"R", "omega_b", "phi_inf"} - {X_AXIS, Y_AXIS}).pop()
 
 
@@ -91,26 +92,28 @@ def _extent(a):
 xlo, xhi = _extent(xs)
 ylo, yhi = _extent(ys)
 
-axis_label = {"R": r"$R$", "omega_b": r"$\omega_b$", "phi_inf": r"$\phi_\infty$"}
+axis_label = {"R": r"$R$", "omega_b": r"$h_0$", "phi_inf": r"$\phi_\infty$"}
 
-fig, axes = plt.subplots(1, 2, figsize=(12, 4.8))
+fig, axes = plt.subplots(1, 1, figsize=(5, 3.5))
 
-im0 = axes[0].imshow(F, origin="lower", aspect="auto",
+im0 = axes.imshow(P0, origin="lower", aspect="auto",
                      extent=[xlo, xhi, ylo, yhi], cmap="viridis")
-axes[0].set_xlabel(axis_label[X_AXIS], fontsize=12)
-axes[0].set_ylabel(axis_label[Y_AXIS], fontsize=12)
-axes[0].set_title("Excess grand potential", fontsize=13)
-fig.colorbar(im0, ax=axes[0], label=r"$\Delta\Omega$")
+axes.set_xlabel(axis_label[X_AXIS], fontsize=12)
+axes.set_ylabel(axis_label[Y_AXIS], fontsize=12)
+axes.set_title(r"Surface composition $\phi_0$", fontsize=10)
+fig.colorbar(im0, ax=axes, label=r"$\phi(0)$")
 
-im1 = axes[1].imshow(P0, origin="lower", aspect="auto",
-                     extent=[xlo, xhi, ylo, yhi], cmap="magma")
-axes[1].set_xlabel(axis_label[X_AXIS], fontsize=12)
-axes[1].set_ylabel(axis_label[Y_AXIS], fontsize=12)
-axes[1].set_title(r"Surface composition $\phi_0$", fontsize=13)
-fig.colorbar(im1, ax=axes[1], label=r"$\phi(0)$")
+# im1 = axes[1].imshow(P0, origin="lower", aspect="auto",
+#                      extent=[xlo, xhi, ylo, yhi], cmap="magma")
+# axes[1].set_xlabel(axis_label[X_AXIS], fontsize=12)
+# axes[1].set_ylabel(axis_label[Y_AXIS], fontsize=12)
+# axes[1].set_title(r"Surface composition $\phi_0$", fontsize=13)
+# fig.colorbar(im1, ax=axes[1], label=r"$\phi(0)$")
 
 fig.suptitle(
-    f"Prewetting phase diagram  ({axis_label[SLICE_KEY]} = {slice_val:g})",
+    f"{axis_label[SLICE_KEY]} = {slice_val:g}, " 
+        + r"$\chi = 4$, "
+        + r"Binodal at $\phi_\infty=$" + str(round(r["phi_bin_low"], 3)),
     fontsize=13,
 )
 fig.tight_layout()
