@@ -62,7 +62,7 @@ fixed = dict(
     a=1.0,
 )
 
-alphas = np.linspace(0.001, 0.01, 20)   # phi_inf  (parallelised)
+alphas = np.linspace(0.001, 0.01, 32)   # phi_inf  (parallelised)
 betas  = np.array([-1.5])              # omega_b
 gammas = np.array([5.0])               # R
 
