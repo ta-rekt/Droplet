@@ -40,7 +40,7 @@ p = Parameters(
     omega_b=-1.0,
     kappa=1,
     phi_inf=0.1,
-    L=20.0,
+    L=10.0,
     eps=1e-6,
     R=5.0,
     conserve_volume=True,
@@ -375,7 +375,7 @@ if __name__ == "__main__":
 
     fig, axes = plt.subplots(3, 1, figsize=(5.2, 9.0))
 
-    p.phi_inf = 0.1
+    p.phi_inf = 0.01
     _, _, U_lin_ref = compute_P_eq(p, d_grid)
     _, _, U_full_ref, U_D_ref, U_A_ref = compute_P_eq_full(p, d_grid)
 
@@ -392,21 +392,21 @@ if __name__ == "__main__":
     ax.grid(True, alpha=0.3)
 
     ax = axes[1]
-    ax.plot(phi_tf_vals, phi_probe_lin,  color="C2", lw=1.5, ls="--", label="linear")
-    ax.plot(phi_tf_vals, phi_probe_full, color="C2", lw=2.0,           label="nonlinear")
-    ax.plot(phi_tf_vals, phi_tf_vals,    color="gray", lw=1.0, ls=":",  label="no interaction")
-    ax.set_xlabel(r"$\phi_{TF}$ (total volume fraction)")
-    ax.set_ylabel(r"$\phi_{probe}$")
-    ax.legend(fontsize=9)
+    # ax.plot(phi_tf_vals, phi_probe_lin,  color="C2", lw=1.5, ls="--", label="linear")
+    # ax.plot(phi_tf_vals, phi_probe_full, color="C2", lw=2.0,           label="nonlinear")
+    # ax.plot(phi_tf_vals, phi_tf_vals,    color="gray", lw=1.0, ls=":",  label="no interaction")
+    # ax.set_xlabel(r"$\phi_{TF}$ (total volume fraction)")
+    # ax.set_ylabel(r"$\phi_{probe}$")
+    # ax.legend(fontsize=9)
 
-    ax = axes[2]
-    ax.plot(phi_tf_vals, fisher_base, color="red", lw=1.0, ls="--", label="control")
-    ax.plot(phi_tf_vals, fisher_lin,  color="red", lw=1.5, ls=":",  label="linear")
-    ax.plot(phi_tf_vals, fisher_full, color="red", lw=2.0,           label="nonlinear")
-    ax.set_xlabel(r"$\phi_{TF}$ (total volume fraction)")
-    ax.set_ylabel("Fisher information rate")
-    ax.set_yscale("log")
-    ax.legend(fontsize=9)
+    # ax = axes[2]
+    # ax.plot(phi_tf_vals, fisher_base, color="red", lw=1.0, ls="--", label="control")
+    # ax.plot(phi_tf_vals, fisher_lin,  color="red", lw=1.5, ls=":",  label="linear")
+    # ax.plot(phi_tf_vals, fisher_full, color="red", lw=2.0,           label="nonlinear")
+    # ax.set_xlabel(r"$\phi_{TF}$ (total volume fraction)")
+    # ax.set_ylabel("Fisher information rate")
+    # ax.set_yscale("log")
+    # ax.legend(fontsize=9)
 
     fig.tight_layout()
     today = datetime.date.today().strftime("%Y%m%d")
