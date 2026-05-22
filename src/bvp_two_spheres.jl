@@ -1,0 +1,681 @@
+# 2D axisymmetric BVP solver for two spheres in a Flory-Huggins bulk.
+#
+# Mirrors viz_util/bvp_two_spheres.py: two identical spheres of radius R sit
+# on the z-axis at z = 0 and z = 2R + d, and the equilibrium volume fraction
+# phi(rho, z) satisfies
+#
+#     kappa * Laplacian(phi) = dfb/dphi - mu_inf / nb
+#
+# with cylindrical Laplacian, Robin (adsorption) BC on each sphere via the
+# quadratic ghost-cell immersed-boundary method, Dirichlet phi = phi_inf on
+# the outer cylinder + z end-caps, and dphi/drho = 0 on the symmetry axis.
+#
+# The nonlinear solve uses NonlinearSolve.jl (NewtonRaphson + GMRES) warm-
+# started from the linear-response superposition of two psi_linear profiles,
+# with an omega_b continuation fallback identical to the Python version.
+
+# ------------------------------------------------------------------
+# Geometry
+# ------------------------------------------------------------------
+
+mutable struct Geometry
+    p::Parameters
+    d::Float64
+    Nrho::Int
+    Nz::Int
+    rho_grid::Vector{Float64}
+    z_grid::Vector{Float64}
+    drho::Float64
+    dz::Float64
+    z_c1::Float64
+    z_c2::Float64
+    inside_mask::Matrix{Bool}
+    fluid_mask::Matrix{Bool}
+    dir_mask::Matrix{Bool}
+    unk_mask::Matrix{Bool}
+    # one entry per ghost cell
+    ghost_i::Vector{Int}
+    ghost_j::Vector{Int}
+    ghost_i0_1::Vector{Int}
+    ghost_j0_1::Vector{Int}
+    ghost_wts_1::Matrix{Float64}   # (4, n_ghost), corner order (i0,j0),(i0+1,j0),(i0,j0+1),(i0+1,j0+1)
+    ghost_i0_2::Vector{Int}
+    ghost_j0_2::Vector{Int}
+    ghost_wts_2::Matrix{Float64}
+    ghost_coef_phi1::Vector{Float64}
+    ghost_coef_phi2::Vector{Float64}
+    ghost_coef_bc::Vector{Float64}
+    ghost_used_linear::Vector{Bool}
+    ghost_delta::Vector{Float64}
+    ghost_d1::Vector{Float64}
+    ghost_d2::Vector{Float64}
+end
+
+n_ghost(g::Geometry) = length(g.ghost_i)
+n_unknowns(g::Geometry) = count(g.unk_mask)
+
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+
+function decay_length(p::Parameters)
+    d2 = d2fb_dphi2(p.phi_inf, p)
+    d2 > 0.05 && return sqrt(p.kappa / d2)
+    return sqrt(p.kappa * p.nb / 0.05)
+end
+
+const _NBR_OFFSETS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+# Walk a probe point outward along (u_rho, u_z) until its 4-cell bilinear
+# stencil contains no inside-sphere cells.  Returns (d_used, i0, j0, w_tuple,
+# clean::Bool) with `w_tuple` ordered (i0,j0),(i0+1,j0),(i0,j0+1),(i0+1,j0+1).
+function find_clean_stencil(rho_G::Real, z_G::Real,
+                            u_rho::Real, u_z::Real,
+                            d_initial::Real, step::Real,
+                            rho_grid::AbstractVector{Float64},
+                            z_grid::AbstractVector{Float64},
+                            drho::Real, dz::Real,
+                            Nrho::Int, Nz::Int,
+                            inside_mask::AbstractMatrix{Bool};
+                            max_iter::Int = 80)
+    d_use = float(d_initial)
+    i0 = 1; j0 = 1
+    w = (0.0, 0.0, 0.0, 0.0)
+    clean = false
+    rho_lo, rho_hi = rho_grid[1], rho_grid[end]
+    z_lo,   z_hi   = z_grid[1],   z_grid[end]
+    @inbounds for _ in 1:max_iter
+        rho_I = rho_G + d_use * u_rho
+        z_I   = z_G   + d_use * u_z
+        rho_Ic = clamp(rho_I, rho_lo, rho_hi - 1e-12 * drho)
+        z_Ic   = clamp(z_I,   z_lo,   z_hi   - 1e-12 * dz)
+        ti = (rho_Ic - rho_lo) / drho
+        tj = (z_Ic   - z_lo)   / dz
+        i0 = clamp(Int(floor(ti)) + 1, 1, Nrho - 1)
+        j0 = clamp(Int(floor(tj)) + 1, 1, Nz   - 1)
+        t_rho = ti - (i0 - 1)
+        t_z   = tj - (j0 - 1)
+        w = ((1.0 - t_rho) * (1.0 - t_z),
+             t_rho         * (1.0 - t_z),
+             (1.0 - t_rho) * t_z,
+             t_rho         * t_z)
+        stencil_clean = !(inside_mask[i0,     j0]     ||
+                          inside_mask[i0 + 1, j0]     ||
+                          inside_mask[i0,     j0 + 1] ||
+                          inside_mask[i0 + 1, j0 + 1])
+        if stencil_clean
+            clean = true
+            break
+        end
+        d_use += step
+    end
+    return d_use, i0, j0, w, clean
+end
+
+# Closed-form (alpha1, alpha2, beta) such that
+#     phi(G) = alpha1 * phi(P1) + alpha2 * phi(P2) + beta * (omega_b/kappa)
+# implements the quadratic phi(s) = a + b*s + c*s^2 interpolating phi(P1),
+# phi(P2) and the Robin BC dphi/ds|_{s=delta} = omega_b/kappa at the surface.
+function quadratic_ghost_coefficients(delta::Real, d1::Real, d2::Real)
+    K       = d1 + d2 - 2.0 * delta
+    inv_K   = 1.0 / K
+    inv_dd  = 1.0 / (d1 - d2)
+    c_phi1  =  inv_dd * inv_K
+    c_phi2  = -inv_dd * inv_K
+    c_bc    = -inv_K
+    b_phi1  = -2.0 * delta * c_phi1
+    b_phi2  = -2.0 * delta * c_phi2
+    b_bc    = 1.0 - 2.0 * delta * c_bc
+    α1      = 1.0 - d1 * b_phi1 - d1 * d1 * c_phi1
+    α2      =      -d1 * b_phi2 - d1 * d1 * c_phi2
+    β       =      -d1 * b_bc   - d1 * d1 * c_bc
+    return α1, α2, β
+end
+
+# ------------------------------------------------------------------
+# build_geometry
+# ------------------------------------------------------------------
+
+function build_geometry(p::Parameters, d::Real;
+                        rho_max = nothing, z_buf = nothing,
+                        Nrho::Int = 80, Nz::Int = 200)
+    R   = p.R
+    ell = decay_length(p)
+    rho_max = rho_max === nothing ? R + 4.0 * ell : Float64(rho_max)
+    z_buf   = z_buf   === nothing ? 4.0 * ell     : Float64(z_buf)
+
+    z_c1 = 0.0
+    z_c2 = 2.0 * R + d
+
+    rho_grid = collect(range(0.0, rho_max; length = Nrho))
+    z_grid   = collect(range(z_c1 - R - z_buf, z_c2 + R + z_buf; length = Nz))
+    drho = rho_grid[2] - rho_grid[1]
+    dz   = z_grid[2]   - z_grid[1]
+
+    inside_mask = falses(Nrho, Nz)
+    @inbounds for j in 1:Nz, i in 1:Nrho
+        rho_i = rho_grid[i]
+        z_j   = z_grid[j]
+        r1_sq = rho_i^2 + (z_j - z_c1)^2
+        r2_sq = rho_i^2 + (z_j - z_c2)^2
+        inside_mask[i, j] = (r1_sq < R^2) || (r2_sq < R^2)
+    end
+    fluid_mask = .!inside_mask
+
+    dir_mask = falses(Nrho, Nz)
+    @inbounds dir_mask[Nrho, :] .= true
+    @inbounds dir_mask[:, 1]    .= true
+    @inbounds dir_mask[:, Nz]   .= true
+    dir_mask .= dir_mask .& fluid_mask
+    unk_mask  = fluid_mask .& .!dir_mask
+
+    step     = max(drho, dz)
+    max_iter = 80
+    sep_min  = 0.9 * step
+    K_min    = 1e-9 * step
+
+    gi  = Int[]
+    gj  = Int[]
+    gi1 = Int[]; gj1 = Int[]
+    gi2 = Int[]; gj2 = Int[]
+    gw1 = NTuple{4, Float64}[]
+    gw2 = NTuple{4, Float64}[]
+    α1v = Float64[]; α2v = Float64[]; βv = Float64[]
+    gulin = Bool[]
+    gdelta = Float64[]; gd1 = Float64[]; gd2 = Float64[]
+
+    @inbounds for j in 1:Nz, i in 1:Nrho
+        inside_mask[i, j] || continue
+        has_fluid = false
+        for (di, dj) in _NBR_OFFSETS
+            ii = i + di
+            jj = j + dj
+            if 1 <= ii <= Nrho && 1 <= jj <= Nz && fluid_mask[ii, jj]
+                has_fluid = true
+                break
+            end
+        end
+        has_fluid || continue
+
+        rho_G = rho_grid[i]
+        z_G   = z_grid[j]
+        dist1 = hypot(rho_G, z_G - z_c1)
+        dist2 = hypot(rho_G, z_G - z_c2)
+        zc, Gc = dist1 <= dist2 ? (z_c1, dist1) : (z_c2, dist2)
+        Gc < 1e-12 && continue
+        u_rho = rho_G / Gc
+        u_z   = (z_G - zc) / Gc
+        delta = R - Gc
+
+        d1u, i0_1, j0_1, w1, clean1 = find_clean_stencil(
+            rho_G, z_G, u_rho, u_z, 2.0 * delta, step,
+            rho_grid, z_grid, drho, dz, Nrho, Nz, inside_mask;
+            max_iter = max_iter)
+        d2u, i0_2, j0_2, w2, clean2 = find_clean_stencil(
+            rho_G, z_G, u_rho, u_z, d1u + step, step,
+            rho_grid, z_grid, drho, dz, Nrho, Nz, inside_mask;
+            max_iter = max_iter)
+
+        use_linear = (!clean1) || (!clean2) ||
+                     ((d2u - d1u) < sep_min) ||
+                     (abs(d1u + d2u - 2.0 * delta) < K_min) ||
+                     (abs(d1u - d2u) < K_min)
+        if use_linear
+            α1, α2, β = 1.0, 0.0, -d1u
+            i0_2, j0_2 = i0_1, j0_1
+            w2 = (0.0, 0.0, 0.0, 0.0)
+        else
+            α1, α2, β = quadratic_ghost_coefficients(delta, d1u, d2u)
+        end
+
+        push!(gi, i);   push!(gj, j)
+        push!(gi1, i0_1); push!(gj1, j0_1)
+        push!(gi2, i0_2); push!(gj2, j0_2)
+        push!(gw1, w1); push!(gw2, w2)
+        push!(α1v, α1); push!(α2v, α2); push!(βv, β)
+        push!(gulin, use_linear)
+        push!(gdelta, delta)
+        push!(gd1, d1u); push!(gd2, d2u)
+    end
+
+    ng = length(gi)
+    ghost_wts_1 = Matrix{Float64}(undef, 4, ng)
+    ghost_wts_2 = Matrix{Float64}(undef, 4, ng)
+    @inbounds for k in 1:ng
+        w = gw1[k]
+        ghost_wts_1[1, k] = w[1]; ghost_wts_1[2, k] = w[2]
+        ghost_wts_1[3, k] = w[3]; ghost_wts_1[4, k] = w[4]
+        w = gw2[k]
+        ghost_wts_2[1, k] = w[1]; ghost_wts_2[2, k] = w[2]
+        ghost_wts_2[3, k] = w[3]; ghost_wts_2[4, k] = w[4]
+    end
+
+    return Geometry(
+        p, Float64(d), Nrho, Nz, rho_grid, z_grid, drho, dz,
+        z_c1, z_c2,
+        inside_mask, fluid_mask, dir_mask, unk_mask,
+        gi, gj,
+        gi1, gj1, ghost_wts_1,
+        gi2, gj2, ghost_wts_2,
+        α1v, α2v, βv, gulin, gdelta, gd1, gd2,
+    )
+end
+
+# ------------------------------------------------------------------
+# Scatter: assemble full (Nrho, Nz) field from unknown vector
+# ------------------------------------------------------------------
+
+function scatter!(phi::AbstractMatrix, x_unk::AbstractVector, geom::Geometry)
+    p = geom.p
+    fill!(phi, p.phi_inf)
+    k = 0
+    @inbounds for j in 1:geom.Nz, i in 1:geom.Nrho
+        if geom.unk_mask[i, j]
+            k += 1
+            phi[i, j] = x_unk[k]
+        end
+    end
+    bc = p.omega_b / p.kappa
+    @inbounds for k in 1:n_ghost(geom)
+        i  = geom.ghost_i[k]
+        j  = geom.ghost_j[k]
+        i01 = geom.ghost_i0_1[k]; j01 = geom.ghost_j0_1[k]
+        i02 = geom.ghost_i0_2[k]; j02 = geom.ghost_j0_2[k]
+        phi_P1 = geom.ghost_wts_1[1, k] * phi[i01,     j01]     +
+                 geom.ghost_wts_1[2, k] * phi[i01 + 1, j01]     +
+                 geom.ghost_wts_1[3, k] * phi[i01,     j01 + 1] +
+                 geom.ghost_wts_1[4, k] * phi[i01 + 1, j01 + 1]
+        phi_P2 = geom.ghost_wts_2[1, k] * phi[i02,     j02]     +
+                 geom.ghost_wts_2[2, k] * phi[i02 + 1, j02]     +
+                 geom.ghost_wts_2[3, k] * phi[i02,     j02 + 1] +
+                 geom.ghost_wts_2[4, k] * phi[i02 + 1, j02 + 1]
+        phi[i, j] = geom.ghost_coef_phi1[k] * phi_P1 +
+                    geom.ghost_coef_phi2[k] * phi_P2 +
+                    geom.ghost_coef_bc[k]   * bc
+    end
+    return phi
+end
+
+function scatter(x_unk::AbstractVector, geom::Geometry)
+    phi = Matrix{Float64}(undef, geom.Nrho, geom.Nz)
+    scatter!(phi, x_unk, geom)
+    return phi
+end
+
+# ------------------------------------------------------------------
+# Cylindrical Laplacian
+# ------------------------------------------------------------------
+
+function laplacian!(lap::AbstractMatrix, phi::AbstractMatrix, geom::Geometry)
+    drho, dz = geom.drho, geom.dz
+    Nrho, Nz = geom.Nrho, geom.Nz
+    fill!(lap, 0.0)
+    @inbounds for j in 2:Nz - 1
+        for i in 2:Nrho - 1
+            rho_i = geom.rho_grid[i]
+            lap[i, j] = (phi[i + 1, j] - 2.0 * phi[i, j] + phi[i - 1, j]) / drho^2 +
+                        (phi[i + 1, j] - phi[i - 1, j]) / (2.0 * drho * rho_i) +
+                        (phi[i, j + 1] - 2.0 * phi[i, j] + phi[i, j - 1]) / dz^2
+        end
+    end
+    # Axis i=1: with symmetric ghost phi[0,j] = phi[2,j] (1-indexed phi[1,j] is
+    # on-axis, phi[2,j] is the first off-axis cell), the radial Laplacian
+    # collapses to 4*(phi[2,j] - phi[1,j])/drho^2.
+    @inbounds for j in 2:Nz - 1
+        lap[1, j] = 4.0 * (phi[2, j] - phi[1, j]) / drho^2 +
+                    (phi[1, j + 1] - 2.0 * phi[1, j] + phi[1, j - 1]) / dz^2
+    end
+    return lap
+end
+
+function laplacian(phi::AbstractMatrix, geom::Geometry)
+    lap = similar(phi)
+    laplacian!(lap, phi, geom)
+    return lap
+end
+
+# ------------------------------------------------------------------
+# Residual closure
+# ------------------------------------------------------------------
+
+# In-place residual for NonlinearSolve: f!(F, x, p) writes the residual at
+# the unknown cells, reusing internal buffers across calls.
+function make_residual_inplace(geom::Geometry, mu_inf::Float64)
+    p = geom.p
+    Nrho, Nz = geom.Nrho, geom.Nz
+    phi_buf = Matrix{Float64}(undef, Nrho, Nz)
+    lap_buf = Matrix{Float64}(undef, Nrho, Nz)
+    function residual!(F, x_unk, _ignored)
+        scatter!(phi_buf, x_unk, geom)
+        laplacian!(lap_buf, phi_buf, geom)
+        k = 0
+        @inbounds for j in 1:Nz, i in 1:Nrho
+            if geom.unk_mask[i, j]
+                k += 1
+                F[k] = p.kappa * lap_buf[i, j] -
+                       (dfb_dphi(phi_buf[i, j], p) - mu_inf / p.nb)
+            end
+        end
+        return nothing
+    end
+    return residual!
+end
+
+# Out-of-place residual mirroring the Python `_make_residual` for tests.
+function make_residual(geom::Geometry, mu_inf::Float64)
+    res! = make_residual_inplace(geom, mu_inf)
+    n_unk = n_unknowns(geom)
+    return function(x_unk)
+        F = Vector{Float64}(undef, n_unk)
+        res!(F, x_unk, nothing)
+        return F
+    end
+end
+
+# ------------------------------------------------------------------
+# Initial guess
+# ------------------------------------------------------------------
+
+function initial_guess(geom::Geometry)
+    p = geom.p
+    R = p.R
+    n = n_unknowns(geom)
+    x0 = Vector{Float64}(undef, n)
+    k = 0
+    @inbounds for j in 1:geom.Nz, i in 1:geom.Nrho
+        if geom.unk_mask[i, j]
+            k += 1
+            rho_i = geom.rho_grid[i]
+            z_j   = geom.z_grid[j]
+            s1 = max(0.0, sqrt(rho_i^2 + (z_j - geom.z_c1)^2) - R)
+            s2 = max(0.0, sqrt(rho_i^2 + (z_j - geom.z_c2)^2) - R)
+            psi1, _, _ = psi_linear(s1, p)
+            psi2, _, _ = psi_linear(s2, p)
+            x0[k] = clip01(p.phi_inf + psi1 + psi2, p.eps)
+        end
+    end
+    return x0
+end
+
+# ------------------------------------------------------------------
+# Solver
+# ------------------------------------------------------------------
+
+function _run_newton(res!, x0::AbstractVector, f_tol::Real, maxiter::Int,
+                     verbose::Bool)
+    prob = NonlinearProblem(res!, x0)
+    return solve(prob,
+                 NewtonRaphson(autodiff = AutoFiniteDiff(),
+                               linsolve = KrylovJL_GMRES());
+                 abstol = f_tol, maxiters = maxiter,
+                 show_trace = Val(verbose))
+end
+
+function solve_two_spheres(p::Parameters, d::Real;
+                           rho_max = nothing, z_buf = nothing,
+                           Nrho::Int = 80, Nz::Int = 200,
+                           f_tol::Real = 1e-6,
+                           maxiter::Int = 200,
+                           verbose::Bool = false,
+                           omega_continuation::Bool = true)
+    geom   = build_geometry(p, d; rho_max = rho_max, z_buf = z_buf,
+                            Nrho = Nrho, Nz = Nz)
+    mu_inf = compute_mu_inf(p)
+    x0     = initial_guess(geom)
+
+    res!  = make_residual_inplace(geom, mu_inf)
+    sol = try
+        _run_newton(res!, x0, f_tol, maxiter, verbose)
+    catch e
+        verbose && @info "primary solve threw" exception = e
+        nothing
+    end
+
+    x_sol = sol === nothing ? copy(x0) : copy(sol.u)
+    success = sol !== nothing && SciMLBase.successful_retcode(sol)
+
+    # Verify the residual actually meets f_tol; some retcodes flag stagnation
+    # rather than divergence.
+    if success
+        Fcheck = Vector{Float64}(undef, n_unknowns(geom))
+        res!(Fcheck, x_sol, nothing)
+        success = maximum(abs, Fcheck) < 10.0 * f_tol
+    end
+
+    if !success && omega_continuation && p.omega_b != 0.0
+        verbose && println("Cold start failed; trying omega_b continuation ...")
+        n_steps = 6
+        p0   = with(p; omega_b = 0.0)
+        geom0 = build_geometry(p0, d; rho_max = rho_max, z_buf = z_buf,
+                               Nrho = Nrho, Nz = Nz)
+        x_cur = initial_guess(geom0)
+        geom_k = geom
+        ok_k = true
+        for k in 1:n_steps
+            frac = k / n_steps
+            p_k = with(p; omega_b = frac * p.omega_b)
+            geom_k = build_geometry(p_k, d; rho_max = rho_max, z_buf = z_buf,
+                                    Nrho = Nrho, Nz = Nz)
+            res_k! = make_residual_inplace(geom_k, compute_mu_inf(p_k))
+            sol_k = try
+                _run_newton(res_k!, x_cur, f_tol, maxiter, false)
+            catch e
+                nothing
+            end
+            if sol_k !== nothing && SciMLBase.successful_retcode(sol_k)
+                x_cur = copy(sol_k.u)
+                verbose && println("  continuation step $k/$n_steps (frac=$(round(frac, digits=2))) ok")
+            else
+                verbose && println("  continuation step $k/$n_steps (frac=$(round(frac, digits=2))) did not converge")
+                ok_k = false
+                if sol_k !== nothing
+                    x_cur = copy(sol_k.u)
+                end
+                break
+            end
+        end
+        x_sol  = x_cur
+        geom   = geom_k
+        res_final! = make_residual_inplace(geom, compute_mu_inf(p))
+        Fcheck = Vector{Float64}(undef, n_unknowns(geom))
+        res_final!(Fcheck, x_sol, nothing)
+        success = ok_k && (maximum(abs, Fcheck) < 10.0 * f_tol)
+    end
+
+    phi = scatter(x_sol, geom)
+    return Dict{Symbol, Any}(
+        :phi     => phi,
+        :geom    => geom,
+        :p       => p,
+        :d       => Float64(d),
+        :mu_inf  => mu_inf,
+        :success => success,
+        :x       => x_sol,
+    )
+end
+
+# ------------------------------------------------------------------
+# Bilinear sampling
+# ------------------------------------------------------------------
+
+function interp_phi(phi::AbstractMatrix, geom::Geometry,
+                    rho_q::AbstractVector, z_q::AbstractVector)
+    @assert length(rho_q) == length(z_q)
+    rho_g = geom.rho_grid
+    z_g   = geom.z_grid
+    drho, dz = geom.drho, geom.dz
+    Nrho, Nz = geom.Nrho, geom.Nz
+    n = length(rho_q)
+    out = Vector{Float64}(undef, n)
+    @inbounds for k in 1:n
+        rc = clamp(rho_q[k], rho_g[1], rho_g[end] - 1e-12 * drho)
+        zc = clamp(z_q[k],   z_g[1],   z_g[end]   - 1e-12 * dz)
+        ti = (rc - rho_g[1]) / drho
+        tj = (zc - z_g[1])   / dz
+        i0 = clamp(Int(floor(ti)) + 1, 1, Nrho - 1)
+        j0 = clamp(Int(floor(tj)) + 1, 1, Nz   - 1)
+        t_rho = ti - (i0 - 1)
+        t_z   = tj - (j0 - 1)
+        out[k] = (1.0 - t_rho) * (1.0 - t_z) * phi[i0,     j0]     +
+                 t_rho         * (1.0 - t_z) * phi[i0 + 1, j0]     +
+                 (1.0 - t_rho) * t_z         * phi[i0,     j0 + 1] +
+                 t_rho         * t_z         * phi[i0 + 1, j0 + 1]
+    end
+    return out
+end
+
+function interp_phi(phi::AbstractMatrix, geom::Geometry, rho_q::Real, z_q::Real)
+    return interp_phi(phi, geom, [Float64(rho_q)], [Float64(z_q)])[1]
+end
+
+# ------------------------------------------------------------------
+# Excess free energy
+# ------------------------------------------------------------------
+
+function cell_fluid_fraction(geom::Geometry; nsub::Int = 8)
+    drho, dz = geom.drho, geom.dz
+    R = geom.p.R
+    R2 = R * R
+    offsets = ((1:nsub) .- 0.5) ./ nsub .- 0.5   # length nsub in (-0.5, 0.5)
+    counts = zeros(Int, geom.Nrho, geom.Nz)
+    for a in offsets, b in offsets
+        @inbounds for j in 1:geom.Nz
+            z_s = geom.z_grid[j] + b * dz
+            dz1 = z_s - geom.z_c1
+            dz2 = z_s - geom.z_c2
+            for i in 1:geom.Nrho
+                rho_s = max(geom.rho_grid[i] + a * drho, 0.0)
+                r1sq = rho_s * rho_s + dz1 * dz1
+                r2sq = rho_s * rho_s + dz2 * dz2
+                if (r1sq < R2) || (r2sq < R2)
+                    counts[i, j] += 1
+                end
+            end
+        end
+    end
+    return 1.0 .- counts ./ (nsub * nsub)
+end
+
+function phi_on_sphere(phi::AbstractMatrix, geom::Geometry,
+                       zc::Real, theta::AbstractVector;
+                       probe_steps::Int = 80)
+    p = geom.p
+    R = p.R
+    drho, dz = geom.drho, geom.dz
+    step = max(drho, dz)
+    omega_kappa = p.omega_b / p.kappa
+    Nrho, Nz = geom.Nrho, geom.Nz
+    rho_g, z_g = geom.rho_grid, geom.z_grid
+    n = length(theta)
+
+    sin_t = sin.(theta)
+    cos_t = cos.(theta)
+    rho_s = R .* sin_t
+    z_s   = zc .+ R .* cos_t
+
+    d1 = fill(step, n)
+    d2 = fill(2.0 * step, n)
+
+    bad1 = falses(n)
+    bad2 = falses(n)
+
+    function stencil_dirty!(d_arr::Vector{Float64}, bad_out::BitVector)
+        @inbounds for k in 1:n
+            rho_P = rho_s[k] + d_arr[k] * sin_t[k]
+            z_P   = z_s[k]   + d_arr[k] * cos_t[k]
+            rho_Pc = clamp(rho_P, rho_g[1], rho_g[end] - 1e-12 * drho)
+            z_Pc   = clamp(z_P,   z_g[1],   z_g[end]   - 1e-12 * dz)
+            ti = (rho_Pc - rho_g[1]) / drho
+            tj = (z_Pc   - z_g[1])   / dz
+            i0 = clamp(Int(floor(ti)) + 1, 1, Nrho - 1)
+            j0 = clamp(Int(floor(tj)) + 1, 1, Nz   - 1)
+            bad_out[k] = geom.inside_mask[i0,     j0]     ||
+                         geom.inside_mask[i0 + 1, j0]     ||
+                         geom.inside_mask[i0,     j0 + 1] ||
+                         geom.inside_mask[i0 + 1, j0 + 1]
+        end
+    end
+
+    for _ in 1:probe_steps
+        stencil_dirty!(d1, bad1)
+        stencil_dirty!(d2, bad2)
+        any(bad1) || any(bad2) || break
+        @inbounds for k in 1:n
+            bad1[k] && (d1[k] += step)
+            bad2[k] && (d2[k] += step)
+            d2[k] = max(d2[k], d1[k] + step)
+        end
+    end
+
+    rho_P1 = rho_s .+ d1 .* sin_t
+    z_P1   = z_s   .+ d1 .* cos_t
+    rho_P2 = rho_s .+ d2 .* sin_t
+    z_P2   = z_s   .+ d2 .* cos_t
+    phi_P1 = interp_phi(phi, geom, rho_P1, z_P1)
+    phi_P2 = interp_phi(phi, geom, rho_P2, z_P2)
+
+    out = similar(phi_P1)
+    @inbounds for k in 1:n
+        c_k = ((phi_P1[k] - phi_P2[k]) / (d1[k] - d2[k]) - omega_kappa) /
+              (d1[k] + d2[k])
+        out[k] = phi_P1[k] - omega_kappa * d1[k] - c_k * d1[k]^2
+    end
+    return out
+end
+
+# Simpson's 1/3 rule on a uniform grid, length(y) must be odd.
+function _simpson(y::AbstractVector, x::AbstractVector)
+    n = length(x)
+    @assert n == length(y)
+    @assert isodd(n)
+    h = x[2] - x[1]
+    s = y[1] + y[n]
+    @inbounds for k in 2:n - 1
+        s += (iseven(k) ? 4 : 2) * y[k]
+    end
+    return s * h / 3.0
+end
+
+function excess_free_energy_two_spheres(result::AbstractDict;
+                                        nsub::Int = 8,
+                                        n_theta::Int = 1001)
+    geom = result[:geom]
+    phi  = result[:phi]
+    p    = geom.p
+    phi_inf = p.phi_inf
+
+    dfb_inf = dfb_dphi(phi_inf, p)
+    f_inf   = fb(phi_inf, p)
+
+    integrand = Matrix{Float64}(undef, geom.Nrho, geom.Nz)
+    @inbounds for j in 1:geom.Nz, i in 1:geom.Nrho
+        if geom.fluid_mask[i, j]
+            phi_ij = phi[i, j]
+            psi_ij = phi_ij - phi_inf
+            df_loc = fb(phi_ij, p) - f_inf - dfb_inf * psi_ij
+            dfp    = dfb_dphi(phi_ij, p) - dfb_inf
+            integrand[i, j] = df_loc - 0.5 * psi_ij * dfp
+        else
+            integrand[i, j] = 0.0
+        end
+    end
+
+    frac = cell_fluid_fraction(geom; nsub = nsub)
+    bulk_sum = 0.0
+    @inbounds for j in 1:geom.Nz, i in 1:geom.Nrho
+        bulk_sum += integrand[i, j] * (2.0 * pi * geom.rho_grid[i]) * frac[i, j]
+    end
+    bulk = bulk_sum * geom.drho * geom.dz
+
+    n_t = isodd(n_theta) ? n_theta : n_theta + 1
+    theta = collect(range(0.0, pi; length = n_t))
+    sin_t = sin.(theta)
+
+    surf_total = 0.0
+    for zc in (geom.z_c1, geom.z_c2)
+        phi_s = phi_on_sphere(phi, geom, zc, theta)
+        surf_total += _simpson((phi_s .- phi_inf) .* sin_t, theta)
+    end
+    surf = 0.5 * p.omega_b * 2.0 * pi * p.R^2 * surf_total
+    return bulk + surf
+end

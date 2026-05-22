@@ -33,13 +33,13 @@ class Probe:
 p = Parameters(
     nb=1.0,
     chi_b=2.5,     
-    omega_b=-0.4,   
+    omega_b=-0.7,   
     kappa=1,
     phi_inf=0.1,   
     L=20.0,
     eps=1e-6,
-    R=2.0,
-    conserve_volume=True,
+    R=2.5,
+    conserve_volume=False,
     parallel_plates = False
 )
 
@@ -109,48 +109,109 @@ probe = Probe(
 )
 fisher_base, fisher_probe = fisher_rate(probe, phi_probe, phi_tf_vals)
 
-# ── Plot ──────────────────────────────────────────────────────────────────
-fig, axes = plt.subplots(2,1, figsize=(5, 6.5))
+# ── Fisher rate UB ────────────────────────────────────────────────────────
 
-p.phi_inf = 0.1
-P_eq, Phi_d, U_lin = compute_P_eq(p, d)
-U_entropy = 3*(d+p.R)**2/(2*s*a**2)
-U_geometry = -2*np.log(d+p.R)
-U = U_lin+U_entropy+U_geometry
+alpha = d2fb_dphi2(phi_tf_vals, p)
+h0 = p.omega_b
+lam = np.sqrt(alpha/p.kappa)
+
+dalpha    = (1.0 / p.nb) * (-1.0 / phi_tf_vals ** 2 + 1.0 / (1.0 - phi_tf_vals) ** 2)
+dlam      = dalpha / (2.0 * np.sqrt(alpha * p.kappa))
+phi_R     = phi_tf_vals - h0 / (p.kappa * (lam + 1.0 / p.R))
+dphi_R    = 1.0 + dlam * (phi_tf_vals - phi_R) / (lam + 1.0 / p.R)
+gain      = dphi_R * phi_tf_vals / phi_R  
+
+# ── Plot ──────────────────────────────────────────────────────────────────
+fig, axes = plt.subplots(2,1, figsize=(5, 6))
+
+phi_infs = np.linspace(0.001, 0.1, 15)
+
+for phi_inf in phi_infs:
+    p.phi_inf = phi_inf
+    P_eq, Phi_d, U_lin = compute_P_eq(p, d)
+    phi_probe_ = np.sum(P_eq * Phi_d)
+    mean_dist = np.sum(P_eq * d)
+    U_entropy = 3*(d+p.R)**2/(2*s*a**2)
+    U_geometry = -2*np.log(d+p.R)
+    U = U_lin+U_entropy+U_geometry
+
+    phi_a, phi_b = compute_binodal(p)
+
+    # axr = axl.twinx()
+    axes[0].plot(d, P_eq, color="#2563EB", lw=1, label=r"$\psi(d)$")
+    axes[0].axvline(mean_dist, color="#2563EB", lw=1, alpha=0.5)
+    # axes[1].plot(d, Phi_d-p.phi_inf, color="green", lw=1)
+    # axes[1].axhline(y=phi_probe_, color="green", alpha=0.5)
+
+axes[1].plot(phi_tf_vals, fisher_base, color="red", lw=1, label="control",linestyle="dashed")
+axes[1].plot(phi_tf_vals, fisher_probe, color="red", lw=1, label="with interaction")
+
+axr = axes[0]
+axr.set_ylabel(r"$P_{eq}(d)$", color="#2563EB")
+axr.set_xlabel(r"distance $d$", color="black")
+# axr.set_xlim(0,8)
+axr.set_yscale('log')
+
+# axl = axes[1]
+# axl.set_xlim(0,2)
+# axl.set_ylabel(r"Phi profile", color="black")
+
+# fig, axl = plt.subplots(1,1, figsize=(5, 3.5))
+axl = axes[1]
+axl.set_ylabel(r"Fisher information rate", color="black")
+axl.set_xlabel(r"$\phi_{TF}$ (total volume fraction)", fontsize=12)
+axl.axvline(x=phi_a, linestyle="dashed", color="black", lw=1, label="binodal")
+axl.set_yscale('log')
+axl.legend(fontsize=8)
+
+# ── Save ──────────────────────────────────────────────────────────────────
+fig.tight_layout()
+out = "media/figures/20260522/polymer_sensitivity.png"
+os.makedirs(os.path.dirname(out), exist_ok=True)
+fig.savefig(out, dpi=150, bbox_inches="tight")
+print(f"\nSaved figure → {out}")
+
+
+
+###### potential #######
 
 # Left: concentration profile
-# axl = axes
+# axl = axes[0]
 # axl.set_title("Linear")
 # axl.set_ylabel(r"$V(d)$", color="black")
 # axl.plot(d, U, color="black", lw=2, label=r"$U_{ads}$")
 # # axl.plot(d, U_entropy, color="blue", lw=1, label=r"$U_{ent}$")
 # # axl.plot(d, U_geometry, color="red", lw=1, label=r"$U_{geo}$")
 # axl.set_xlabel("d (distance between surfaces)", fontsize=12)
-# axl.set_ylim(-1.10*np.max(np.abs(U)), 1.10*np.max(np.abs(U)))
+# # axl.set_ylim(-1.10*np.max(np.abs(U)), 1.10*np.max(np.abs(U)))
 
-# axr = axl.twinx()
-# axr.set_ylabel(r"$P_{eq}(d)$", color="#2563EB")
-# axr.plot(d, P_eq, color="#2563EB", lw=2, label=r"$\psi(d)$")
-# axr.set_ylim(-1.10*np.max(P_eq), 1.10*np.max(P_eq))
 
-axl = axes[0]
-axl.set_ylabel(r"$\phi_{probe}$", color="black")
-axl.plot(phi_tf_vals, phi_probe, color="C2", lw=2)
-axl.plot(phi_tf_vals, phi_tf_vals, color="C2", lw=1.5, linestyle="dashed", label=r"$\phi_{TF}$")
-axl.set_xlabel(r"$\phi_{TF}$ (total volume fraction)", fontsize=12)
-axl.legend()
+###### gradient #######
 
-axl = axes[1]
-axl.set_ylabel(r"Fisher information rate", color="black")
-axl.plot(phi_tf_vals, fisher_base, color="red", lw=1.5, label="control",linestyle="dashed")
-axl.plot(phi_tf_vals, fisher_probe, color="red", lw=2, label="with interaction")
-axl.set_xlabel(r"$\phi_{TF}$ (total volume fraction)", fontsize=12)
-axl.set_yscale('log')
-axl.legend()
+# axl.set_ylabel(r"$\phi_{probe}$", color="black")
+# axl.plot(phi_tf_vals, phi_probe, color="C2", lw=2)
+# axl.plot(phi_tf_vals, phi_tf_vals, color="C2", lw=1.5, linestyle="dashed", label=r"$\phi_{TF}$")
+# axl.set_xlabel(r"$\phi_{TF}$ (total volume fraction)", fontsize=12)
+# axl.legend()
+
+# axl.set_ylabel(r"$d\log \phi / d\log \phi_{\infty}$", color="black")
+# axl.plot(np.log(phi_tf_vals), np.gradient(np.log(phi_probe))/np.gradient(np.log(phi_tf_vals)), 
+#          color="C2", lw=2,
+#          label=r"$d\log \phi_{probe}$")
+# axl.plot(np.log(phi_tf_vals), 
+#         np.gradient(np.log(phi_tf_vals))/np.gradient(np.log(phi_tf_vals)), color="C2", lw=1.5, 
+#          linestyle="dashed", label=r"$d\log \phi_{\infty}$")
+# axl.plot(np.log(phi_tf_vals), 
+#         np.gradient(np.log(phi_R))/np.gradient(np.log(phi_tf_vals)), color="C2", lw=1.5, 
+#          linestyle="dotted", label=r"$d\log \phi_{R}$")
+# axl.set_xlabel(r"$\log \phi_{\infty}$ (total volume fraction)", fontsize=12)
+# axl.legend()
 
 # ── Save ──────────────────────────────────────────────────────────────────
-fig.tight_layout()
-out = "media/figures/20260519/fisher_rate_from_profile.pdf"
-os.makedirs(os.path.dirname(out), exist_ok=True)
-fig.savefig(out, dpi=150, bbox_inches="tight")
-print(f"\nSaved figure → {out}")
+# fig.tight_layout()
+# out = "media/figures/20260522/polymer_sensitivity.png"
+# os.makedirs(os.path.dirname(out), exist_ok=True)
+# fig.savefig(out, dpi=150, bbox_inches="tight")
+# print(f"\nSaved figure → {out}")
+
+

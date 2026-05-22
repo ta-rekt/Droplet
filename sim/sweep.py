@@ -15,8 +15,11 @@ import sys
 import os
 import json
 import importlib.util
-
+from threadpoolctl import threadpool_limits
 import numpy as np
+
+_blas_threads = int(os.environ.get("BLAS_NUM_THREADS", "1"))
+threadpool_limits(_blas_threads)
 
 
 def _to_jsonable(o):

@@ -51,7 +51,7 @@ fixed = dict(
     n_d=20,
     d_ref_factor=8.0,
     # 2D BVP solver
-    Nrho=200,
+    Nrho=100,
     dz_target=0.05,
     rho_max=10.0,
     z_buf=4.0,
@@ -62,9 +62,10 @@ fixed = dict(
     a=1.0,
 )
 
-alphas = np.linspace(0.001, 0.01, 32)   # phi_inf  (parallelised)
-betas  = np.array([-1.5])              # omega_b
-gammas = np.array([5.0])               # R
+alphas = np.linspace(0.001, 0.01, 20)     # (parallelised)
+betas =  np.array([-1.6])
+gammas = np.array([5.0])               
+# betas  = np.array([-1.5])             
 
 nparams = len(alphas)
 
@@ -79,8 +80,8 @@ def _param_kwargs(fixed):
 def target(res, keya, alpha, keyb, beta, keyc, gamma, fixed, blurb):
     t0 = time.time()
 
-    phi_inf = alpha
     omega_b = beta
+    phi_inf = alpha
     R       = gamma
 
     p = Parameters(omega_b=omega_b, R=R, phi_inf=phi_inf, **_param_kwargs(fixed))

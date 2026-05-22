@@ -22,17 +22,25 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from viz_util.bvp_solver import Parameters, d2fb_dphi2
+
 
 # ── Config ───────────────────────────────────────────────────────────────────
-EXP_NAME = "fisher_two_spheres_test"
-OUT_DATE = date.today().strftime("%Y%m%d")
+EXP_NAME = "fisher_two_spheres_rep"
+# OUT_DATE = date.today().strftime("%Y%m%d")
+OUT_DATE = "20260520"
 DATA_DIR = f"data/{OUT_DATE}/{EXP_NAME}"
-OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}.pdf"
+OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}.png"
 OUT_JSON = f"media/figures/{OUT_DATE}/{EXP_NAME}.json"
 
 # Probe rate constants for the Fisher rate (match fisher_rate_from_profile)
 KB = 1.0
 KU = 1.0
+
+# Bulk / gradient constants for the linear-response upper bound.  These must
+# match the spec's `fixed` dict (nb, kappa).
+NB    = 1.0
+KAPPA = 1.0
 
 
 # ── Load ─────────────────────────────────────────────────────────────────────
@@ -90,6 +98,29 @@ for (omega_b, R), recs in groups.items():
         fisher_base[valid]  = fb_v
         fisher_probe[valid] = fp_v
 
+    # Linear-response upper bound on the probe Fisher rate.
+    # Linearise around phi_inf: psi(z) = phi(z) - phi_inf satisfies
+    #   psi(z) = -h0 * R * exp(-lam*z) / ((z+R) * kappa * (lam + 1/R))
+    # so the surface volume fraction is
+    #   phi_R = phi_inf - h0 / (kappa*(lam + 1/R)),  lam = sqrt(alpha/kappa).
+    # Substitute phi_R for phi_probe in the Fisher rate; the gain factor
+    #   G = d log phi_R / d log phi_inf
+    # upper-bounds d log phi_probe / d log phi_inf in the linear regime.
+    chi_b_grp = float(records[0].get("chi_b", 0.0))
+    p_lr = Parameters(
+        omega_b=float(omega_b), R=float(R), phi_inf=0.0,
+        nb=NB, chi_b=chi_b_grp, kappa=KAPPA,
+    )
+    alpha     = d2fb_dphi2(phi_inf, p_lr)
+    h0        = p_lr.omega_b
+    lam       = np.sqrt(alpha / p_lr.kappa)
+    dalpha    = (1.0 / p_lr.nb) * (-1.0 / phi_inf ** 2 + 1.0 / (1.0 - phi_inf) ** 2)
+    dlam      = dalpha / (2.0 * np.sqrt(alpha * p_lr.kappa))
+    phi_R     = phi_inf - h0 / (p_lr.kappa * (lam + 1.0 / p_lr.R))
+    dphi_R    = 1.0 + dlam * (phi_inf - phi_R) / (lam + 1.0 / p_lr.R)
+    gain      = dphi_R * phi_inf / phi_R                # d log phi_R / d log phi_inf
+    fisher_upper = phi_R * KB * KU / (KB + KU) * gain ** 2
+
     assembled[(omega_b, R)] = dict(
         phi_inf=phi_inf,
         phi_probe=phi_probe,
@@ -98,6 +129,8 @@ for (omega_b, R), recs in groups.items():
         Phi_surf_grid=Phi_surf_grid,
         fisher_base=fisher_base,
         fisher_probe=fisher_probe,
+        phi_R=phi_R,
+        fisher_upper=fisher_upper,
     )
     print(f"(omega_b={omega_b:g}, R={R:g}): {len(recs)} phi_inf points, "
           f"{int(valid.sum())} valid for Fisher rate")
@@ -130,6 +163,8 @@ out_blob = dict(
             Phi_surf_grid=_jsonify(g["Phi_surf_grid"]),
             fisher_base=_jsonify(g["fisher_base"]),
             fisher_probe=_jsonify(g["fisher_probe"]),
+            phi_R=_jsonify(g["phi_R"]),
+            fisher_upper=_jsonify(g["fisher_upper"]),
         )
         for (omega_b, R), g in assembled.items()
     ],
@@ -153,6 +188,7 @@ d_grid   = g["d_grid"]
 U_full_grid   = g["U_full_grid"]
 fisher_base   = g["fisher_base"]
 fisher_probe  = g["fisher_probe"]
+fisher_upper  = g["fisher_upper"]
 chi_b = any_rec.get("chi_b")
 
 # Top: U_full(d) for a few phi_inf values
@@ -187,8 +223,10 @@ ax.grid(True, alpha=0.3)
 
 # Bottom: Fisher rate vs phi_inf
 ax = axes[2]
-ax.plot(phi_inf, fisher_base,  color="red", lw=1.0, ls="--", label="control")
-ax.plot(phi_inf, fisher_probe, color="red", lw=2.0,           label="with interaction")
+ax.plot(phi_inf, fisher_base,  color="red",  lw=1.0, ls="--", label="control")
+ax.plot(phi_inf, fisher_probe, color="red",  lw=2.0,           label="with interaction")
+ax.plot(phi_inf, fisher_upper, color="blue", lw=1.5, ls="-",
+        label="linear-response upper bound")
 ax.set_xlabel(r"$\phi_\infty$")
 ax.set_ylabel("Fisher information rate")
 ax.set_yscale("log")

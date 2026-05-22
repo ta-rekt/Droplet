@@ -42,7 +42,6 @@ slist = [poly, tf, rnap]
 blurb = """
 Testing the scaling of mean square displacement for a single locus as well
 as for a pair, and other predictions from Bruckner et al. Science 2023.
-
 """
 
 init_from_checkpoint = false
