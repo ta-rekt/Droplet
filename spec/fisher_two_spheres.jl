@@ -31,8 +31,8 @@ const D_MAX_FACTOR  = 3.0
 const N_D           = 20
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 100
-const DZ_TARGET     = 0.05
+const NRHO          = 50
+const DZ_TARGET     = 0.1
 const RHO_MAX       = 10.0
 const Z_BUF         = 4.0
 const F_TOL         = 1e-6
@@ -43,8 +43,9 @@ const S_POLYMER     = 150.0
 const A_BOND        = 1.0
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.
-alphas = collect(range(0.001, 0.01; length = 20))   # phi_inf
-betas  = [-1.5]                                     # omega_b
+# alphas = collect(range(0.001, 0.01; length = 20))   # phi_inf
+alphas = [0.01]
+betas  = [-1.4]                                     # omega_b
 
 nparams = length(alphas)
 
@@ -99,6 +100,14 @@ function target!(res, args...)
     F_arr    = fill(NaN, N_D)
     south    = [Float64(π)]
 
+    # Per-d full 2D phi(rho, z) profiles (converged d-points only).  Stored as
+    # Vector{Vector{Float64}} with outer index = rho, inner = z so that on the
+    # Python side `np.array(profile_phi[k])` is shape (Nrho, Nz).
+    profile_d   = Float64[]
+    profile_rho = Vector{Vector{Float64}}()
+    profile_z   = Vector{Vector{Float64}}()
+    profile_phi = Vector{Vector{Vector{Float64}}}()
+
     for k in 1:N_D
         dd = d_grid[k]
         rk = _solve(dd)
@@ -107,6 +116,12 @@ function target!(res, args...)
         F_arr[k]    = Fk
         U_full[k]   = isfinite(F_ref) ? Fk - F_ref : NaN
         Phi_surf[k] = phi_on_sphere(rk[:phi], rk[:geom], rk[:geom].z_c1, south)[1]
+        geom_k = rk[:geom]
+        phi_k  = rk[:phi]
+        push!(profile_d,   dd)
+        push!(profile_rho, copy(geom_k.rho_grid))
+        push!(profile_z,   copy(geom_k.z_grid))
+        push!(profile_phi, [phi_k[i, :] for i in 1:size(phi_k, 1)])
     end
 
     ok = isfinite.(U_full) .& isfinite.(Phi_surf)
@@ -144,5 +159,9 @@ function target!(res, args...)
     res["success"]     = success
     res["n_d_failed"]  = N_D - n_ok
     res["runtime_min"] = (time() - t0) / 60.0
+    res["profile_d"]   = profile_d
+    res["profile_rho"] = profile_rho
+    res["profile_z"]   = profile_z
+    res["profile_phi"] = profile_phi
     return res
 end
