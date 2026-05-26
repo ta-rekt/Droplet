@@ -34,9 +34,9 @@ fixed = dict(
     z_grid_n=200,
 )
 
-alphas = np.linspace(0.006, 0.01, 50)
-betas = np.array([10])
-gammas = np.linspace(-1.0, -1.5, 50)
+alphas = np.linspace(0.001, 0.01, 50)
+betas = np.array([10000])
+gammas = np.linspace(-1.2, -1.5, 50)
 # alphas = np.array([0.01])
 # gammas = np.array([-1.5])
 

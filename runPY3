@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# run python script $1
+# using parameter file $2
+# on $3 CPUs
+# store the output in directory $4
+
+cmd=""
+
+for ((i=1; i<$3; i++))
+do
+	cmd=$cmd"python3 "$1" "$2" "$i" "$3" "$4" | "
+done
+
+cmd=$cmd"python3 "$1" "$2" "$i" "$3" "$4
+
+eval $cmd

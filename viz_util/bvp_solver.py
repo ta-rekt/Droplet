@@ -357,7 +357,7 @@ def make_bc(p: Parameters):
     def bc(ya, yb):
         dphi0 = ya[1]
         return np.array([
-            -p.kappa * dphi0 + p.omega_b + 1e-3 * regularized_log(ya[0]/(1-ya[0])),
+            -p.kappa * dphi0 + p.omega_b + 2e-2 * regularized_log(ya[0]/(1-ya[0])),
             yb[0] - p.phi_inf,
         ])
 

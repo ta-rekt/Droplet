@@ -39,4 +39,6 @@ using Random
     include("test_kmc_phase3.jl")
     include("test_kmc_phase4.jl")
     include("test_kmc_phase5.jl")
+    # 2D axisymmetric two-sphere BVP
+    include("test_bvp_two_spheres.jl")
 end
