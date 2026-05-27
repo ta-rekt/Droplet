@@ -41,4 +41,6 @@ using Random
     include("test_kmc_phase5.jl")
     # 2D axisymmetric two-sphere BVP
     include("test_bvp_two_spheres.jl")
+    # Rouse polymer overdamped Langevin solver
+    include("test_rouse.jl")
 end

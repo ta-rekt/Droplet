@@ -1,5 +1,6 @@
 module Droplet
 
+    using Random
     using Statistics
     using StatsBase
     using Distributions
@@ -25,6 +26,7 @@ module Droplet
     include("utils.jl")
     include("gillespie.jl")
     include("stats.jl")
+    include("rouse.jl")
     include("ctmc.jl")
     include("generate.jl")
     include("get_residence_time.jl")

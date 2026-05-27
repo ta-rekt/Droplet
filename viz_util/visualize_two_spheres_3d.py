@@ -45,69 +45,36 @@ def load_result(path, alpha_key, beta_key):
     return data[str(alpha_key)][str(beta_key)]
 
 
-def bilinear_interp(phi, rho_grid, z_grid, rho_q, z_q, fill):
+def grid_density_cloud(phi, rho_grid, z_grid, R, z_c1, z_c2, phi_inf, n_theta):
     """
-    Vectorised bilinear interpolation of phi(rho, z) at (rho_q, z_q).  Points
-    outside the grid get `fill`.  phi shape is (Nrho, Nz).
+    Rotate the 2D (rho, z) grid around the z-axis using n_theta angular slices.
+    Every grid point is included; alpha values are proportional to phi - phi_inf.
+    Returns (xyz, phi_values, alpha_values).
     """
-    Nrho, Nz = phi.shape
-    drho = rho_grid[1] - rho_grid[0]
-    dz   = z_grid[1]   - z_grid[0]
-    out_of = ((rho_q < rho_grid[0]) | (rho_q > rho_grid[-1]) |
-              (z_q   < z_grid[0])   | (z_q   > z_grid[-1]))
-    ti = (rho_q - rho_grid[0]) / drho
-    tj = (z_q   - z_grid[0])   / dz
-    i0 = np.clip(np.floor(ti).astype(int), 0, Nrho - 2)
-    j0 = np.clip(np.floor(tj).astype(int), 0, Nz - 2)
-    t_rho = ti - i0
-    t_z   = tj - j0
-    p00 = phi[i0,     j0]
-    p10 = phi[i0 + 1, j0]
-    p01 = phi[i0,     j0 + 1]
-    p11 = phi[i0 + 1, j0 + 1]
-    out = ((1 - t_rho) * (1 - t_z) * p00 +
-           t_rho       * (1 - t_z) * p10 +
-           (1 - t_rho) * t_z       * p01 +
-           t_rho       * t_z       * p11)
-    out[out_of] = fill
-    return out
+    theta = np.linspace(0.0, 2.0 * np.pi, n_theta, endpoint=False)
+    # shape: (Nrho, Nz, n_theta)
+    RHO  = rho_grid[:, np.newaxis, np.newaxis]
+    ZZ   = z_grid[np.newaxis, :, np.newaxis]
+    TH   = theta[np.newaxis, np.newaxis, :]
+    PHI3 = phi[:, :, np.newaxis] * np.ones(n_theta)
+
+    x = (RHO * np.cos(TH)).ravel()
+    y = (RHO * np.sin(TH)).ravel()
+    z = np.broadcast_to(ZZ, PHI3.shape).ravel()
+    rho_flat = np.broadcast_to(RHO, PHI3.shape).ravel()
+    phi_vals = PHI3.ravel()
+
+    outside = ((rho_flat**2 + (z - z_c1)**2) > R**2) & \
+              ((rho_flat**2 + (z - z_c2)**2) > R**2)
+    x, y, z, phi_vals = x[outside], y[outside], z[outside], phi_vals[outside]
+
+    phi_excess = np.clip(phi_vals - phi_inf, 0.0, None)
+    alpha_vals = phi_excess / max(phi_excess.max(), 1e-12)
+
+    return np.column_stack([x, y, z]), phi_vals, alpha_vals
 
 
-def sample_density_cloud(phi, rho_grid, z_grid, R, z_c1, z_c2, phi_inf,
-                         n_samples, seed):
-    """
-    Rejection sampling: accept random Cartesian points (x, y, z) with
-    probability proportional to max(0, phi(rho, z) - phi_inf).  Returns
-    (xyz, phi_at_xyz) arrays of length n_samples.  Points inside either
-    sphere are rejected.
-    """
-    rng = np.random.default_rng(seed)
-    rho_max = rho_grid[-1]
-    z_min, z_max = z_grid[0], z_grid[-1]
-    weight_max = max(phi.max() - phi_inf, 1e-12)
-
-    xs = np.empty(0); ys = np.empty(0); zs = np.empty(0); phs = np.empty(0)
-    while xs.size < n_samples:
-        n_try = max(2000, 4 * (n_samples - xs.size))
-        # Uniform in a cylinder (rho, theta, z): rho^2 = uniform * rho_max^2
-        rr = rho_max * np.sqrt(rng.uniform(0.0, 1.0, n_try))
-        th = rng.uniform(0.0, 2.0 * np.pi, n_try)
-        zz = rng.uniform(z_min, z_max, n_try)
-        phi_at = bilinear_interp(phi, rho_grid, z_grid, rr, zz, phi_inf)
-        d1sq = rr ** 2 + (zz - z_c1) ** 2
-        d2sq = rr ** 2 + (zz - z_c2) ** 2
-        outside = (d1sq > R ** 2) & (d2sq > R ** 2)
-        w = np.clip(phi_at - phi_inf, 0.0, None)
-        accept = (rng.uniform(0.0, weight_max, n_try) < w) & outside
-        xs  = np.concatenate([xs,  rr[accept] * np.cos(th[accept])])
-        ys  = np.concatenate([ys,  rr[accept] * np.sin(th[accept])])
-        zs  = np.concatenate([zs,  zz[accept]])
-        phs = np.concatenate([phs, phi_at[accept]])
-    return (np.column_stack([xs[:n_samples], ys[:n_samples], zs[:n_samples]]),
-            phs[:n_samples])
-
-
-def render(result, d_index, out_path, n_samples, seed):
+def render(result, d_index, out_path, n_theta):
     R       = float(result["R"])
     phi_inf = float(result["phi_inf"])
     omega_b = float(result["omega_b"])
@@ -124,9 +91,8 @@ def render(result, d_index, out_path, n_samples, seed):
     z_c1 = 0.0
     z_c2 = 2.0 * R + d
 
-    pts, phi_pts = sample_density_cloud(
-        phi, rho, z, R, z_c1, z_c2, phi_inf,
-        n_samples=n_samples, seed=seed,
+    pts, phi_pts, alpha_pts = grid_density_cloud(
+        phi, rho, z, R, z_c1, z_c2, phi_inf, n_theta=n_theta,
     )
 
     fig = plt.figure(figsize=(7.5, 11.0))
@@ -143,13 +109,16 @@ def render(result, d_index, out_path, n_samples, seed):
                         color="#d0d0d0", alpha=0.55, linewidth=0,
                         edgecolor="none", shade=True, antialiased=True)
 
-    # Density cloud -- denser where phi is higher; color also encodes phi
-    sc = ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2],
-                    c=phi_pts, cmap="magma",
-                    s=2, alpha=0.18, edgecolor="none",
-                    depthshade=False,
-                    vmin=phi_inf, vmax=max(phi.max(), phi_inf + 1e-9))
-    cb = plt.colorbar(sc, ax=ax, shrink=0.55, pad=0.02)
+    # Density cloud -- alpha and color both encode phi
+    norm = plt.Normalize(vmin=phi_inf, vmax=max(phi.max(), phi_inf + 1e-9))
+    cmap = plt.cm.magma
+    rgba = cmap(norm(phi_pts))
+    rgba[:, 3] = alpha_pts
+    ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2],
+               c=rgba, s=5, edgecolor="none", depthshade=False)
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cb = plt.colorbar(sm, ax=ax, shrink=0.55, pad=0.02)
     cb.set_label(r"$\phi$")
 
     # Equal aspect in (x, y); z is naturally longer than rho_max in this setup
@@ -164,6 +133,7 @@ def render(result, d_index, out_path, n_samples, seed):
         f"R={R}, d={d:.3f}"
         f"\nphi range = [{phi.min():.4f}, {phi.max():.4f}]"
     )
+    ax.view_init(elev=0, azim=0)
 
     # Trim panes
     ax.xaxis.pane.set_alpha(0.0)
@@ -187,9 +157,8 @@ def main():
     parser.add_argument("--d_index", type=int, default=0,
                         help="Index into res['profile_d'] (0-indexed; "
                              "only converged d-points are stored)")
-    parser.add_argument("--n_samples", type=int, default=80000,
-                        help="Number of accepted density-cloud points")
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--n_theta", type=int, default=60,
+                        help="Number of angular slices when rotating 2D grid to 3D")
     parser.add_argument("--out", default=None,
                         help="Output PNG path (default: alongside JSON)")
     args = parser.parse_args()
@@ -200,8 +169,7 @@ def main():
         outdir = os.path.dirname(os.path.abspath(args.json_path))
         args.out = os.path.join(outdir,
             f"{base}_3d_a{args.alpha}_b{args.beta}_d{args.d_index}.png")
-    render(result, args.d_index, args.out,
-           n_samples=args.n_samples, seed=args.seed)
+    render(result, args.d_index, args.out, n_theta=args.n_theta)
 
 
 if __name__ == "__main__":

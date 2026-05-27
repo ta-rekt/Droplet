@@ -14,7 +14,7 @@ abstract type AbstractPolyMonomer <: AbstractMonomer end
 abstract type AbstractFastBulkMonomer <: AbstractBulkMonomer end 
 
 export Species, Polymer, PolyMonomer, BulkMonomer, FastBulkMonomer, Lattice,
-       KMCSystem, KMCPolymerState, OneBurstDecoyModel, LLROptModel
+       KMCSystem, KMCPolymerState, OneBurstDecoyModel, LLROptModel, RousePolymer
 
 ######## Generic species #######
 # MARK: -Generic
@@ -429,4 +429,41 @@ Base.@kwdef mutable struct OneBurstDecoyModel
     # log-likelihoods
     logPjoint = nothing;
 
+end
+
+
+######## Rouse polymer models ########
+
+Base.@kwdef mutable struct RousePolymer
+    # physical parameters
+    boltzmannConst::Float64 = 1.0
+    temperature::Float64 = 1.0
+    friction::Float64 = 1.0
+    kuhnLength::Float64 = 1.0
+    stiffness::Float64 = 3.0           # κ = 3 kBT/b² (recomputed in init!)
+    dt::Float64 = 1e-5                 # physical timestep
+    nsteps::Int32 = 1000
+    nbeads::Int32 = 100
+
+    # scaling
+    posScale::Union{Nothing, Float64} = nothing
+    timeScale::Union{Nothing, Float64} = nothing
+    dtDimless::Union{Nothing, Float64} = nothing
+
+    # working buffers (dimensionless, N×3)
+    adjacency::Union{Nothing, Matrix{Float64}} = nothing
+    pos::Union{Nothing, Matrix{Float64}} = nothing
+    drift::Union{Nothing, Matrix{Float64}} = nothing
+    noise::Union{Nothing, Matrix{Float64}} = nothing
+    initPos::Union{Nothing, Matrix{Float64}} = nothing   # physical units
+
+    # trajectory storage
+    posTraj::Union{Nothing, Array{Float64, 3}} = nothing      # (nsteps, N, 3); only when saveMode == :full
+    distanceTraj::Union{Nothing, Vector{Float64}} = nothing   # always allocated
+
+    trackedBead1::Int32 = 1
+    trackedBead2::Int32 = 100
+
+    saveMode::Symbol = :distance_only   # :full | :distance_only
+    seed::Union{Nothing, Int} = nothing
 end

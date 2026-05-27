@@ -1,8 +1,8 @@
-export extractCoords!, centerMass, centerMassPattern, radius, radiusLine, radiusSphere, boxDensity, 
-       axialDensity , radialDensity, extractCoords!, dfs, cc, dropletVolume, 
+export extractCoords!, centerMass, centerMassPattern, radius, radiusLine, radiusSphere, boxDensity,
+       axialDensity , radialDensity, extractCoords!, dfs, cc, dropletVolume,
        dropletDensities, diluteDensity, nspeciesBound, get_pattern_centers,
        patterns_in_contact, compute_contact_matrix!, find_patterns, updateDensityProfile!,
-       updateNormalHistogram!
+       updateNormalHistogram!, contactTimes, distanceHistogram, beadMSD, beadPairDistanceMSD
 
 ############### Generic #############
 # MARK: -Generic
@@ -546,6 +546,86 @@ function updateNormalHistogram!(
             count += 1
         end
     end
-    
+
     return count
+end
+
+
+########### Rouse trajectory stats ###########
+# MARK: -Rouse
+
+# Detects rising contacts (distance crosses below threshold) and returns:
+#   times  — wall-clock time of each contact entry
+#   invCdf — sorted inter-contact intervals (the empirical inverse CDF;
+#            pair with `1 .- (1:length(invCdf))/length(invCdf)` for survival)
+function contactTimes(distanceTraj::Vector{Float64}, threshold::Float64, dt::Float64)
+    times = Float64[]
+    @inbounds for i in 2:length(distanceTraj)
+        if distanceTraj[i - 1] > threshold && distanceTraj[i] <= threshold
+            push!(times, (i - 1) * dt)
+        end
+    end
+    invCdf = sort(diff(times))
+    return times, invCdf
+end
+
+# Histogram of a 1D scalar trajectory (e.g. bead-pair distance).
+# Returns bin centers and integer counts.
+function distanceHistogram(distanceTraj::Vector{Float64}, nbins::Int;
+                           range::Union{Nothing, Tuple{Float64,Float64}} = nothing)
+    lo, hi = range === nothing ? (minimum(distanceTraj), maximum(distanceTraj)) : range
+    if hi <= lo
+        hi = lo + max(eps(lo), 1.0)
+    end
+    # Nudge upper edge outward so that points equal to `hi` land in the last bin
+    # (StatsBase's default histogram is left-closed, right-open).
+    hi += (hi - lo) * 1e-12 + eps(hi)
+    edges = collect(LinRange(lo, hi, nbins + 1))
+    h = fit(Histogram, distanceTraj, edges)
+    centers = (edges[1:end-1] .+ edges[2:end]) ./ 2
+    return centers, collect(h.weights)
+end
+
+# Time-averaged MSD of a single bead from a full position trajectory.
+# posTraj: (nsteps, N, 3); returns Vector{Float64} of length maxLag.
+function beadMSD(posTraj::Array{Float64,3}, beadIdx::Integer;
+                 maxLag::Integer = div(size(posTraj, 1), 4))
+    nsteps = size(posTraj, 1)
+    msd = zeros(Float64, maxLag)
+    @inbounds for tau in 1:maxLag
+        acc = 0.0
+        ncount = nsteps - tau
+        for t in 1:ncount
+            dx = posTraj[t + tau, beadIdx, 1] - posTraj[t, beadIdx, 1]
+            dy = posTraj[t + tau, beadIdx, 2] - posTraj[t, beadIdx, 2]
+            dz = posTraj[t + tau, beadIdx, 3] - posTraj[t, beadIdx, 3]
+            acc += dx * dx + dy * dy + dz * dz
+        end
+        msd[tau] = acc / ncount
+    end
+    return msd
+end
+
+# Time-averaged MSD of the scalar distance |r_i - r_j| from a full position trajectory.
+function beadPairDistanceMSD(posTraj::Array{Float64,3}, i::Integer, j::Integer;
+                             maxLag::Integer = div(size(posTraj, 1), 4))
+    nsteps = size(posTraj, 1)
+    d = Vector{Float64}(undef, nsteps)
+    @inbounds for t in 1:nsteps
+        dx = posTraj[t, i, 1] - posTraj[t, j, 1]
+        dy = posTraj[t, i, 2] - posTraj[t, j, 2]
+        dz = posTraj[t, i, 3] - posTraj[t, j, 3]
+        d[t] = sqrt(dx * dx + dy * dy + dz * dz)
+    end
+    msd = zeros(Float64, maxLag)
+    @inbounds for tau in 1:maxLag
+        acc = 0.0
+        ncount = nsteps - tau
+        for t in 1:ncount
+            delta = d[t + tau] - d[t]
+            acc += delta * delta
+        end
+        msd[tau] = acc / ncount
+    end
+    return msd
 end
