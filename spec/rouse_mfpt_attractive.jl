@@ -118,8 +118,10 @@ function target!(res, args...)
                                    "friction" => friction, "stiffness" => stiffness,
                                    "D" => D, "dt" => dt, "bead_separation" => beadSep,
                                    "nsteps" => nsteps)
-    res["distance_traj"]    = r.distanceTraj
-    res["total_potential"]    = total_potential.(dists)
+    sample_skip = 100
+    res["distance_traj"]    = r.distanceTraj[1:sample_skip:end]
+    res["sample_skip"]      = sample_skip
+    res["total_potential"]  = total_potential.(dists)
     res["bead_relax_time"]  = r.timeScale
     res["bead_relax_scale"] = r.posScale
     res["runtime_min"]      = (time() - t0) / 60.0
