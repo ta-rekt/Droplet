@@ -466,4 +466,9 @@ Base.@kwdef mutable struct RousePolymer
 
     saveMode::Symbol = :distance_only   # :full | :distance_only
     seed::Union{Nothing, Int} = nothing
+
+    # Optional radial pair force between trackedBead1 and trackedBead2.
+    # Convention: f(d_physical) = −dU/dr of the pair potential U(d).
+    # e.g. U(d) = (k/2)(d−d₀)²  ⇒  attractiveForce = d -> -k*(d - d0).
+    attractiveForce::Union{Nothing, Function} = nothing
 end

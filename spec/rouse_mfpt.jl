@@ -10,8 +10,8 @@ b = 1.0            # Kuhn length
 gamma = 1.0        # friction coefficient
 kappa = 3*kBT/b^2  # bond stiffness
 D = kBT / gamma    # diffusion coefficient
-N = 200            # chain length
-dt = 1e-5
+N = 400            # chain length
+dt = 0.3 * gamma / kappa
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.
 # alphas: contact threshold (physical length).  beta is unused here.
@@ -27,8 +27,8 @@ blurb = "Solving the Langevin equation for a Rouse polymer to
 
 # Simulation lengths (deliberately small for the dummy run; scale up
 # once the spec/dashboard pipeline is validated end-to-end).
-nsteps_distance = 200_000
-nsteps_full     = 20_000
+nsteps_distance = 1_000_000
+nsteps_full     = 200_000
 
 
 function target!(res, args...)
@@ -37,12 +37,17 @@ function target!(res, args...)
 
     # primary run: distance-only mode, long trajectory for contact statistics
     r = RousePolymer(;
-        boltzmannConst = kBT, temperature = 1.0,
-        friction       = gamma, kuhnLength = b,
-        nbeads         = Int32(N), nsteps = Int32(nsteps_distance),
+        boltzmannConst = kBT, 
+        temperature    = 1.0,
+        friction       = gamma, 
+        kuhnLength     = b,
+        nbeads         = Int32(N), 
+        nsteps         = Int32(nsteps_distance),
         dt             = dt,
-        trackedBead1   = Int32(1), trackedBead2 = Int32(N),
-        saveMode       = :distance_only, seed = 42,
+        trackedBead1   = Int32(1), 
+        trackedBead2   = Int32(N),
+        saveMode       = :distance_only, 
+        seed = 42,
     )
     init!(r)
     simulate!(r)
@@ -52,12 +57,17 @@ function target!(res, args...)
 
     # secondary run: short :full trajectory just for MSD curves
     rFull = RousePolymer(;
-        boltzmannConst = kBT, temperature = 1.0,
-        friction       = gamma, kuhnLength = b,
-        nbeads         = Int32(N), nsteps = Int32(nsteps_full),
+        boltzmannConst = kBT, 
+        temperature    = 1.0,
+        friction       = gamma, 
+        kuhnLength     = b,
+        nbeads         = Int32(N), 
+        nsteps         = Int32(nsteps_full),
         dt             = dt,
-        trackedBead1   = Int32(1), trackedBead2 = Int32(N),
-        saveMode       = :full, seed = 43,
+        trackedBead1   = Int32(1), 
+        trackedBead2   = Int32(N),
+        saveMode       = :full, 
+        seed = 43,
     )
     init!(rFull)
     simulate!(rFull)
@@ -80,6 +90,8 @@ function target!(res, args...)
     res["inverse_cdf"]      = invCdf
     res["hist_centers"]     = centers
     res["hist_counts"]      = counts
+    res["bead_relax_time"]  = r.timeScale
+    res["bead_relax_scale"] = r.posScale
     res["msd_bead1"]        = msdBead1
     res["msd_beadMid"]      = msdBeadMid
     res["msd_pairDistance"] = msdPair

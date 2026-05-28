@@ -96,9 +96,34 @@ function simulate!(r::RousePolymer)
     b1  = Int(r.trackedBead1)
     b2  = Int(r.trackedBead2)
     fullMode = r.saveMode === :full
+    f   = r.attractiveForce
+    invKappaPos = 1 / (r.stiffness * ps)
 
     @inbounds for t in 2:r.nsteps
         mul!(r.drift, r.adjacency, r.pos)
+
+        # Add the radial pair force between the two tracked beads to drift.
+        # Convention: f(d_phys) = −dU/dr; the dimensionless force on i1 is
+        #   F/(κ·posScale) = f(d_phys) · (x_i1 − x_i2) / (κ·posScale·|Δx|).
+        # We *subtract* it from drift so the existing update
+        #   pos ← pos − drift·dτ + noise·√dτ
+        # adds the force contribution with the correct sign.
+        if f !== nothing
+            dxv  = r.pos[b1, 1] - r.pos[b2, 1]
+            dyv  = r.pos[b1, 2] - r.pos[b2, 2]
+            dzv  = r.pos[b1, 3] - r.pos[b2, 3]
+            dmag = sqrt(dxv*dxv + dyv*dyv + dzv*dzv)
+            if dmag > 0
+                coeff = -invKappaPos * f(dmag * ps) / dmag
+                r.drift[b1, 1] += coeff * dxv
+                r.drift[b1, 2] += coeff * dyv
+                r.drift[b1, 3] += coeff * dzv
+                r.drift[b2, 1] -= coeff * dxv
+                r.drift[b2, 2] -= coeff * dyv
+                r.drift[b2, 3] -= coeff * dzv
+            end
+        end
+
         randn!(rng, r.noise)
         @. r.pos = r.pos - r.drift * r.dtDimless + r.noise * sdt
 

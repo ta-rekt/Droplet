@@ -196,4 +196,38 @@ import Droplet: _build_adjacency_matrix
         @test length(pmsd) == 200
         @test all(pmsd .>= 0)
     end
+
+    @testset "attractive force: nothing ≡ no-force fallback" begin
+        # attractiveForce=nothing must reproduce the exact same trajectory
+        # as not setting the field at all (and not perturb the RNG stream).
+        kwargs = (; nbeads = Int32(10), nsteps = Int32(2000), dt = 1e-3,
+                   seed = 17, trackedBead1 = Int32(1), trackedBead2 = Int32(10),
+                   saveMode = :distance_only)
+        r1 = RousePolymer(; kwargs...)
+        r2 = RousePolymer(; kwargs..., attractiveForce = nothing)
+        init!(r1); simulate!(r1)
+        init!(r2); simulate!(r2)
+        @test r1.distanceTraj == r2.distanceTraj
+    end
+
+    @testset "attractive harmonic tether: ⟨d²⟩ = 3kBT/(κ_chain + k_attract)" begin
+        function tether_test()
+            # Two-bead chain: bond stiffness κ_chain = 3 kBT/b² = 3.
+            # Add a harmonic spring U = (k/2) d² between the two beads.
+            # Equilibrium 3D distance variance: ⟨d²⟩ = 3 kBT / (κ_chain + k).
+            k_attract = 9.0
+            r = RousePolymer(;
+                nbeads = Int32(2), nsteps = Int32(80_000),
+                dt = 0.01 / 3, saveMode = :distance_only, seed = 23,
+                trackedBead1 = Int32(1), trackedBead2 = Int32(2),
+                attractiveForce = d -> -k_attract * d,
+            )
+            init!(r); simulate!(r)
+            burn = div(r.nsteps, 5)
+            d² = view(r.distanceTraj, (burn + 1):r.nsteps) .^ 2
+            mean(d²)
+        end
+        expected = 3.0 / (3.0 + 9.0)   # = 0.25
+        @test isapprox(tether_test(), expected; rtol = 0.10)
+    end
 end
