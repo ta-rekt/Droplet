@@ -37,10 +37,11 @@ from scipy.interpolate import interp1d
 
 # -- Config ------------------------------------------------------------------
 EXP_NAME = "rouse_mfpt_attractive"
-OUT_DATE = "20260528"
-DATA_DIR = f"data/{OUT_DATE}/{EXP_NAME}"
-OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_hires.png"
-OUT_PNG2 = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_rates_hires.png"
+DATA_DATE = "20260528"
+OUT_DATE = "20260603"
+DATA_DIR = f"data/{DATA_DATE}/{EXP_NAME}"
+OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_hires.pdf"
+OUT_PNG2 = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_rates_hires.pdf"
 OUT_JSON = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_hires.json"
 
 N_LOG_T_BINS = 60       # histogram bins in log T
@@ -243,7 +244,7 @@ for col, (name, res) in enumerate([("T_open", open_res),
 sm = plt.cm.ScalarMappable(cmap=cmap,
         norm=plt.Normalize(vmin=phi_inf.min(), vmax=phi_inf.max()))
 cb = fig.colorbar(sm, ax=axes[0, :], orientation="vertical",
-                  fraction=0.025, pad=0.02)
+                  fraction=0.025, pad=0.04)
 cb.set_label(r"$\phi_\infty$")
 
 fig.suptitle("Rouse-MFPT first-passage statistics", fontsize=12)

@@ -102,7 +102,7 @@ function target!(res, args...)
         trackedBead2    = firstBeadIdx + beadSep,
         attractiveForce = attractive_force,
         saveMode        = :distance_only, 
-        seed = keya + 42,
+        seed            = keya + 42,
     )
 
     init!(r)
