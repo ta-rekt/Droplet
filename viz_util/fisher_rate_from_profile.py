@@ -11,36 +11,38 @@ B. nonlinear profile from solver
     5. repeat 1-3
 """
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-import numpy as np
-import matplotlib
-from dataclasses import dataclass
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
 from viz_util.bvp_solver import (
     Parameters, solve_auto, d2fb_dphi2, dfb_dphi, fb, compute_spinodal,
     compute_binodal, psi_linear, F, compute_mu_inf
 )
+import matplotlib.pyplot as plt
+from dataclasses import dataclass
+import matplotlib
+import numpy as np
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+matplotlib.use("Agg")
+
 
 @dataclass
 class Probe:
     kb: float = 1.0
     ku: float = 1.0
 
+
 # ── Parameters ────────────────────────────────────────────────────────────
 p = Parameters(
     nb=1.0,
-    chi_b=2.5,     
-    omega_b=-0.6,   
+    chi_b=2.5,
+    omega_b=-0.6,
     kappa=1,
-    phi_inf=0.1,   
+    phi_inf=0.1,
     L=20.0,
     eps=1e-6,
     R=2.5,
     conserve_volume=False,
-    parallel_plates = False
+    parallel_plates=False
 )
 
 # polymer params
@@ -50,13 +52,14 @@ a = 1   # Kuhn length
 # ── Equilibrium distance distribution ─────────────────────────────────────
 nsteps = 1000
 r = np.linspace(0, p.L, nsteps)     # distance from center
-d = np.linspace(0, p.L-p.R, nsteps) # distance from surface
+d = np.linspace(0, p.L-p.R, nsteps)  # distance from surface
+
 
 def compute_P_eq(p: Parameters, d: np.ndarray) -> np.ndarray:
     """Compute the equilibrium distribution of bead separation on a polymer"""
 
     # sol = solve_auto(p, verbose=False)
-    
+
     # profile
     # phi = sol.sol(d)[0]
     psi_lin = psi_linear(d, p)[0]
@@ -71,7 +74,7 @@ def compute_P_eq(p: Parameters, d: np.ndarray) -> np.ndarray:
 
     # concentration at the probe as a function of distance
     phi_boundary = p.phi_inf
-    Phi_d = phi_boundary + psi_lin[0] + psi_lin 
+    Phi_d = phi_boundary + psi_lin[0] + psi_lin
 
     return P_eq, Phi_d, U_lin
 
@@ -89,10 +92,10 @@ for i, _phi in enumerate(phi_tf_vals):
 
 
 # ── Fisher rate ───────────────────────────────────────────────────────────
-def fisher_rate(p2: Probe, 
+def fisher_rate(p2: Probe,
                 phi_probe: np.ndarray,
                 phi_tf: np.ndarray) -> np.ndarray:
-    
+
     # fisher rate without microcondensation, 2 state probe
     fisher_base = phi_tf * p2.kb * p2.ku / (p2.kb + p2.ku)
 
@@ -103,7 +106,8 @@ def fisher_rate(p2: Probe,
 
     return fisher_base, fisher_probe
 
-### Biophysical parameters
+
+# Biophysical parameters
 a = 3e-3        # um
 D_tf = 7.4      # um^2/s
 D_cplx = 0.1    # um^2/s
@@ -111,8 +115,8 @@ dl_tf = 4*a*D_tf
 ub = 5
 
 probe = Probe(
-    ku = ub, 
-    kb = dl_tf,
+    ku=ub,
+    kb=dl_tf,
 )
 fisher_base, fisher_probe = fisher_rate(probe, phi_probe, phi_tf_vals)
 
@@ -122,16 +126,17 @@ alpha = d2fb_dphi2(phi_tf_vals, p)
 h0 = p.omega_b
 lam = np.sqrt(alpha/p.kappa)
 
-dalpha    = (1.0 / p.nb) * (-1.0 / phi_tf_vals ** 2 + 1.0 / (1.0 - phi_tf_vals) ** 2)
-dlam      = dalpha / (2.0 * np.sqrt(alpha * p.kappa))
-phi_R     = phi_tf_vals - h0 / (p.kappa * (lam + 1.0 / p.R))
-dphi_R    = 1.0 + dlam * (phi_tf_vals - phi_R) / (lam + 1.0 / p.R)
-gain      = dphi_R * phi_tf_vals / phi_R  
+dalpha = (1.0 / p.nb) * (-1.0 / phi_tf_vals **
+                         2 + 1.0 / (1.0 - phi_tf_vals) ** 2)
+dlam = dalpha / (2.0 * np.sqrt(alpha * p.kappa))
+phi_R = phi_tf_vals - h0 / (p.kappa * (lam + 1.0 / p.R))
+dphi_R = 1.0 + dlam * (phi_tf_vals - phi_R) / (lam + 1.0 / p.R)
+gain = dphi_R * phi_tf_vals / phi_R
 
 fisher_surface = phi_R * probe.kb * probe.ku / (probe.kb + probe.ku)
 
 # ── Plot ──────────────────────────────────────────────────────────────────
-fig, ax = plt.subplots(1,1, figsize=(5, 3.5))
+fig, ax = plt.subplots(1, 1, figsize=(5, 3.5))
 
 # phi_infs = np.linspace(0.001, 0.1, 15)
 
@@ -162,9 +167,12 @@ T_dec_base = 2*K*np.tanh(K/2)*c_over_dc**2 / fisher_base
 T_dec_surface = 2*K*np.tanh(K/2)*c_over_dc**2 / fisher_surface
 T_dec_probe = 2*K*np.tanh(K/2)*c_over_dc**2 / fisher_probe
 
-ax.plot(phi_tf_vals, T_dec_base, color="C0", linestyle="dotted", label="background")
-ax.plot(phi_tf_vals, T_dec_surface, color="C0", linestyle="dashed", label="promoter only")
-ax.plot(phi_tf_vals, T_dec_probe, color="C0", linestyle="solid", label="with enhancer")
+ax.plot(phi_tf_vals, T_dec_base, color="C0",
+        linestyle="dotted", label="background")
+ax.plot(phi_tf_vals, T_dec_surface, color="C0",
+        linestyle="dashed", label="promoter only")
+ax.plot(phi_tf_vals, T_dec_probe, color="C0",
+        linestyle="solid", label="with enhancer")
 ax.set_yscale('log')
 ax.set_ylabel("Decision time (s)")
 ax.set_xlabel(r"$\phi_{TF}$ (total volume fraction)", fontsize=12)
@@ -199,7 +207,6 @@ fig.savefig(out, dpi=150, bbox_inches="tight")
 print(f"\nSaved figure → {out}")
 
 
-
 ###### potential #######
 
 # Left: concentration profile
@@ -222,14 +229,14 @@ print(f"\nSaved figure → {out}")
 # axl.legend()
 
 # axl.set_ylabel(r"$d\log \phi / d\log \phi_{\infty}$", color="black")
-# axl.plot(np.log(phi_tf_vals), np.gradient(np.log(phi_probe))/np.gradient(np.log(phi_tf_vals)), 
+# axl.plot(np.log(phi_tf_vals), np.gradient(np.log(phi_probe))/np.gradient(np.log(phi_tf_vals)),
 #          color="C2", lw=2,
 #          label=r"$d\log \phi_{probe}$")
-# axl.plot(np.log(phi_tf_vals), 
-#         np.gradient(np.log(phi_tf_vals))/np.gradient(np.log(phi_tf_vals)), color="C2", lw=1.5, 
+# axl.plot(np.log(phi_tf_vals),
+#         np.gradient(np.log(phi_tf_vals))/np.gradient(np.log(phi_tf_vals)), color="C2", lw=1.5,
 #          linestyle="dashed", label=r"$d\log \phi_{\infty}$")
-# axl.plot(np.log(phi_tf_vals), 
-#         np.gradient(np.log(phi_R))/np.gradient(np.log(phi_tf_vals)), color="C2", lw=1.5, 
+# axl.plot(np.log(phi_tf_vals),
+#         np.gradient(np.log(phi_R))/np.gradient(np.log(phi_tf_vals)), color="C2", lw=1.5,
 #          linestyle="dotted", label=r"$d\log \phi_{R}$")
 # axl.set_xlabel(r"$\log \phi_{\infty}$ (total volume fraction)", fontsize=12)
 # axl.legend()
@@ -240,5 +247,3 @@ print(f"\nSaved figure → {out}")
 # os.makedirs(os.path.dirname(out), exist_ok=True)
 # fig.savefig(out, dpi=150, bbox_inches="tight")
 # print(f"\nSaved figure → {out}")
-
-

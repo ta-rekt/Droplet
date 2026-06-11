@@ -22,17 +22,19 @@ Pipeline:
      per-event Fisher info; divide by <T_X> to get the rate.
 """
 
-import sys, os, glob, json
+from scipy.interpolate import interp1d
+from scipy.ndimage import gaussian_filter1d
+import matplotlib.pyplot as plt
+import matplotlib
+import numpy as np
+import sys
+import os
+import glob
+import json
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import numpy as np
-import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-
-from scipy.ndimage import gaussian_filter1d
-from scipy.interpolate import interp1d
 
 
 # -- Config ------------------------------------------------------------------
@@ -40,14 +42,14 @@ EXP_NAME = "rouse_mfpt_attractive"
 DATA_DATE = "20260528"
 OUT_DATE = "20260603"
 DATA_DIR = f"data/{DATA_DATE}/{EXP_NAME}"
-OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_hires.pdf"
+OUT_PNG = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_hires.pdf"
 OUT_PNG2 = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_rates_hires.pdf"
 OUT_JSON = f"media/figures/{OUT_DATE}/{EXP_NAME}_fisher_hires.json"
 
 N_LOG_T_BINS = 60       # histogram bins in log T
 SMOOTH_SIGMA = 1.5      # gaussian smoothing in log-T bins
-N_T_INTERP   = 400      # interpolation grid size in T
-PDF_FLOOR    = 1e-12    # protects log(P) and division at empty bins
+N_T_INTERP = 400      # interpolation grid size in T
+PDF_FLOOR = 1e-12    # protects log(P) and division at empty bins
 
 
 # -- Load --------------------------------------------------------------------
@@ -77,6 +79,7 @@ def potential_grid(rec):
     d = np.linspace(0.0, 3.0 * np.sqrt(N) * a, len(U))
     return d, U
 
+
 def locate_ridge(d, U):
     """First local maximum that lies between the inner (closed) and outer
     (open) wells. Falls back to argmax over the finite range."""
@@ -94,6 +97,7 @@ def locate_ridge(d, U):
             saw_min = True
     return float(d_m[np.argmax(U_m)])
 
+
 d_ridge_per_phi = np.array([
     locate_ridge(*potential_grid(r)) for r in records
 ])
@@ -107,16 +111,16 @@ def extract_fpts(traj, d_ridge, dt_per_sample):
     change = np.flatnonzero(np.diff(state.astype(np.int8)))
     if len(change) < 2:
         return np.empty(0), np.empty(0)
-    seg_lens   = np.diff(change) * dt_per_sample
+    seg_lens = np.diff(change) * dt_per_sample
     seg_states = state[change[:-1] + 1]
     return seg_lens[seg_states], seg_lens[~seg_states]
 
 
-t_open_all   = []
+t_open_all = []
 t_closed_all = []
 for r, d_ridge in zip(records, d_ridge_per_phi):
-    traj   = np.asarray(r["distance_traj"], dtype=float)
-    dt     = r["rouse_params"]["dt"]
+    traj = np.asarray(r["distance_traj"], dtype=float)
+    dt = r["rouse_params"]["dt"]
     nsteps = r["rouse_params"]["nsteps"]
     sample_skip = r.get("sample_skip", max(1, nsteps // len(traj)))
     dt_per_sample = dt * sample_skip
@@ -124,9 +128,9 @@ for r, d_ridge in zip(records, d_ridge_per_phi):
     t_open_all.append(to)
     t_closed_all.append(tc)
     print(f"phi_inf={r['surface_params']['phi_inf']:.4f}  "
-          f"d_ridge={d_ridge:.3f}  "
-          f"open n={len(to):>5d} <T>={to.mean() if to.size else float('nan'):>8.3f}  "
-          f"closed n={len(tc):>5d} <T>={tc.mean() if tc.size else float('nan'):>8.3f}")
+    f"d_ridge={d_ridge:.3f}  "
+    f"open n={len(to):>5d} <T>={to.mean() if to.size else float('nan'):>8.3f}  "
+    f"closed n={len(tc):>5d} <T>={tc.mean() if tc.size else float('nan'):>8.3f}")
 
 
 # -- Smoothed PDFs and Fisher rate -----------------------------------------
@@ -143,7 +147,7 @@ def fisher_rate_family(samples_per_phi, phi_inf,
     log_t_centers = 0.5 * (log_edges[:-1] + log_edges[1:])
     T_grid = np.exp(np.linspace(log_t_centers[0], log_t_centers[-1], n_interp))
 
-    pdfs   = np.full((len(samples_per_phi), n_interp), np.nan)
+    pdfs = np.full((len(samples_per_phi), n_interp), np.nan)
     mean_T = np.full(len(samples_per_phi), np.nan)
     for i, s in enumerate(samples_per_phi):
         if s.size == 0:
@@ -158,7 +162,7 @@ def fisher_rate_family(samples_per_phi, phi_inf,
         norm = np.trapz(pT, T_grid)
         if norm > 0:
             pT = pT / norm
-        pdfs[i]   = pT
+        pdfs[i] = pT
         mean_T[i] = s.mean()
 
     log_pdfs = np.log(np.clip(pdfs, PDF_FLOOR, None))
@@ -179,17 +183,21 @@ def fisher_rate_family(samples_per_phi, phi_inf,
         fisher_rate=fisher_rate,                   # per unit simulation time
     )
 
-open_res   = fisher_rate_family(t_open_all,   phi_inf)
+
+open_res = fisher_rate_family(t_open_all,   phi_inf)
 closed_res = fisher_rate_family(t_closed_all, phi_inf)
 joint_rate = open_res["fisher_rate"] + closed_res["fisher_rate"]
 
 
 # -- Dump JSON --------------------------------------------------------------
 os.makedirs(os.path.dirname(OUT_JSON), exist_ok=True)
+
+
 def _j(a):
     if isinstance(a, np.ndarray):
         return np.where(np.isfinite(a), a, None).tolist()
     return a
+
 
 with open(OUT_JSON, "w") as f:
     json.dump(dict(
@@ -242,7 +250,7 @@ for col, (name, res) in enumerate([("T_open", open_res),
 
 # colour bar for phi_inf
 sm = plt.cm.ScalarMappable(cmap=cmap,
-        norm=plt.Normalize(vmin=phi_inf.min(), vmax=phi_inf.max()))
+                           norm=plt.Normalize(vmin=phi_inf.min(), vmax=phi_inf.max()))
 cb = fig.colorbar(sm, ax=axes[0, :], orientation="vertical",
                   fraction=0.025, pad=0.04)
 cb.set_label(r"$\phi_\infty$")
