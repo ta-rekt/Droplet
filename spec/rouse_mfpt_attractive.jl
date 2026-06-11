@@ -38,7 +38,10 @@ blurb = "Solving the Langevin equation for a Rouse polymer to
          information rate from these distributions.
          
          Starting now with the attractive potential from the linear
-         response theory of surface condensation on a sphere."
+         response theory of surface condensation on a sphere.
+         
+         Trying to recover the Kramers exit rate from the absorption
+         potential well."
 
 nsteps = 2_000_000
 
