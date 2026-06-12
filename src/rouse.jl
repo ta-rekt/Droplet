@@ -98,6 +98,7 @@ function simulate!(r::RousePolymer)
     fullMode = r.saveMode === :full
     f   = r.attractiveForce
     invKappaPos = 1 / (r.stiffness * ps)
+    rMin = r.r_min === nothing ? nothing : r.r_min / ps   # hard repulsion in dimensionless units
 
     @inbounds for t in 2:r.nsteps
         mul!(r.drift, r.adjacency, r.pos)
@@ -126,6 +127,28 @@ function simulate!(r::RousePolymer)
 
         randn!(rng, r.noise)
         @. r.pos = r.pos - r.drift * r.dtDimless + r.noise * sdt
+
+        # Hard repulsion: reflect the tracked-bead separation off r_min.
+        # Mirrors r_curr ← 2 r_min − r_curr by rescaling the separation vector
+        # about the pair midpoint so the new distance is 2 r_min − d.
+        if rMin !== nothing
+            sx = r.pos[b1, 1] - r.pos[b2, 1]
+            sy = r.pos[b1, 2] - r.pos[b2, 2]
+            sz = r.pos[b1, 3] - r.pos[b2, 3]
+            smag = sqrt(sx*sx + sy*sy + sz*sz)
+            if smag < rMin && smag > 0
+                scale = (2 * rMin - smag) / smag
+                mx = 0.5 * (r.pos[b1, 1] + r.pos[b2, 1])
+                my = 0.5 * (r.pos[b1, 2] + r.pos[b2, 2])
+                mz = 0.5 * (r.pos[b1, 3] + r.pos[b2, 3])
+                r.pos[b1, 1] = mx + 0.5 * scale * sx
+                r.pos[b1, 2] = my + 0.5 * scale * sy
+                r.pos[b1, 3] = mz + 0.5 * scale * sz
+                r.pos[b2, 1] = mx - 0.5 * scale * sx
+                r.pos[b2, 2] = my - 0.5 * scale * sy
+                r.pos[b2, 3] = mz - 0.5 * scale * sz
+            end
+        end
 
         dx = (r.pos[b1, 1] - r.pos[b2, 1]) * ps
         dy = (r.pos[b1, 2] - r.pos[b2, 2]) * ps

@@ -444,6 +444,7 @@ Base.@kwdef mutable struct RousePolymer
     dt::Float64 = 1e-5                 # physical timestep
     nsteps::Int32 = 1000
     nbeads::Int32 = 100
+    r_min::Union{Nothing, Float64} = nothing   # hard repulsion distance
 
     # scaling
     posScale::Union{Nothing, Float64} = nothing

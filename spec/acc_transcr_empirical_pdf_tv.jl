@@ -64,7 +64,8 @@ Tc = 1.0                     # concentration update interval (CTMC time units pe
 snapshot_interval = 100.0   # snapshot every dt continuous time units
 nbins = 100
 
-mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260503"
+# mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260503"
+mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260423"
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.018, length=16))
@@ -266,7 +267,26 @@ function target!(res, args...)
     res["t_grid"] = t_grid
     res["nbins"] = nbins
     res["llr_drift"] = sum(llr[:,end]) / (nruns_total * t_grid[end])
-    res["llr_drift_stdev"] = std(llr[:, end]) / (sqrt(nruns_total) * t_grid[end])
+
+    # --- variability of the final LLR drift, split by source (law of total variance) ---
+    # rows are grouped by MC trace: trace ti occupies rows
+    #   (ti-1)*nruns_per_trace+1 : ti*nruns_per_trace
+    # the runs within a trace share one concentration path, so they differ only by
+    # transcription noise; different traces are independent concentration realizations.
+    endpoint = llr[:, end]
+    trace_means = [mean(@view endpoint[(ti-1)*nruns_per_trace+1 : ti*nruns_per_trace]) for ti in 1:ntraces]
+    trace_vars  = [var(@view endpoint[(ti-1)*nruns_per_trace+1 : ti*nruns_per_trace]) for ti in 1:ntraces]
+
+    var_within  = mean(trace_vars)          # transcription noise, conditional on the path
+    var_between = ntraces > 1 ? var(trace_means) : 0.0  # concentration fluctuations across traces
+    var_total   = var_within + var_between  # full spread of one LLR trace (≈ var(endpoint))
+
+    inv_T = 1.0 / t_grid[end]
+    res["llr_drift_stdev"]      = sqrt(var_total)   * inv_T   # total variability (error bar)
+    res["llr_drift_std_transc"] = sqrt(var_within)  * inv_T   # from transcription noise
+    res["llr_drift_std_conc"]   = sqrt(var_between) * inv_T   # from concentration fluctuations
+    # standard error of the *mean* drift, clustered on the ntraces independent paths:
+    res["llr_drift_sem"] = sqrt(var_between / ntraces + var_within / nruns_total) * inv_T
 
     # res["llr"] = Dict(k => llr[k, :] for k in 1:nruns_total)
     # res["acc_on"] = Dict(k => acc_on[k, :] for k in 1:nruns_total)
