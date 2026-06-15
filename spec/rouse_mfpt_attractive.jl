@@ -13,7 +13,7 @@ D = kBT / friction    # diffusion coefficient
 N = 100            # chain length
 firstBeadIdx = 1
 beadSep = N - 1
-dt = 0.05 * friction / stiffness   # 0.3 times the characteristic time
+dt = 0.001 * friction / stiffness   # 0.3 times the characteristic time
 
 # Surface adsorption model parameters
 nb              = 1.0
@@ -43,7 +43,7 @@ blurb = "Solving the Langevin equation for a Rouse polymer to
          Trying to recover the Kramers exit rate from the absorption
          potential well."
 
-nsteps = 20_000_000
+nsteps = 50_000_000
 
 function target!(res, args...)
     slist, keya, alpha, beta, blurb = args
@@ -64,7 +64,7 @@ function target!(res, args...)
     d2f_phi_inf = d2fb_dphi2(p.phi_inf, p)
     h0  = p.omega_b
     lam = sqrt(d2f_phi_inf / p.kappa)
-    dists = collect(range(p.R, stop=3*sqrt(N)*kuhnLength, length=500))
+    dists = collect(range(p.R, p.L, length=500))
 
     # obtained from linear-response concentration profile
     function adsorption_potential(x)
@@ -108,13 +108,13 @@ function target!(res, args...)
     res["alpha"]            = alpha
     res["beta"]             = beta
     res["surface_params"]   = Dict("nb" => p.nb, "chi_b" => p.chi_b, 
-                                   "kappa" => p.kappa, "omega_b" => p.omega_b,
-                                   "R" => p.R, "phi_inf" => p.phi_inf)
+                            "kappa" => p.kappa, "omega_b" => p.omega_b,
+                            "R" => p.R, "phi_inf" => p.phi_inf)
     res["rouse_params"]     = Dict("N" => N, "kuhn_length" => kuhnLength, "kBT" => kBT,
-                                   "friction" => friction, "stiffness" => stiffness,
-                                   "D" => D, "dt" => dt, "bead_separation" => beadSep,
-                                   "nsteps" => nsteps)
-    sample_skip = 100
+                            "friction" => friction, "stiffness" => stiffness,
+                            "D" => D, "dt" => dt, "bead_separation" => beadSep,
+                            "nsteps" => nsteps)
+    sample_skip = 500
     res["distance_traj"]    = r.distanceTraj[1:sample_skip:end]
     res["sample_skip"]      = sample_skip
     res["total_potential"]  = total_potential.(dists)

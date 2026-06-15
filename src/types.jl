@@ -14,7 +14,8 @@ abstract type AbstractPolyMonomer <: AbstractMonomer end
 abstract type AbstractFastBulkMonomer <: AbstractBulkMonomer end 
 
 export Species, Polymer, PolyMonomer, BulkMonomer, FastBulkMonomer, Lattice,
-       KMCSystem, KMCPolymerState, OneBurstDecoyModel, LLROptModel, RousePolymer
+       KMCSystem, KMCPolymerState, OneBurstDecoyModel, LLROptModel, RousePolymer,
+       Parameters
 
 ######## Generic species #######
 # MARK: -Generic
@@ -472,4 +473,19 @@ Base.@kwdef mutable struct RousePolymer
     # Convention: f(d_physical) = −dU/dr of the pair potential U(d).
     # e.g. U(d) = (k/2)(d−d₀)²  ⇒  attractiveForce = d -> -k*(d - d0).
     attractiveForce::Union{Nothing, Function} = nothing
+end
+
+###### Surface adbsorption
+
+Base.@kwdef struct Parameters
+    nb::Float64              = 1.0
+    chi_b::Float64           = 0.0
+    omega_b::Float64         = 0.0
+    kappa::Float64           = 1.0
+    phi_inf::Float64         = 0.06
+    L::Float64               = 10.0
+    R::Float64               = 3.0
+    eps::Float64             = 1e-10
+    conserve_volume::Bool    = false
+    parallel_plates::Bool    = false
 end

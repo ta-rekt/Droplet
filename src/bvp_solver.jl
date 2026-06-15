@@ -8,19 +8,6 @@
 # (the test's "single-sphere limit" comparison).  The full robust/shooting/
 # continuation pipeline in the Python file is not reproduced.
 
-Base.@kwdef struct Parameters
-    nb::Float64              = 1.0
-    chi_b::Float64           = 0.0
-    omega_b::Float64         = 0.0
-    kappa::Float64           = 1.0
-    phi_inf::Float64         = 0.06
-    L::Float64               = 10.0
-    R::Float64               = 3.0
-    eps::Float64             = 1e-10
-    conserve_volume::Bool    = false
-    parallel_plates::Bool    = false
-end
-
 is_spherical(p::Parameters) = isfinite(p.R)
 
 function with(p::Parameters;
