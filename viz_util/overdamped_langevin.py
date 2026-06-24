@@ -1,41 +1,9 @@
 import abc
 import numpy as np
-from typing import Optional
+from typing import Optional, Callable
 
 class Generator(metaclass=abc.ABCMeta):
-    """
-    Abstract class to model a Trajectory Generator. Classes inheriting
-    from this class should implement ``generate`` method.
-
-    Parameters
-    ----------
-    T : float
-        Total duration of each Trajectory.
-    dim : int, optional
-        Dimension of each Trajectory, by default 1.
-    N : int, optional
-        Number of trajectories, by default 1.
-    dt : float, optional
-        Time step of the Trajectory, by default 1.0.
-    seed : int, optional
-        Seed for the random number generator. If None, no seed is set.
-        By default None.
-
-    Attributes
-    ----------
-    T : float
-        Total duration of each Trajectory.
-    dim : int, optional
-        Dimension of each Trajectory, by default 1.
-    N : int, optional
-        Number of trajectories, by default 1.
-    dt : float, optional
-        Time step of the Trajectory, by default 1.0.
-    n  : int
-        Number of samples on each Trajectory.
-    rng : np.random.Generator
-        Random number generator.
-    """
+    """Abstract trajectory generator."""
 
     def __init__(
         self,
@@ -45,53 +13,40 @@ class Generator(metaclass=abc.ABCMeta):
         dt: float = 1.0,
         seed: Optional[int] = None,
     ):
-        # Simulation parameters
-        self.T = T  # Total time
-        self.dim = dim  # Trajectory dimension
-        self.N = N  # Number of trajectories
-        self.dt = dt  # Time step of the simulation
-        self.n = int(T / dt)  # Number of time steps
+        self.T = T                # Total time
+        self.dim = dim
+        self.N = N
+        self.dt = dt
+        self.n = int(T / dt)
         self.rng = (
             np.random.default_rng(seed) if seed is not None else np.random.default_rng()
         )
 
     @abc.abstractmethod
     def generate(self):
-        """
-        Abstract method that is implemented on inheriting classes.
-        It should compute a list of ``N`` Trajectory objects with the
-        given parameters using a method specific to the inheriting class.
-        """
+        ...
 
 class OverdampedHarmonicLangevin(Generator):
     """
-    Random Walk class from a multidimensional Langevin Equation
-    describing a Brownian particle in a harmonic potential.
+    Overdamped Langevin dynamics with an arbitrary spatial force F(r):
+
+        gamma dr/dt = F(r) + sqrt(2 kB T gamma) eta(t),
+        <eta(t) eta(t')> = delta(t - t')
+
+    Euler-Maruyama in physical units, optionally with reflecting walls.
 
     Parameters
     ----------
-    tau : float
-        Total duration of trajectories.
-    dim : int, optional
-        Trajectories dimension, by default 1.
-    N : int, optional
-        Number of simulated trajectories, by default 1.
-    dt : float, optional
-        Time step, by default 1.0.
-    gamma : float, optional
-        Friction coefficient, by default 1.
-    kB : float, optional
-        Boltzmann's constant, by default 1.
-    T : np.ndarray, optional
-        Array containing a time-series of temperatures, by default None.
-    kappa : np.ndarray, optional
-        Array containing a time-series of stiffness values, by default None.
-    r0 : Optional[np.ndarray]
-        Initial positions, by default None.
-    alpha0 : Optional[float]
-        Initial inverse variance, by default None.
-    seed : int, optional
-        Seed for random number generator, by default None.
+    tau, dim, N, dt, gamma, kB, T, F, r0, seed : as before.
+    r_min, r_max : float, optional
+        If given, coordinates are reflected at these walls after each step.
+        Use r_min to keep trajectories away from singularities like 1/r.
+    ab : (a, b) tuple, optional
+        If given, the durations of successive sojourns of coordinate 0 in
+        A = {r <= a} and B = {r >= b} (separated by the buffer (a, b)) are
+        tracked per walker. After ``generate()`` they are available, as ragged
+        lists of N 1-D int arrays, on ``self.A_intervals`` and ``self.B_intervals``.
+        See :class:`SojournTracker`.
     """
 
     def __init__(
@@ -99,166 +54,206 @@ class OverdampedHarmonicLangevin(Generator):
         tau: float,
         dim: int = 1,
         N: int = 1,
+        nskip: int = 1,
         dt: float = 1.0,
         gamma: float = 1.0,
         kB: float = 1.0,
-        T: Optional[np.ndarray] = None,
-        kappa: Optional[np.ndarray] = None,
+        T: float = 1.0,
+        F: Optional[Callable] = None,
         r0: Optional[np.ndarray] = None,
-        v0: Optional[np.ndarray] = None,
-        alpha0: Optional[np.ndarray] = None,
+        r_min: Optional[float] = None,
+        r_max: Optional[float] = None,
+        ab: Optional[tuple] = None,
         seed: Optional[int] = None,
     ):
-        
         super().__init__(tau, dim, N, dt, seed)
-        
-        # Main ID of generated trajectories
-        self.traj_id = "Overdamped Langevin with harmonic potential"
-        
-        if np.shape(T) == (self.n,):
-            self.T = T          # temperature of the bath
-        elif np.ndim(T) == 0:
-            self.T = np.ones(self.n) * T
-        else:
-            raise ValueError("T is expected to be a float or an "
-                            f"array of shape {(self.n,)}")
-            
-        if np.shape(kappa) == (self.n, self.N) or np.shape(kappa) == (self.n,):
-            self.kappa = kappa  # trap stiffness
-        elif np.ndim(kappa) == 0:
-            self.kappa = np.ones(self.n) * kappa
-        else:
-            raise ValueError("kappa is expected to be a float or an "
-                            f"array of shape {(self.n,)} or "
-                            f"{(self.n, self.N)}")
-        
-        # Model parameters
-        self.kB = kB        # Boltzmann's constant
-        self.gamma = gamma  # friction coefficient
-        
-        # Intial conditions
-        self.r0 = r0  # initial position
-        self.v0 = v0  # initial velocity
-        self.alpha0 = alpha0
-        
-        # Initialize variables before simulating
-        self._set_scaling_params()
-        self._set_simulation_vars()
-        self._set_init_cond()
-        self._set_noise()
-        
-    # Set characteristic values for each parameter
-    def _set_scaling_params(self):
-        self.T_scale = self.T[0]
-        self.kappa_scale = np.mean(self.kappa[0,...])
-        self.t_scale = self.gamma / self.kappa_scale
-        self.r_scale = np.sqrt(2 * self.kB * self.T_scale / self.kappa_scale)
-        self.v_scale = self.r_scale / self.t_scale
-        self.alpha_scale = self.kappa_scale / (2 * self.kB * self.T_scale)
-        
-        # Simulation parameters and dynamic variables
-    def _set_simulation_vars(self):
-        # Simulation parameters
-        self.dt = self.dt / self.t_scale          # Dimensionless timestep
-        self.shape = (self.n, self.dim, self.N)   # Shape of dynamic variables
-        self.kappa = self.kappa / self.kappa_scale  # Dimensionless stiffness
-        self.T = self.T / self.T_scale            # Dimensionless temperature
-        
-        # Dynamic variables
-        self.t = np.arange(self.n) * self.dt
-        self.r = np.empty(self.shape)
-        self.v = np.empty(self.shape)
-        self.alpha = np.empty(self.kappa.shape)
-        
-        # Set initial conditions
-    def _set_init_cond(self):
-        # Initial inverse variance
-        if self.alpha0 is None:
-            self.alpha[0] = self.alpha_scale
-        elif np.shape(self.alpha0) == (self.dim, self.N) or np.ndim(self.alpha0) == 0:
-            self.alpha[0] = self.alpha0  # User input
-        else:
+        self.traj_id = "Overdamped Langevin with arbitrary force"
+
+        self.nskip = nskip
+        self.ns = (self.n - 1) // nskip + 1          # robust to n % nskip != 0
+
+        self.T_bath = T
+
+        if not callable(F):
             raise ValueError(
-                "alpha0 is expected to be a float or an "
-                f"array of shape {(self.dim, self.N)}"
+                "F is expected to be a callable F(r) -> force, with r and the "
+                "return value of shape (dim, N)."
             )
-        self.alpha[0] /= self.alpha_scale
-        self.alpha[1] = self.alpha[0] * self.kappa[0] - (self.alpha[0] ** 2) * self.T[0]
+        self.F = F
+
+        self.kB = kB
+        self.gamma = gamma
+        self.r0 = r0
+
+        self.r_min = r_min
+        self.r_max = r_max
+
+        if ab is not None:
+            assert ab[0] <= ab[1], "a must be < b"
         
-        # Initial positions
+        self.ab = ab
+
+        self.A_intervals = [[] for i in range(self.N)]
+        self.B_intervals = [[] for i in range(self.N)]
+
+        self.shape = (self.ns, self.dim, self.N)
+        self.r = np.empty(self.shape)
+
+        self._set_init_cond()
+        # self._set_noise()
+
+    def _set_init_cond(self):
         if self.r0 is None:
-            # Sample initial position from equilibrium distribution if none is given
-            sigma_x0 = (2 * self.alpha_scale) ** (-1/2)
-            self.r[0] = self.rng.normal(scale=sigma_x0, 
-                                        size=(self.dim, self.N))   # Default
+            self.r[0] = 0.0
+
         elif np.shape(self.r0) == (self.dim, self.N) or np.ndim(self.r0) == 0:
-            self.r[0] = self.r0  # User input
+            self.r[0] = self.r0
         else:
             raise ValueError(
                 "r0 is expected to be a float or an "
                 f"array of shape {(self.dim, self.N)}"
             )
-        self.r[0] /= self.r_scale
-        
-        # Initial velocity
-        if self.v0 is None:
-            # Sample initial position from equilibrium distribution if none is given
-            self.v[0] = self.rng.normal(scale=self.v_scale, 
-                                        size=(self.dim, self.N))   # Default
-        elif np.shape(self.v0) == (self.dim, self.N) or np.ndim(self.v0) == 0:
-            self.v[0] = self.v0  # User input
-        else:
-            raise ValueError(
-                "v0 is expected to be a float or an "
-                f"array of shape {(self.dim, self.N)}"
-            )
-        self.v[0] /= self.v_scale
-        
-    # Fill noise array in advance
+
     def _set_noise(self):
-        self.noise = self.rng.normal(size=self.shape)
-    
-    # Solve the dimensionless Langevin equation
+        self.noise = self.rng.normal(size=(self.dim, self.N))   # was (1, dim, N)
+
     def _solve(self):
         sqrt_dt = np.sqrt(self.dt)
-        
-        for i in range(self.n - 1):
-            # Position
-            self.r[i + 1] = (self.r[i] - self.kappa[i] * self.r[i] * self.dt
-                                       + self.noise[i] * sqrt_dt * np.sqrt(self.T[i]))
-            
-            # Velocity
-            self.v[i + 1] = (self.r[i + 1] - self.r[i]) / self.dt
-            
-            # 4th-order Runge-Kutta for inverse variance
-            # f(t_i, alpha[i]) = alpha[i] * kappa[i] - alpha[i]^2 * T[i]
-            kappa_halfstep = (self.kappa[i + 1] + self.kappa[i]) / 2
-            T_halfstep = (self.T[i + 1] + self.T[i]) / 2
+        diff = np.sqrt(2.0 * self.kB * self.T_bath / self.gamma)
+        inv_gamma = 1.0 / self.gamma
+        r_min, r_max = self.r_min, self.r_max
+        r_curr = self.r[0].copy()                 # high-res state; r[0] stays the IC
 
-            k1 = self.alpha[i] * self.kappa[i] - (self.alpha[i] ** 2) * self.T[i]
+        if self.ab is not None:
+            a, b = self.ab
+            tracker = SojournTracker(a, b, self.N)
+            tracker.init_state(r_curr[0])         # classify the initial coordinate
 
-            m2 = self.alpha[i] + self.dt * k1 / 2
-            k2 = m2 * kappa_halfstep - (m2 ** 2) * T_halfstep
+        for i in range(1, self.n):                # i = high-res step index
+            self._set_noise()
+            r_curr = (
+                r_curr
+                + self.F(r_curr) * inv_gamma * self.dt
+                + diff * sqrt_dt * self.noise
+            )
+            if r_min is not None:
+                r_curr = np.where(r_curr < r_min, 2 * r_min - r_curr, r_curr)
+            if r_max is not None:
+                r_curr = np.where(r_curr > r_max, 2 * r_max - r_curr, r_curr)
 
-            m3 = self.alpha[i] + self.dt * k2 / 2
-            k3 = m3 * kappa_halfstep - (m3 ** 2) * T_halfstep
+            if self.ab is not None:               # vectorised over all N walkers
+                tracker.update(r_curr[0], i)
 
-            m4 = self.alpha[i] + self.dt * k3
-            k4 = m4 * self.kappa[i + 1] - (m4 ** 2) * self.T[i + 1]
+            if i % self.nskip:
+                j = i // self.nskip
+                if j < self.ns:
+                    self.r[j] = r_curr
 
-            self.alpha[i + 1] = self.alpha[i] + self.dt * (k1 + 2*k2 + 2*k3 + k4) / 6
-    
-    # Recover dimensions
-    def _set_scale(self):
-        self.r *= self.r_scale
-        self.v *= self.v_scale
-        self.alpha *= self.alpha_scale
-        self.t *= self.t_scale
-        self.dt *= self.t_scale
-        self.kappa *= self.kappa_scale
-        self.T *= self.T_scale
-    
-    # Simulate the process
+        if self.ab is not None:
+            self.A_intervals, self.B_intervals = tracker.as_arrays()
+
     def generate(self):
-        self._solve()      # solve the Langevin equation
-        self._set_scale()  # recover dimensions
+        self._solve()
+
+
+class SojournTracker:
+    """
+    Vectorised tracker of sojourn durations in two regions of a 1-D coordinate,
+
+        A = {r <= a}    and    B = {r >= b},
+
+    separated by a buffer (a, b), for ``N`` independent walkers advanced in
+    lock-step (Schmitt-trigger / hysteresis semantics).  A walker is "assigned"
+    to whichever region it last reached: a sojourn in A opens when the walker
+    first reaches ``r <= a`` and closes the step it first reaches ``r >= b``
+    (and symmetrically for B).  Excursions into the buffer ``a < r < b`` never
+    change the assignment.
+
+    Durations (in integration steps) are stored as a *ragged* array — one list
+    per walker — appended to only on the rare steps where a walker actually
+    crosses, so the per-step cost is the two O(N) boolean masks below rather
+    than the O(N) Python loop of the original scalar implementation.
+
+    Convention (kept identical to that scalar implementation): an A-sojourn that
+    opened at step ``s`` and is closed by a crossing detected at step ``i`` is
+    recorded with duration ``i - s``; the entry step of the first sojourn of
+    each walker is taken to be 0.
+    """
+
+    def __init__(self, a, b, N):
+        assert a <= b, "need a <= b for the buffer [a, b]"
+        self.a, self.b, self.N = a, b, N
+        self.A_intervals = [[] for _ in range(N)]
+        self.B_intervals = [[] for _ in range(N)]
+        self.in_A = np.zeros(N, dtype=bool)        # last reached A (awaiting B)
+        self.in_B = np.zeros(N, dtype=bool)        # last reached B (awaiting A)
+        self.A_entry = np.zeros(N, dtype=np.int64)
+        self.B_entry = np.zeros(N, dtype=np.int64)
+
+    def init_state(self, r0):
+        """Classify the initial coordinate r0 (shape (N,)) into A vs B."""
+        r0 = np.asarray(r0, dtype=float).reshape(self.N)
+        self.in_A = r0 <= self.a
+        self.in_B = ~self.in_A                      # i.e. r0 > a, as in the original
+
+    def update(self, r0, i):
+        """Advance the trackers by one step; r0 = coordinate (shape (N,)) at step i."""
+        a, b = self.a, self.b
+        r0 = np.asarray(r0).reshape(self.N)
+
+        # A -> B: walkers assigned to A that have now reached r >= b close an A-sojourn.
+        cross_AB = (r0 >= b) & self.in_A
+        if cross_AB.any():
+            for k in np.flatnonzero(cross_AB):
+                self.A_intervals[k].append(int(i - self.A_entry[k]))
+            self.B_entry[cross_AB] = i
+            self.in_A[cross_AB] = False
+            self.in_B[cross_AB] = True
+
+        # B -> A: walkers assigned to B that have now reached r <= a close a B-sojourn.
+        # Evaluated after the A->B flip above, matching the original two-`if` order.
+        cross_BA = (r0 <= a) & self.in_B
+        if cross_BA.any():
+            for k in np.flatnonzero(cross_BA):
+                self.B_intervals[k].append(int(i - self.B_entry[k]))
+            self.A_entry[cross_BA] = i
+            self.in_B[cross_BA] = False
+            self.in_A[cross_BA] = True
+
+    def as_arrays(self):
+        """Return (A_intervals, B_intervals) as lists of N 1-D int64 arrays."""
+        A = [np.asarray(x, dtype=np.int64) for x in self.A_intervals]
+        B = [np.asarray(x, dtype=np.int64) for x in self.B_intervals]
+        return A, B
+
+
+def track_sojourns(positions, a, b):
+    """
+    Offline / testable driver for :class:`SojournTracker`.
+
+    Parameters
+    ----------
+    positions : array_like, shape (n, N) or (n,)
+        The tracked coordinate for n steps and N walkers (a 1-D input is treated
+        as a single walker).  ``positions[0]`` sets the initial A/B assignment;
+        steps ``1 .. n-1`` are then fed through the tracker, exactly as ``_solve``
+        feeds the live trajectory.
+    a, b : float
+        Buffer boundaries, ``a <= b``.
+
+    Returns
+    -------
+    (A_intervals, B_intervals) : tuple of lists of N 1-D int64 arrays
+        Per-walker sojourn durations, identical to what ``_solve`` stores on
+        ``sim.A_intervals`` / ``sim.B_intervals``.
+    """
+    positions = np.asarray(positions, dtype=float)
+    if positions.ndim == 1:
+        positions = positions[:, None]
+    n, N = positions.shape
+
+    tr = SojournTracker(a, b, N)
+    tr.init_state(positions[0])
+    for i in range(1, n):
+        tr.update(positions[i], i)
+    return tr.as_arrays()
