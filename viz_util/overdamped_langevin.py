@@ -47,6 +47,12 @@ class OverdampedHarmonicLangevin(Generator):
         tracked per walker. After ``generate()`` they are available, as ragged
         lists of N 1-D int arrays, on ``self.A_intervals`` and ``self.B_intervals``.
         See :class:`SojournTracker`.
+    store : {"full", "light"}, optional
+        "full" (default) keeps the subsampled trajectory of every walker
+        (``self.r`` has shape ``(ns, dim, N)``). "light" keeps only walker 0
+        (shape ``(ns, dim, 1)``), which avoids the O(ns*N) memory blowup when
+        many walkers are used purely for sojourn statistics; the A/B intervals
+        are still tracked over all N walkers.
     """
 
     def __init__(
@@ -64,6 +70,7 @@ class OverdampedHarmonicLangevin(Generator):
         r_min: Optional[float] = None,
         r_max: Optional[float] = None,
         ab: Optional[tuple] = None,
+        store: str = "full",
         seed: Optional[int] = None,
     ):
         super().__init__(tau, dim, N, dt, seed)
@@ -93,10 +100,14 @@ class OverdampedHarmonicLangevin(Generator):
         
         self.ab = ab
 
+        if store not in ("full", "light"):
+            raise ValueError("store must be 'full' or 'light'")
+        self.store = store
+
         self.A_intervals = [[] for i in range(self.N)]
         self.B_intervals = [[] for i in range(self.N)]
 
-        self.shape = (self.ns, self.dim, self.N)
+        self.shape = (self.ns, self.dim, 1 if store == "light" else self.N)
         self.r = np.empty(self.shape)
 
         self._set_init_cond()
@@ -122,7 +133,10 @@ class OverdampedHarmonicLangevin(Generator):
         diff = np.sqrt(2.0 * self.kB * self.T_bath / self.gamma)
         inv_gamma = 1.0 / self.gamma
         r_min, r_max = self.r_min, self.r_max
-        r_curr = self.r[0].copy()                 # high-res state; r[0] stays the IC
+        # high-res integration state is always full width (dim, N), independent of
+        # the storage mode (which only controls how many walkers self.r keeps).
+        r_curr = np.empty((self.dim, self.N))
+        r_curr[...] = 0.0 if self.r0 is None else self.r0
 
         if self.ab is not None:
             a, b = self.ab
@@ -144,10 +158,10 @@ class OverdampedHarmonicLangevin(Generator):
             if self.ab is not None:               # vectorised over all N walkers
                 tracker.update(r_curr[0], i)
 
-            if i % self.nskip:
+            if i % self.nskip == 0:
                 j = i // self.nskip
                 if j < self.ns:
-                    self.r[j] = r_curr
+                    self.r[j] = r_curr[:, :1] if self.store == "light" else r_curr
 
         if self.ab is not None:
             self.A_intervals, self.B_intervals = tracker.as_arrays()

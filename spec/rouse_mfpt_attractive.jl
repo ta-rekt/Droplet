@@ -86,8 +86,8 @@ function target!(res, args...)
 
     # primary run: distance-only mode, long trajectory for contact statistics
     r = RousePolymer(;
-        boltzmannConst  = kBT, 
-        temperature     = 1.0,
+        boltzmannConst  = 1.0, 
+        temperature     = kBT,
         friction        = friction, 
         kuhnLength      = kuhnLength,
         r_min           = p.R,

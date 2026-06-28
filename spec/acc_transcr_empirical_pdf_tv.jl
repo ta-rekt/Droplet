@@ -65,10 +65,11 @@ snapshot_interval = 100.0   # snapshot every dt continuous time units
 nbins = 100
 
 # mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260503"
-mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260423"
+# mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260423"
+mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260623"
 
 # varied parameters
-alphas = collect(range(0.003, stop=0.018, length=16))
+alphas = collect(range(0.003, stop=0.014, length=12))
 # alphas = [0.003]
 betas = [0]
 nparams = length(alphas)
@@ -94,11 +95,11 @@ function _moving_average(v::Vector{Float64}, w::Int)
 end
 
 
-const _MA_WINDOW = 2000   # moving-average window for MC concentration traces
+const _MA_WINDOW = 1000   # moving-average window for MC concentration traces
 
 # --- load MC concentration traces for a given alpha ---
 function _load_mc_traces(alpha)
-    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_d_50_c_%.3f", alpha))
+    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_d_30_c_%.3f", alpha))
     traces = Vector{Float64}[]
     for f in sort(readdir(folder))
         endswith(f, ".json") || continue
