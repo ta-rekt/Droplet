@@ -498,21 +498,41 @@ function _solve_newton_sparse(geom::Geometry, mu_inf::Float64,
     A = build_linear_operator(geom)
     res! = make_residual_inplace(geom, mu_inf)
     x = copy(x0)
+    xtrial = Vector{Float64}(undef, n)
     F = Vector{Float64}(undef, n)
     diagv = Vector{Float64}(undef, n)
     res!(F, x, nothing)
+    nrm = maximum(abs, F)
     it = 0
     for outer it in 1:maxiter
-        maximum(abs, F) < f_tol && break
+        nrm < f_tol && break
         @inbounds for k in 1:n
             diagv[k] = d2fb_dphi2(x[k], p)
         end
-        x .-= (A - Diagonal(diagv)) \ F
-        res!(F, x, nothing)
+        δ = (A - Diagonal(diagv)) \ F
+        # Backtracking line search: keep halving the step until ‖F‖ decreases,
+        # clamping φ to the physical interval.  λ = 1 (full Newton) is accepted
+        # on the first try for well-behaved problems, so smooth solves are
+        # unchanged; stiff condensation/spinodal solves get damped steps and a
+        # stalled step (no descent at a fold) ends the iteration cleanly.
+        λ = 1.0
+        accepted = false
+        for _ in 1:30
+            @inbounds @. xtrial = clamp(x - λ * δ, p.eps, 1.0 - p.eps)
+            res!(F, xtrial, nothing)
+            newnrm = maximum(abs, F)
+            if newnrm < nrm
+                @inbounds @. x = xtrial
+                nrm = newnrm
+                accepted = true
+                break
+            end
+            λ *= 0.5
+        end
+        accepted || break
     end
-    resnorm = maximum(abs, F)
-    verbose && println("  sparse Newton: $it iters, |F| = $resnorm")
-    return x, resnorm < f_tol
+    verbose && println("  sparse Newton: $it iters, |F| = $nrm")
+    return x, nrm < f_tol
 end
 
 function _run_newton(res!, x0::AbstractVector, f_tol::Real, maxiter::Int,
@@ -531,11 +551,14 @@ function solve_two_spheres(p::Parameters, d::Real;
                            f_tol::Real = 1e-6,
                            maxiter::Int = 200,
                            verbose::Bool = false,
-                           omega_continuation::Bool = true)
+                           omega_continuation::Bool = true,
+                           x0_init = nothing)
     geom   = build_geometry(p, d; rho_max = rho_max, z_buf = z_buf,
                             Nrho = Nrho, Nz = Nz)
     mu_inf = compute_mu_inf(p)
-    x0     = initial_guess(geom)
+    # Optional warm start (e.g. a neighbouring-d solution interpolated onto this
+    # grid); must already match n_unknowns(geom).  Falls back to the analytic guess.
+    x0     = x0_init === nothing ? initial_guess(geom) : x0_init
 
     x_sol, success = try
         _solve_newton_sparse(geom, mu_inf, x0;

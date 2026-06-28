@@ -58,8 +58,10 @@ def grid_density_cloud(phi, rho_grid, z_grid, R, z_c1, z_c2, phi_inf, n_theta):
     TH   = theta[np.newaxis, np.newaxis, :]
     PHI3 = phi[:, :, np.newaxis] * np.ones(n_theta)
 
-    x = (RHO * np.cos(TH)).ravel()
-    y = (RHO * np.sin(TH)).ravel()
+    # x, y depend on (rho, theta) but must be broadcast across the z axis too,
+    # so every array below is the full (Nrho, Nz, n_theta) shape.
+    x = np.broadcast_to(RHO * np.cos(TH), PHI3.shape).ravel()
+    y = np.broadcast_to(RHO * np.sin(TH), PHI3.shape).ravel()
     z = np.broadcast_to(ZZ, PHI3.shape).ravel()
     rho_flat = np.broadcast_to(RHO, PHI3.shape).ravel()
     phi_vals = PHI3.ravel()
@@ -69,7 +71,13 @@ def grid_density_cloud(phi, rho_grid, z_grid, R, z_c1, z_c2, phi_inf, n_theta):
     x, y, z, phi_vals = x[outside], y[outside], z[outside], phi_vals[outside]
 
     phi_excess = np.clip(phi_vals - phi_inf, 0.0, None)
-    alpha_vals = phi_excess / max(phi_excess.max(), 1e-12)
+    amax = max(phi_excess.max(), 1e-12)
+    # Drop the dilute bulk (alpha ~ 0): keep only the enriched wetting/bridge
+    # shells so the scatter is small enough to render (the dense capillary
+    # bridge of the new bridged branch shows up here as a bright neck).
+    keep = phi_excess > 0.02 * amax
+    x, y, z, phi_vals = x[keep], y[keep], z[keep], phi_vals[keep]
+    alpha_vals = phi_excess[keep] / amax
 
     return np.column_stack([x, y, z]), phi_vals, alpha_vals
 
@@ -87,6 +95,15 @@ def render(result, d_index, out_path, n_theta):
     rho = _to_array(result["profile_rho"][d_index])
     z   = _to_array(result["profile_z"][d_index])
     phi = np.array(result["profile_phi"][d_index], dtype=float)  # (Nrho, Nz)
+
+    # Label which branch this equilibrium profile came from (two-branch spec).
+    d_grid_all = _to_array(result.get("d_grid", []))
+    branch_arr = result.get("branch", None)
+    branch_label = ""
+    if branch_arr is not None and d_grid_all.size:
+        kk = int(np.argmin(np.abs(d_grid_all - d)))
+        branch_label = {1: ", branch=unbridged", 2: ", branch=bridged"}.get(
+            int(branch_arr[kk]), "")
 
     z_c1 = 0.0
     z_c2 = 2.0 * R + d
@@ -130,7 +147,7 @@ def render(result, d_index, out_path, n_theta):
     ax.set_zlabel("z")
     ax.set_title(
         f"two-sphere wet field: phi_inf={phi_inf}, omega_b={omega_b}, "
-        f"R={R}, d={d:.3f}"
+        f"R={R}, d={d:.3f}{branch_label}"
         f"\nphi range = [{phi.min():.4f}, {phi.max():.4f}]"
     )
     ax.view_init(elev=0, azim=0)

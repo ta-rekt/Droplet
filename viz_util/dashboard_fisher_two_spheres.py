@@ -26,9 +26,9 @@ from viz_util.bvp_solver import Parameters, d2fb_dphi2
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
-EXP_NAME = "fisher_two_spheres_rep"
+EXP_NAME = "fisher_two_spheres_test"
 # OUT_DATE = date.today().strftime("%Y%m%d")
-OUT_DATE = "20260520"
+OUT_DATE = "20260627"
 DATA_DIR = f"data/{OUT_DATE}/{EXP_NAME}"
 OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}.png"
 OUT_JSON = f"media/figures/{OUT_DATE}/{EXP_NAME}.json"
@@ -49,13 +49,21 @@ if not files:
     sys.exit(f"no output_cpu*.json under {DATA_DIR}")
 
 records = []
+
+def _collect(node):
+    # Descend through the sweep's nested {keya: {keyb: record}} dicts (the Julia
+    # sim/sweep.jl driver writes two levels; the Python driver writes three) and
+    # collect the record leaves, identified by their payload keys.
+    if isinstance(node, dict):
+        if "phi_inf" in node and "phi_probe" in node:
+            records.append(node)
+        else:
+            for v in node.values():
+                _collect(v)
+
 for fp in files:
     with open(fp) as f:
-        blob = json.load(f)
-    for _, by_b in blob.items():
-        for _, by_c in by_b.items():
-            for _, rec in by_c.items():
-                records.append(rec)
+        _collect(json.load(f))
 
 print(f"loaded {len(records)} records from {len(files)} files")
 
