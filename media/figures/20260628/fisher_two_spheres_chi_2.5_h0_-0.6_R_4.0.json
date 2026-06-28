@@ -1,0 +1,132 @@
+{
+  "blurb": "Fisher information rate from the full 2D two-sphere BVP, capturing both sides of the capillary-bridging bifurcation.  Sweeps phi_inf (alphas, as a fraction of the dilute binodal) at fixed (omega_b, R, chi_b=2.5); for each phi_inf solves the unbridged (inward) and bridged (outward, dense-seeded) branches on a d-grid, takes the equilibrium U_full(d)=min(F)-F_ref and Phi_surf(d) on that branch, and integrates the polymer P_eq(d) to get phi_probe.",
+  "chi_b": 2.5,
+  "s": 150.0,
+  "a": 1.0,
+  "kb": 1.0,
+  "ku": 1.0,
+  "groups": [
+    {
+      "omega_b": -0.6,
+      "R": 4.0,
+      "phi_inf": [
+        0.1303146974304583
+      ],
+      "phi_probe": [
+        0.9253039293196109
+      ],
+      "d_grid": [
+        0.2,
+        0.4,
+        0.6000000000000001,
+        0.8,
+        1.0,
+        1.2000000000000002,
+        1.4000000000000001,
+        1.6,
+        1.8,
+        2.0,
+        2.2,
+        2.4000000000000004,
+        2.6,
+        2.8000000000000003,
+        3.0,
+        3.2,
+        3.4000000000000004,
+        3.6,
+        3.8000000000000003,
+        4.0,
+        4.2,
+        4.4,
+        4.6000000000000005,
+        4.800000000000001,
+        5.0,
+        5.2,
+        5.4,
+        5.6000000000000005,
+        5.800000000000001,
+        6.0
+      ],
+      "U_full_grid": [
+        [
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          -0.40544276735117535,
+          -0.21621184335624832,
+          -0.1305227630839454,
+          -0.08212943202052259,
+          -0.052859285043439286,
+          -0.034449680299559304,
+          -0.022627523138524452,
+          -0.015058393647706225,
+          -0.00989562243118769,
+          -0.006570606242362942,
+          -0.004370004261843974
+        ]
+      ],
+      "Phi_surf_grid": [
+        [
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          0.9253229435752516,
+          0.92531015064889,
+          0.9253051390551288,
+          0.9253024807947926,
+          0.9253009140759034,
+          0.9252999435149121,
+          0.9252993254092109,
+          0.9252989251419876,
+          0.9252986631558495,
+          0.9252984904715064,
+          0.9252983761100062
+        ]
+      ],
+      "fisher_base": [
+        NaN
+      ],
+      "fisher_probe": [
+        NaN
+      ],
+      "phi_R": [
+        0.402374706345895
+      ],
+      "fisher_upper": [
+        0.16731133163185183
+      ]
+    }
+  ]
+}

@@ -33,11 +33,11 @@ const L_PARAM       = 20.0
 const EPS_PARAM     = 1e-6
 
 const D_MIN_FACTOR  = 0.05
-const D_MAX_FACTOR  = 3.0
-const N_D           = 20
+const D_MAX_FACTOR  = 1.5
+const N_D           = 30
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 100
+const NRHO          = 120
 const DZ_TARGET     = 0.1
 const RHO_MAX       = 10.0
 const Z_BUF         = 4.0
@@ -67,7 +67,7 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 # as a fraction of the binodal (near-saturation), where bridging is active.
 # alphas = BINODAL .* collect(range(0.80, 0.99; length = 20))   # phi_inf
 alphas = [0.90 * BINODAL]
-betas  = [-0.6]                                                  # omega_b
+betas  = [-0.5]                                                  # omega_b
 
 nparams = length(alphas)
 
