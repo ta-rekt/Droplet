@@ -31,7 +31,7 @@ const D_MAX_FACTOR  = 3.0
 const N_D           = 20
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 100
+const NRHO          = 50
 const DZ_TARGET     = 0.05
 const RHO_MAX       = 10.0
 const Z_BUF         = 4.0

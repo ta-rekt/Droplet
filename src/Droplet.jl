@@ -6,6 +6,7 @@ module Droplet
     using Distributions
     using Serialization
     using LinearAlgebra
+    using SparseArrays
     using JSON
     using DataStructures
     using OrderedCollections

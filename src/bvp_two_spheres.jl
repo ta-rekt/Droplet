@@ -401,6 +401,120 @@ end
 # Solver
 # ------------------------------------------------------------------
 
+# Constant linear part of the residual Jacobian: A = d/dx[ kappa * Lap(scatter(x)) ]
+# restricted to the unknown cells.  Because phi = scatter(x) is affine in x and
+# every unknown cell holds its own value directly, the full Jacobian is
+#     J(x) = A - Diagonal(d2fb_dphi2.(x)),
+# with A independent of x.  Assembling A once turns each Newton step into a
+# single sparse LU instead of an unpreconditioned matrix-free GMRES solve
+# (hundreds of residual evaluations per step).  Ghost cells are expanded into
+# their clean P1/P2 corner cells with the same weights scatter! uses; those
+# corners are guaranteed fluid (unknown or Dirichlet), so there is no recursion.
+function build_linear_operator(geom::Geometry)
+    p = geom.p
+    Nrho, Nz = geom.Nrho, geom.Nz
+    κ      = p.kappa
+    drho2  = geom.drho^2
+    dz2    = geom.dz^2
+
+    unk_idx = zeros(Int, Nrho, Nz)
+    k = 0
+    @inbounds for j in 1:Nz, i in 1:Nrho
+        if geom.unk_mask[i, j]
+            k += 1
+            unk_idx[i, j] = k
+        end
+    end
+    n = k
+
+    ghost_idx = zeros(Int, Nrho, Nz)
+    @inbounds for g in 1:n_ghost(geom)
+        ghost_idx[geom.ghost_i[g], geom.ghost_j[g]] = g
+    end
+
+    Irow = Int[]; Jcol = Int[]; Val = Float64[]
+
+    # An unknown corner contributes directly; a Dirichlet corner is constant.
+    add_unk! = function (row, ci, cj, w)
+        (w == 0.0 || !geom.unk_mask[ci, cj]) && return
+        push!(Irow, row); push!(Jcol, unk_idx[ci, cj]); push!(Val, w)
+    end
+
+    # Accumulate the dependence of phi[ci,cj] (scaled by coef) on the unknowns.
+    add_phi! = function (row, ci, cj, coef)
+        coef == 0.0 && return
+        if geom.unk_mask[ci, cj]
+            push!(Irow, row); push!(Jcol, unk_idx[ci, cj]); push!(Val, coef)
+        elseif geom.dir_mask[ci, cj]
+            return
+        else
+            g = ghost_idx[ci, cj]
+            i01 = geom.ghost_i0_1[g]; j01 = geom.ghost_j0_1[g]
+            c1  = coef * geom.ghost_coef_phi1[g]
+            add_unk!(row, i01,     j01,     c1 * geom.ghost_wts_1[1, g])
+            add_unk!(row, i01 + 1, j01,     c1 * geom.ghost_wts_1[2, g])
+            add_unk!(row, i01,     j01 + 1, c1 * geom.ghost_wts_1[3, g])
+            add_unk!(row, i01 + 1, j01 + 1, c1 * geom.ghost_wts_1[4, g])
+            i02 = geom.ghost_i0_2[g]; j02 = geom.ghost_j0_2[g]
+            c2  = coef * geom.ghost_coef_phi2[g]
+            add_unk!(row, i02,     j02,     c2 * geom.ghost_wts_2[1, g])
+            add_unk!(row, i02 + 1, j02,     c2 * geom.ghost_wts_2[2, g])
+            add_unk!(row, i02,     j02 + 1, c2 * geom.ghost_wts_2[3, g])
+            add_unk!(row, i02 + 1, j02 + 1, c2 * geom.ghost_wts_2[4, g])
+        end
+    end
+
+    @inbounds for j in 1:Nz, i in 1:Nrho
+        geom.unk_mask[i, j] || continue
+        row = unk_idx[i, j]
+        if i == 1
+            # Axis stencil: 4(phi[2,j]-phi[1,j])/drho^2 + d2/dz2 (mirror ghost).
+            add_phi!(row, 1, j,     κ * (-4.0 / drho2 - 2.0 / dz2))
+            add_phi!(row, 2, j,     κ * (4.0 / drho2))
+            add_phi!(row, 1, j + 1, κ / dz2)
+            add_phi!(row, 1, j - 1, κ / dz2)
+        else
+            cross = 1.0 / (2.0 * geom.drho * geom.rho_grid[i])
+            add_phi!(row, i,     j,     κ * (-2.0 / drho2 - 2.0 / dz2))
+            add_phi!(row, i + 1, j,     κ * (1.0 / drho2 + cross))
+            add_phi!(row, i - 1, j,     κ * (1.0 / drho2 - cross))
+            add_phi!(row, i,     j + 1, κ / dz2)
+            add_phi!(row, i,     j - 1, κ / dz2)
+        end
+    end
+
+    return sparse(Irow, Jcol, Val, n, n)
+end
+
+# Newton with the analytic sparse Jacobian J = A - Diagonal(d2fb_dphi2.(x)) and a
+# direct sparse LU per step.  Returns (x, converged).  Mirrors the abstol/maxiter
+# semantics of _run_newton but is matrix-free-GMRES-free.
+function _solve_newton_sparse(geom::Geometry, mu_inf::Float64,
+                              x0::AbstractVector;
+                              f_tol::Real = 1e-6, maxiter::Int = 200,
+                              verbose::Bool = false)
+    p = geom.p
+    n = n_unknowns(geom)
+    A = build_linear_operator(geom)
+    res! = make_residual_inplace(geom, mu_inf)
+    x = copy(x0)
+    F = Vector{Float64}(undef, n)
+    diagv = Vector{Float64}(undef, n)
+    res!(F, x, nothing)
+    it = 0
+    for outer it in 1:maxiter
+        maximum(abs, F) < f_tol && break
+        @inbounds for k in 1:n
+            diagv[k] = d2fb_dphi2(x[k], p)
+        end
+        x .-= (A - Diagonal(diagv)) \ F
+        res!(F, x, nothing)
+    end
+    resnorm = maximum(abs, F)
+    verbose && println("  sparse Newton: $it iters, |F| = $resnorm")
+    return x, resnorm < f_tol
+end
+
 function _run_newton(res!, x0::AbstractVector, f_tol::Real, maxiter::Int,
                      verbose::Bool)
     prob = NonlinearProblem(res!, x0)
@@ -423,23 +537,12 @@ function solve_two_spheres(p::Parameters, d::Real;
     mu_inf = compute_mu_inf(p)
     x0     = initial_guess(geom)
 
-    res!  = make_residual_inplace(geom, mu_inf)
-    sol = try
-        _run_newton(res!, x0, f_tol, maxiter, verbose)
+    x_sol, success = try
+        _solve_newton_sparse(geom, mu_inf, x0;
+                             f_tol = f_tol, maxiter = maxiter, verbose = verbose)
     catch e
         verbose && @info "primary solve threw" exception = e
-        nothing
-    end
-
-    x_sol = sol === nothing ? copy(x0) : copy(sol.u)
-    success = sol !== nothing && SciMLBase.successful_retcode(sol)
-
-    # Verify the residual actually meets f_tol; some retcodes flag stagnation
-    # rather than divergence.
-    if success
-        Fcheck = Vector{Float64}(undef, n_unknowns(geom))
-        res!(Fcheck, x_sol, nothing)
-        success = maximum(abs, Fcheck) < 10.0 * f_tol
+        (copy(x0), false)
     end
 
     if !success && omega_continuation && p.omega_b != 0.0
@@ -456,21 +559,18 @@ function solve_two_spheres(p::Parameters, d::Real;
             p_k = with(p; omega_b = frac * p.omega_b)
             geom_k = build_geometry(p_k, d; rho_max = rho_max, z_buf = z_buf,
                                     Nrho = Nrho, Nz = Nz)
-            res_k! = make_residual_inplace(geom_k, compute_mu_inf(p_k))
-            sol_k = try
-                _run_newton(res_k!, x_cur, f_tol, maxiter, false)
+            x_k, ok_step = try
+                _solve_newton_sparse(geom_k, compute_mu_inf(p_k), x_cur;
+                                     f_tol = f_tol, maxiter = maxiter)
             catch e
-                nothing
+                (x_cur, false)
             end
-            if sol_k !== nothing && SciMLBase.successful_retcode(sol_k)
-                x_cur = copy(sol_k.u)
+            x_cur = x_k
+            if ok_step
                 verbose && println("  continuation step $k/$n_steps (frac=$(round(frac, digits=2))) ok")
             else
                 verbose && println("  continuation step $k/$n_steps (frac=$(round(frac, digits=2))) did not converge")
                 ok_k = false
-                if sol_k !== nothing
-                    x_cur = copy(sol_k.u)
-                end
                 break
             end
         end
