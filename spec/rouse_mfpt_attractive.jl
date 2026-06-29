@@ -118,20 +118,30 @@ function target!(res, args...)
     end
 
 
+    # Sojourn (A/B dwell-time) bounds on the bead-to-bead distance, bracketing
+    # the barrier ridge between the closed (contact) and open (entropic) wells.
+    # A = {d ≤ a} is the closed/bound state, B = {d ≥ b} the open/unbound state;
+    # the buffer (a, b) gives Schmitt-trigger hysteresis. TUNE these to the
+    # barrier of `total_potential` (cf. locate_ridge in fisher_rate_rouse_mfpt.py).
+    a_bound   = p.R + 0.5
+    b_unbound = p.R + 2.0
+
     # primary run: distance-only mode, long trajectory for contact statistics
     r = RousePolymer(;
-        boltzmannConst  = 1.0, 
+        boltzmannConst  = 1.0,
         temperature     = kBT,
-        friction        = friction, 
+        friction        = friction,
         kuhnLength      = kuhnLength,
         r_min           = p.R,
-        nbeads          = Int32(N), 
+        nbeads          = Int32(N),
         nsteps          = Int32(nsteps),
         dt              = dt,
-        trackedBead1    = firstBeadIdx, 
+        trackedBead1    = firstBeadIdx,
         trackedBead2    = firstBeadIdx + beadSep,
         attractiveForce = attractive_force,
-        saveMode        = :distance_only, 
+        saveMode        = :distance_only,
+        a               = a_bound,
+        b               = b_unbound,
         seed            = keya + 42,
     )
 
@@ -151,6 +161,11 @@ function target!(res, args...)
     sample_skip = 500
     res["distance_traj"]    = r.distanceTraj[1:sample_skip:end]
     res["sample_skip"]      = sample_skip
+    # A/B sojourn durations (in integration steps; multiply by dt for time).
+    res["sojourn_a"]        = a_bound
+    res["sojourn_b"]        = b_unbound
+    res["A_intervals"]      = r.A_intervals
+    res["B_intervals"]      = r.B_intervals
     res["total_potential"]  = total_potential.(dists)
     res["bead_relax_time"]  = r.timeScale
     res["bead_relax_scale"] = r.posScale

@@ -43,4 +43,5 @@ using Random
     include("test_bvp_two_spheres.jl")
     # Rouse polymer overdamped Langevin solver
     include("test_rouse.jl")
+    include("test_rouse_sojourn.jl")
 end

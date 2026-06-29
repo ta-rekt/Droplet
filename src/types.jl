@@ -466,13 +466,24 @@ Base.@kwdef mutable struct RousePolymer
     trackedBead1::Int32 = 1
     trackedBead2::Int32 = 100
 
-    saveMode::Symbol = :distance_only   # :full | :distance_only
+    saveMode::Symbol = :distance_only   # :full | :distance_only | :sojourn_only
     seed::Union{Nothing, Int} = nothing
 
     # Optional radial pair force between trackedBead1 and trackedBead2.
     # Convention: f(d_physical) = −dU/dr of the pair potential U(d).
     # e.g. U(d) = (k/2)(d−d₀)²  ⇒  attractiveForce = d -> -k*(d - d0).
     attractiveForce::Union{Nothing, Function} = nothing
+
+    # Sojourn-time tracking of the tracked-bead distance (physical units).
+    # When both a and b are set (a ≤ b), the durations of successive sojourns in
+    #   A = {distance ≤ a}   and   B = {distance ≥ b},   buffer (a, b)
+    # are recorded (in integration steps) into A_intervals / B_intervals using
+    # Schmitt-trigger (hysteresis) assignment. Independent of saveMode; the
+    # :sojourn_only mode additionally skips allocating distanceTraj.
+    a::Union{Nothing, Float64} = nothing
+    b::Union{Nothing, Float64} = nothing
+    A_intervals::Union{Nothing, Vector{Int}} = nothing
+    B_intervals::Union{Nothing, Vector{Int}} = nothing
 end
 
 ###### Surface adbsorption

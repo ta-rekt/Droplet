@@ -32,11 +32,18 @@ function _set_simulation_vars!(r::RousePolymer)
     r.pos       = zeros(Float64, N, 3)
     r.drift     = zeros(Float64, N, 3)
     r.noise     = zeros(Float64, N, 3)
-    r.distanceTraj = zeros(Float64, r.nsteps)
+    # :sojourn_only skips the (potentially huge) distance trace entirely.
+    r.distanceTraj = r.saveMode === :sojourn_only ? nothing : zeros(Float64, r.nsteps)
     if r.saveMode === :full
         r.posTraj = zeros(Float64, r.nsteps, N, 3)
     else
         r.posTraj = nothing
+    end
+    # Sojourn buffers, allocated only when both bounds are set.
+    if r.a !== nothing && r.b !== nothing
+        @assert r.a <= r.b "sojourn bounds require a <= b (got a=$(r.a), b=$(r.b))"
+        r.A_intervals = Int[]
+        r.B_intervals = Int[]
     end
     return r
 end
@@ -61,6 +68,9 @@ end
 
 # Initialize scales, buffers, initial positions, and the first sample of distanceTraj.
 function init!(r::RousePolymer)
+    if r.saveMode === :sojourn_only && (r.a === nothing || r.b === nothing)
+        error("saveMode :sojourn_only requires both bounds a and b to be set")
+    end
     _set_scaling_params!(r)
     _set_simulation_vars!(r)
 
@@ -75,7 +85,9 @@ function init!(r::RousePolymer)
     dx = (r.pos[b1, 1] - r.pos[b2, 1]) * r.posScale
     dy = (r.pos[b1, 2] - r.pos[b2, 2]) * r.posScale
     dz = (r.pos[b1, 3] - r.pos[b2, 3]) * r.posScale
-    r.distanceTraj[1] = sqrt(dx * dx + dy * dy + dz * dz)
+    if r.distanceTraj !== nothing
+        r.distanceTraj[1] = sqrt(dx * dx + dy * dy + dz * dz)
+    end
 
     if r.saveMode === :full
         @views r.posTraj[1, :, :] .= r.pos .* r.posScale
@@ -85,7 +97,9 @@ end
 
 # Dimensionless Euler-Maruyama:
 #   x ← x − (A·x)·dτ + ξ·√dτ,   ξ ~ N(0,1) per bead per dim.
-# Distance trajectory is recorded each step; positions only when saveMode == :full.
+# The tracked-bead distance is recorded each step (unless saveMode == :sojourn_only);
+# positions only when saveMode == :full. When bounds a, b are set, A/B sojourn
+# durations are accumulated regardless of saveMode.
 function simulate!(r::RousePolymer)
     rng = r.seed === nothing ? Random.default_rng() : Random.MersenneTwister(r.seed)
     # consume the same draws that init! used so the seed produces reproducible streams
@@ -99,6 +113,29 @@ function simulate!(r::RousePolymer)
     f   = r.attractiveForce
     invKappaPos = 1 / (r.stiffness * ps)
     rMin = r.r_min === nothing ? nothing : r.r_min / ps   # hard repulsion in dimensionless units
+
+    dtraj = r.distanceTraj                  # nothing in :sojourn_only mode
+
+    # Sojourn tracking state (Schmitt-trigger). Initial classification matches
+    # the scalar reference: in_A iff the initial distance ≤ a, else in_B (so a
+    # starting position inside the buffer is assigned to B). The first sojourn of
+    # each region is taken to enter at step 0.
+    track = r.a !== nothing && r.b !== nothing
+    if track
+        aa = r.a::Float64
+        bb = r.b::Float64
+        Aint = r.A_intervals::Vector{Int}
+        Bint = r.B_intervals::Vector{Int}
+        empty!(Aint); empty!(Bint)
+        d0x = (r.pos[b1, 1] - r.pos[b2, 1]) * ps
+        d0y = (r.pos[b1, 2] - r.pos[b2, 2]) * ps
+        d0z = (r.pos[b1, 3] - r.pos[b2, 3]) * ps
+        d0  = sqrt(d0x*d0x + d0y*d0y + d0z*d0z)
+        in_A = d0 <= aa
+        in_B = !in_A
+        A_entry = 0
+        B_entry = 0
+    end
 
     @inbounds for t in 2:r.nsteps
         mul!(r.drift, r.adjacency, r.pos)
@@ -153,7 +190,29 @@ function simulate!(r::RousePolymer)
         dx = (r.pos[b1, 1] - r.pos[b2, 1]) * ps
         dy = (r.pos[b1, 2] - r.pos[b2, 2]) * ps
         dz = (r.pos[b1, 3] - r.pos[b2, 3]) * ps
-        r.distanceTraj[t] = sqrt(dx * dx + dy * dy + dz * dz)
+        dist = sqrt(dx * dx + dy * dy + dz * dz)
+        if dtraj !== nothing
+            dtraj[t] = dist
+        end
+
+        # Sojourn update. i is the scalar-reference step index: distanceTraj[1]
+        # is step 0, so the distance computed at loop index t is step i = t-1.
+        # A→B is evaluated before B→A, matching the two-`if` order of the reference.
+        if track
+            i = t - 1
+            if dist >= bb && in_A
+                push!(Aint, i - A_entry)
+                B_entry = i
+                in_A = false
+                in_B = true
+            end
+            if dist <= aa && in_B
+                push!(Bint, i - B_entry)
+                A_entry = i
+                in_B = false
+                in_A = true
+            end
+        end
 
         if fullMode
             @views r.posTraj[t, :, :] .= r.pos .* ps
