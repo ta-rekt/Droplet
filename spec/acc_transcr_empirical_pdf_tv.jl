@@ -38,7 +38,7 @@ d0 = OneBurstDecoyModel(;
 # fixed parameters
 eta_UA = -0.5
 eta_BI = 0.0
-epsilon = -7.75
+epsilon = -6.4
 phi_R = 0.02
 
 K = 0.5
@@ -59,14 +59,15 @@ slist = [d0]
 checkpoint_path = string("data/checkpoints/", splitext(basename(@__FILE__))[1])
 
 # --- time-varying parameters ---
-nruns_per_trace = 1000        # Gillespie runs per MC trace
+nruns_per_trace = 100        # Gillespie runs per MC trace
 Tc = 1.0                     # concentration update interval (CTMC time units per MC frame)
 snapshot_interval = 100.0   # snapshot every dt continuous time units
 nbins = 100
+nsplit = 12
 
 # mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260503"
 # mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260423"
-mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260623"
+mc_data_dir = "/home/tohme/.julia/dev/Droplet/data/20260624"
 
 # varied parameters
 alphas = collect(range(0.003, stop=0.014, length=12))
@@ -99,17 +100,28 @@ const _MA_WINDOW = 1000   # moving-average window for MC concentration traces
 
 # --- load MC concentration traces for a given alpha ---
 function _load_mc_traces(alpha)
-    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_d_30_c_%.3f", alpha))
-    traces = Vector{Float64}[]
+    folder = joinpath(mc_data_dir, @sprintf("proximal_promoter_transc_noen_long_d_30_c_%.3f", alpha))
+    traces_raw = Vector{Float64}[]
     for f in sort(readdir(folder))
         endswith(f, ".json") || continue
         data = JSON.parsefile(joinpath(folder, f))
         for ka in keys(data)
             lc = Float64.(data[ka]["1"]["local_concentration"])
-            push!(traces, _moving_average(lc, _MA_WINDOW))
+            push!(traces_raw, _moving_average(lc, _MA_WINDOW))
             # push!(traces, lc)
         end
     end
+
+    traces = Vector{Float64}[]
+    for trace in traces_raw
+        trace_len = length(trace)
+        for i in range(1, stop=nsplit)
+            st=1+(i-1)*floor(Int, trace_len/nsplit)
+            fn=i*floor(Int, trace_len/nsplit)
+            push!(traces, collect(trace[st:fn]))
+        end
+    end
+
     return traces
 end
 
