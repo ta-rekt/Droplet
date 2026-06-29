@@ -1,4 +1,6 @@
 using Droplet
+import JSON
+using CubicSplines: CubicSpline
 
 # Lattice species (unused -- the Rouse solver is off-lattice).
 slist = []
@@ -15,19 +17,32 @@ firstBeadIdx = 1
 beadSep = N - 1
 dt = 0.001 * friction / stiffness   # 0.3 times the characteristic time
 
-# Surface adsorption model parameters
+# --- Nonlinear two-sphere potential (tabulated by the BVP solver) ----------
+# Load U(d) vs surface-to-surface gap d, one curve per phi_inf value.  The
+# surface-model parameters and the phi_inf sweep below are pinned to this file,
+# so the linear-response and nonlinear potentials are compared at identical
+# physics and each swept alpha maps one-to-one onto a stored U(d) curve.
+nonlinear_path = "/home/tohme/.julia/dev/Droplet/media/figures/20260628/fisher_two_spheres_chi_2.5_h0_-0.5_R_5.0_sweep_c.json"
+nl_data    = JSON.parsefile(nonlinear_path)
+nl_group   = nl_data["groups"][1]
+nl_d       = Vector{Float64}(nl_group["d_grid"])     # surface-to-surface gap
+nl_U       = nl_group["U_full_grid"]                 # one U(d) curve per phi_inf
+nl_phi_inf = Vector{Float64}(nl_group["phi_inf"])    # bulk volume fractions
+
+# Surface adsorption model parameters (R, omega_b, chi_b pinned to the JSON).
 nb              = 1.0
-chi_b           = 2.5
-omega_b         = -0.5
+chi_b           = nl_data["chi_b"]
+omega_b         = nl_group["omega_b"]
 kappa           = 1.0
 phi_inf         = 0.1
 eps             = 1e-6
-R               = 2.5
+R               = nl_group["R"]
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.
-# alphas: contact threshold (physical length).  beta is unused here.
-alphas = range(0.003, stop=0.15, length=16)
-# alphas = [0.01]
+# alphas = phi_inf, taken from the JSON so every value maps to a U(d) curve.
+# beta is unused here.
+alphas = nl_phi_inf
+# alphas = range(0.003, stop=0.15, length=32)   # former dense linear-only sweep
 betas  = [-1.4]
 
 nparams = length(alphas)
@@ -43,7 +58,7 @@ blurb = "Solving the Langevin equation for a Rouse polymer to
          Trying to recover the Kramers exit rate from the absorption
          potential well."
 
-nsteps = 50_000_000
+nsteps = 10_000_000
 
 function target!(res, args...)
     slist, keya, alpha, beta, blurb = args
@@ -66,11 +81,30 @@ function target!(res, args...)
     lam = sqrt(d2f_phi_inf / p.kappa)
     dists = collect(range(p.R, p.L, length=500))
 
-    # obtained from linear-response concentration profile
+    # Nonlinear two-sphere potential for this alpha: cubic-spline interpolant of
+    # the tabulated U(d).  d is the surface-to-surface gap, mapped to the
+    # bead-to-bead distance as d = x - R, and flat-clamped outside the data.
+    nl_idx = argmin(abs.(nl_phi_inf .- alpha))
+    @assert isapprox(nl_phi_inf[nl_idx], alpha; atol=1e-9) "alpha=$alpha has no matching phi_inf curve in $nonlinear_path"
+    nl_U_curve = Float64.(nl_U[nl_idx])
+    nl_ok      = isfinite.(nl_U_curve)        # drop the NaN at contact (d=d_grid[1])
+    nl_d_ok    = nl_d[nl_ok]
+    nl_spline  = CubicSpline(nl_d_ok, nl_U_curve[nl_ok])
+    nl_dmin, nl_dmax = first(nl_d_ok), last(nl_d_ok)
+    adsorption_potential_nonlinear(x) = nl_spline[clamp(x - p.R, nl_dmin, nl_dmax)]
+
+    # --- Select the pair potential: keep exactly ONE definition of
+    # `adsorption_potential` active (comment out the other).  Both
+    # `attractive_force` and `total_potential` below read `adsorption_potential`.
+
+    # (1) Linear-response analytic potential (surface condensation on a sphere):
     function adsorption_potential(x)
         return -(4π * p.R^3 * h0^2 * exp(-lam * (x - p.R))) /
                 (p.kappa * (lam + 1/p.R) * x)
     end
+
+    # (2) Nonlinear BVP potential (cubic spline of the JSON):
+    # adsorption_potential(x) = adsorption_potential_nonlinear(x)
 
     # f(d) = -dU/dr, computed numerically via central differences from
     # adsorption_potential — single source of truth for the pair interaction.

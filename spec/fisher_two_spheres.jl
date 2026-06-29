@@ -65,9 +65,9 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
 # as a fraction of the binodal (near-saturation), where bridging is active.
-# alphas = BINODAL .* collect(range(0.80, 0.99; length = 20))   # phi_inf
-alphas = [0.90 * BINODAL]
-betas  = [-0.5]                                                  # omega_b
+betas = BINODAL .* collect(range(0.20, 0.90; length = 32))   # phi_inf
+# alphas = [0.90 * BINODAL]
+alphas  = [-0.5]                                                  # omega_b
 
 nparams = length(alphas)
 
@@ -129,8 +129,8 @@ function target!(res, args...)
 
     t0 = time()
 
-    omega_b = beta
-    phi_inf = alpha
+    omega_b = alpha
+    phi_inf = beta
     R       = R_FIXED
 
     p = Parameters(nb              = NB,
