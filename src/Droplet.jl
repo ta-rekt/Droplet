@@ -37,6 +37,10 @@ module Droplet
     include("bvp_solver.jl")
     include("bvp_two_spheres.jl")
 
+    # General 1D backward Fokker–Planck first-passage-time solver.  Independent
+    # of the Metropolis core and of how the potential is built.
+    include("fpt_solver.jl")
+
     export Parameters, with, fb, dfb_dphi, d2fb_dphi2, psi_linear,
            compute_mu_inf, compute_spinodal, is_spherical,
            IsolatedSphere1D, solve_isolated_sphere,
@@ -46,6 +50,7 @@ module Droplet
            initial_guess, solve_two_spheres,
            interp_phi, cell_fluid_fraction,
            phi_on_sphere, excess_free_energy_two_spheres,
-           quadratic_ghost_coefficients, find_clean_stencil
+           quadratic_ghost_coefficients, find_clean_stencil,
+           FPTProblem, solve_fpt, boltzmann_ic, fpt_mfpt_quadrature
 
 end # module Droplet

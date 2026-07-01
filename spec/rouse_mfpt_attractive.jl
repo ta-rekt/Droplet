@@ -12,10 +12,10 @@ kuhnLength = 1.0            # Kuhn length
 friction = 1.0        # friction coefficient
 stiffness = 2*kBT / kuhnLength^2  # bond stiffness
 D = kBT / friction    # diffusion coefficient
-N = 100            # chain length
+N = 200            # chain length
 firstBeadIdx = 1
 beadSep = N - 1
-dt = 0.001 * friction / stiffness   # 0.3 times the characteristic time
+dt = 0.001 * friction / stiffness   # much smaller than the characteristic time
 
 # --- Nonlinear two-sphere potential (tabulated by the BVP solver) ----------
 # Load U(d) vs surface-to-surface gap d, one curve per phi_inf value.  The
@@ -41,7 +41,7 @@ R               = nl_group["R"]
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.
 # alphas = phi_inf, taken from the JSON so every value maps to a U(d) curve.
 # beta is unused here.
-alphas = nl_phi_inf
+alphas = nl_phi_inf[1:16]
 # alphas = range(0.003, stop=0.15, length=32)   # former dense linear-only sweep
 betas  = [-1.4]
 
@@ -89,22 +89,20 @@ function target!(res, args...)
     nl_U_curve = Float64.(nl_U[nl_idx])
     nl_ok      = isfinite.(nl_U_curve)        # drop the NaN at contact (d=d_grid[1])
     nl_d_ok    = nl_d[nl_ok]
-    nl_spline  = CubicSpline(nl_d_ok, nl_U_curve[nl_ok])
-    nl_dmin, nl_dmax = first(nl_d_ok), last(nl_d_ok)
-    adsorption_potential_nonlinear(x) = nl_spline[clamp(x - p.R, nl_dmin, nl_dmax)]
+    slopel     = (nl_U_curve[nl_ok][2] - nl_U_curve[nl_ok][1]) / (nl_d_ok[2] - nl_d_ok[1])
+    nl_spline  = CubicSpline(nl_d_ok, nl_U_curve[nl_ok], extrapl=[slopel,], extrapr=[0,])
+    # nl_dmin, nl_dmax = first(nl_d_ok), last(nl_d_ok)
+    adsorption_potential_nonlinear(x) = nl_spline[x - p.R]
 
-    # --- Select the pair potential: keep exactly ONE definition of
-    # `adsorption_potential` active (comment out the other).  Both
-    # `attractive_force` and `total_potential` below read `adsorption_potential`.
-
-    # (1) Linear-response analytic potential (surface condensation on a sphere):
-    function adsorption_potential(x)
+    # Linear-response analytic potential (surface condensation on a sphere):
+    function adsorption_potential_linear(x)
         return -(4π * p.R^3 * h0^2 * exp(-lam * (x - p.R))) /
                 (p.kappa * (lam + 1/p.R) * x)
     end
 
-    # (2) Nonlinear BVP potential (cubic spline of the JSON):
-    # adsorption_potential(x) = adsorption_potential_nonlinear(x)
+    # Choose which potential to use by commenting out the other
+    # adsorption_potential(x) = adsorption_potential_linear(x)
+    adsorption_potential(x) = adsorption_potential_nonlinear(x)
 
     # f(d) = -dU/dr, computed numerically via central differences from
     # adsorption_potential — single source of truth for the pair interaction.
@@ -123,7 +121,7 @@ function target!(res, args...)
     # A = {d ≤ a} is the closed/bound state, B = {d ≥ b} the open/unbound state;
     # the buffer (a, b) gives Schmitt-trigger hysteresis. TUNE these to the
     # barrier of `total_potential` (cf. locate_ridge in fisher_rate_rouse_mfpt.py).
-    a_bound   = p.R + 0.5
+    a_bound   = p.R + 0.05
     b_unbound = p.R + 2.0
 
     # primary run: distance-only mode, long trajectory for contact statistics
@@ -153,20 +151,22 @@ function target!(res, args...)
     res["beta"]             = beta
     res["surface_params"]   = Dict("nb" => p.nb, "chi_b" => p.chi_b, 
                             "kappa" => p.kappa, "omega_b" => p.omega_b,
-                            "R" => p.R, "phi_inf" => p.phi_inf)
+                            "R" => p.R, "L" => p.L, "phi_inf" => p.phi_inf)
     res["rouse_params"]     = Dict("N" => N, "kuhn_length" => kuhnLength, "kBT" => kBT,
                             "friction" => friction, "stiffness" => stiffness,
                             "D" => D, "dt" => dt, "bead_separation" => beadSep,
                             "nsteps" => nsteps)
-    sample_skip = 500
-    res["distance_traj"]    = r.distanceTraj[1:sample_skip:end]
+    sample_skip = 100
+    res["distance_traj"]    = r.distanceTraj == nothing ? [] : r.distanceTraj[1:sample_skip:end]
     res["sample_skip"]      = sample_skip
+
     # A/B sojourn durations (in integration steps; multiply by dt for time).
     res["sojourn_a"]        = a_bound
     res["sojourn_b"]        = b_unbound
     res["A_intervals"]      = r.A_intervals
     res["B_intervals"]      = r.B_intervals
     res["total_potential"]  = total_potential.(dists)
+    res["ads_potential"]    = adsorption_potential_nonlinear.(dists)
     res["bead_relax_time"]  = r.timeScale
     res["bead_relax_scale"] = r.posScale
     res["runtime_min"]      = (time() - t0) / 60.0

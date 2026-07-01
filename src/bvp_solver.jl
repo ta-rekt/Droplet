@@ -107,27 +107,50 @@ function (s::IsolatedSphere1D)(zq::AbstractVector)
     [s(z) for z in zq]
 end
 
+# Robin surface slope phi'(0).  The plain BC is -kappa*phi'(0) + omega_b = 0;
+# with bc_reg > 0 a regularization term is added (mirrors make_bc in
+# viz_util/bvp_solver.py, line 360):
+#     -kappa*phi'(0) + omega_b + bc_reg * log(phi_s / (1 - phi_s)) = 0.
+# As phi_s -> 1 the log term diverges and opposes the attractive omega_b,
+# pinning a unique *finite* adsorption branch near a surface phase transition
+# (where the bare BC is bistable: a thin film and a runaway phi_s -> 1).
+@inline function _surf_slope(phi_s::Real, omega_b::Real, p::Parameters, bc_reg::Real)
+    bc_reg == 0.0 && return omega_b / p.kappa
+    ps = clip01(phi_s, p.eps)
+    return (omega_b + bc_reg * log(ps / (1.0 - ps))) / p.kappa
+end
+
+# d/dphi_s of _surf_slope (for the analytic Jacobian).
+@inline function _surf_slope_deriv(phi_s::Real, p::Parameters, bc_reg::Real)
+    bc_reg == 0.0 && return 0.0
+    ps = clip01(phi_s, p.eps)
+    (p.eps < phi_s < 1.0 - p.eps) || return 0.0   # in the clamp the slope is flat
+    return bc_reg / (p.kappa * ps * (1.0 - ps))
+end
+
 function solve_isolated_sphere(p::Parameters;
                                L_iso::Real = 10.0,
                                N::Int      = 400,
                                f_tol::Real = 1e-8,
-                               maxiter::Int = 200)
+                               maxiter::Int = 200,
+                               bc_reg::Real = 0.0,
+                               omega_continuation::Bool = true)
     @assert isfinite(p.R) "solve_isolated_sphere requires finite p.R"
     z  = collect(range(0.0, L_iso; length = N))
     dz = z[2] - z[1]
-    mu_inf      = compute_mu_inf(p)
-    omega_kappa = p.omega_b / p.kappa
+    mu_inf  = compute_mu_inf(p)
     Nu = N - 1                                # unknowns at z[1:N-1]
     phi_far = p.phi_inf                       # Dirichlet at z[N]
 
-    function residual!(F, u, _)
+    # Residual and analytic tridiagonal Jacobian at effective surface field ob.
+    function residual!(F, u, ob)
         @inbounds for i in 1:Nu
             phi_i = u[i]
             if i == 1
-                # Robin BC ghost: phi(-dz) = phi(+dz) - 2*dz*omega_kappa,
-                # giving ddphi = (2*u[2] - 2*u[1] - 2*dz*omega_kappa)/dz^2.
-                ddphi = (2 * u[2] - 2 * phi_i - 2 * dz * omega_kappa) / dz^2
-                lap   = ddphi + (2.0 / p.R) * omega_kappa
+                # Robin BC ghost: phi(-dz) = phi(+dz) - 2*dz*sk.
+                sk    = _surf_slope(phi_i, ob, p, bc_reg)
+                ddphi = (2 * u[2] - 2 * phi_i - 2 * dz * sk) / dz^2
+                lap   = ddphi + (2.0 / p.R) * sk
             else
                 phi_l = u[i - 1]
                 phi_r = i == Nu ? phi_far : u[i + 1]
@@ -136,10 +159,55 @@ function solve_isolated_sphere(p::Parameters;
                 rr    = p.R + z[i]
                 lap   = ddphi + (2.0 / rr) * dphi
             end
-            driving = dfb_dphi(phi_i, p) - mu_inf / p.nb
-            F[i]    = p.kappa * lap - driving
+            F[i] = p.kappa * lap - (dfb_dphi(phi_i, p) - mu_inf / p.nb)
         end
         return nothing
+    end
+    function jacobian!(dl, dd, du, u, ob)
+        @inbounds for i in 1:Nu
+            if i == 1
+                sk1   = _surf_slope_deriv(u[1], p, bc_reg)
+                dd[i] = p.kappa * (-2.0 / dz^2) - d2fb_dphi2(u[i], p) +
+                        p.kappa * sk1 * (-2.0 / dz + 2.0 / p.R)
+                du[i] = p.kappa * (2.0 / dz^2)
+                dl[i] = 0.0
+            else
+                rr    = p.R + z[i]
+                dd[i] = p.kappa * (-2.0 / dz^2) - d2fb_dphi2(u[i], p)
+                dl[i] = p.kappa * (1.0 / dz^2 - (1.0 / rr) / dz)
+                du[i] = i == Nu ? 0.0 : p.kappa * (1.0 / dz^2 + (1.0 / rr) / dz)
+            end
+        end
+        return nothing
+    end
+
+    # Damped (backtracking line search) Newton with the analytic tridiagonal
+    # Jacobian.  Returns (u, |F|).  Robust on the stiff prewetting branch where
+    # the bare dense Newton stalls.
+    function newton(u0, ob)
+        u  = copy(u0)
+        F  = Vector{Float64}(undef, Nu)
+        dl = Vector{Float64}(undef, Nu)
+        dd = Vector{Float64}(undef, Nu)
+        du = Vector{Float64}(undef, Nu)
+        ut = Vector{Float64}(undef, Nu)
+        residual!(F, u, ob); nrm = maximum(abs, F)
+        for _ in 1:maxiter
+            nrm < f_tol && break
+            jacobian!(dl, dd, du, u, ob)
+            δ = Tridiagonal(dl[2:Nu], dd[1:Nu], du[1:Nu - 1]) \ F
+            λ = 1.0; accepted = false
+            for _ in 1:40
+                @inbounds @. ut = clamp(u - λ * δ, p.eps, 1.0 - p.eps)
+                residual!(F, ut, ob); newnrm = maximum(abs, F)
+                if newnrm < nrm
+                    @inbounds @. u = ut; nrm = newnrm; accepted = true; break
+                end
+                λ *= 0.5
+            end
+            accepted || break
+        end
+        return u, nrm
     end
 
     # Initial guess: exponential decay from a perturbed phi_inf.
@@ -150,14 +218,24 @@ function solve_isolated_sphere(p::Parameters;
         u0[i] = clip01(p.phi_inf - p.omega_b * ell / p.kappa * exp(-z[i] / ell), p.eps)
     end
 
-    prob = NonlinearProblem(residual!, u0)
-    sol  = solve(prob, NewtonRaphson(autodiff = AutoFiniteDiff());
-                 abstol = f_tol, maxiters = maxiter)
-    success = SciMLBase.successful_retcode(sol)
+    u, nrm = newton(u0, p.omega_b)
+    # omega_b continuation from the uniform (omega_b = 0) state, tracing the
+    # branch continuously when the cold start fails (same strategy as
+    # solve_two_spheres, and the branch the 2D solver follows).
+    if nrm >= f_tol && omega_continuation && p.omega_b != 0.0
+        u_cur = fill(clip01(p.phi_inf, p.eps), Nu)
+        n_steps = 8
+        for k in 1:n_steps
+            u_cur, nrm = newton(u_cur, (k / n_steps) * p.omega_b)
+            nrm >= f_tol && break
+        end
+        nrm < f_tol && (u = u_cur)
+    end
+    success = nrm < f_tol
 
-    phi      = vcat(sol.u, phi_far)
+    phi      = vcat(u, phi_far)
     dphi     = similar(phi)
-    dphi[1]  = omega_kappa
+    dphi[1]  = _surf_slope(phi[1], p.omega_b, p, bc_reg)
     @inbounds for i in 2:N - 1
         dphi[i] = (phi[i + 1] - phi[i - 1]) / (2 * dz)
     end

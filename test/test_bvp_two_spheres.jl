@@ -25,6 +25,12 @@ P_linear(omega_b = -0.05) =
 P_strong() = Parameters(chi_b = 2.0, omega_b = -0.5, kappa = 1.0,
                         phi_inf = 0.1, R = 5.0, eps = 1e-6)
 
+P_strong2() = Parameters(chi_b = 4.0, omega_b = -1.35, kappa = 1.0,
+                        phi_inf = 0.008, R = 10.0, eps = 1e-6)  
+                        
+P_strong3() = Parameters(chi_b = 4.0, omega_b = -1.35, kappa = 1.0,
+                        phi_inf = 0.01, R = 10.0, eps = 1e-6)                          
+
 function _Nz_for(p, d; dz_target = 0.15, z_buf = 4.0)
     span = 2.0 * (p.R + z_buf) + d
     return Int(floor(span / dz_target)) + 1
@@ -49,6 +55,25 @@ function _avg_surface_enrichment(result; sphere::Int = 1)
     cos_t = cos.(theta)
     phi_s = interp_phi(phi, geom, R .* sin_t, zc .+ R .* cos_t)
     return _trapezoid((phi_s .- p.phi_inf) .* sin_t, theta) / 2.0
+end
+
+# Map a 1D isolated-sphere profile onto the 2D unknown vector, using each cell's
+# distance to the nearer sphere surface.  For well-separated spheres this is an
+# almost-exact solution, so it is a robust warm start for the stiff prewetting
+# cases where the cold-start Newton stalls on the sharp adsorption front.
+function _x0_from_1d(geom, sol1d)
+    p = geom.p
+    x0 = Vector{Float64}(undef, count(geom.unk_mask))
+    k = 0
+    @inbounds for j in 1:geom.Nz, i in 1:geom.Nrho
+        geom.unk_mask[i, j] || continue
+        k += 1
+        rho = geom.rho_grid[i]; z = geom.z_grid[j]
+        s1 = sqrt(rho^2 + (z - geom.z_c1)^2) - p.R
+        s2 = sqrt(rho^2 + (z - geom.z_c2)^2) - p.R
+        x0[k] = clamp(sol1d(max(0.0, min(s1, s2))), p.eps, 1.0 - p.eps)
+    end
+    return x0
 end
 
 @testset "bvp_two_spheres" begin
@@ -464,45 +489,79 @@ end
 # ===========================================================================
 
 @testset "SingleSphereLimit" begin
-    L_iso = 10.0
-    p = P_benign()
-    d_far = 8.0 * p.R
-    Nz_far = _Nz_for(p, d_far; dz_target = 0.10)
-    res = solve_two_spheres(p, d_far;
-                            Nrho = 100, Nz = Nz_far,
-                            rho_max = p.R + 8.0, z_buf = 4.0, verbose = false)
-    @test res[:success]
-    sol1d = solve_isolated_sphere(with(p; L = L_iso,
-                                       conserve_volume = false,
-                                       parallel_plates = false);
-                                  L_iso = L_iso, N = 800)
-    @test sol1d.success
+    # At large separation each sphere is effectively isolated, so the 2D radial
+    # profile must match the 1D spherical BVP.  The cases sweep from a benign
+    # regime up to P_strong2 / P_strong3, which sit just before and just after a
+    # surface (prewetting) phase transition (only phi_inf differs).  On the
+    # post-transition branch the bare adsorption BC is bistable — a thin film and
+    # a runaway phi_s -> 1 — so those cases share a regularized surface BC
+    # (bc_reg > 0, see _surf_slope / scatter!) between the 1D and 2D solvers,
+    # which pins the same finite branch in both.  The 1D solution also warm-starts
+    # the 2D solve where the sharp front stalls a cold Newton start.
+    cases = [
+        (name = "benign",  p = P_benign(),  bc_reg = 0.0,  d = 8.0 * P_benign().R,
+         Nrho = 100, dz_target = 0.10, rho_buf = 8.0, z_buf = 4.0,
+         N1d = 800,  L_iso = 10.0, warm = false, tol_prof = 0.005, tol_iso = 0.01),
+        (name = "strong",  p = P_strong(),  bc_reg = 0.02, d = 6.0 * P_strong().R,
+         Nrho = 140, dz_target = 0.06, rho_buf = 8.0, z_buf = 4.0,
+         N1d = 800,  L_iso = 10.0, warm = false, tol_prof = 0.005, tol_iso = 0.01),
+        (name = "strong2", p = P_strong2(), bc_reg = 0.02, d = 10.0,
+         Nrho = 351, dz_target = 0.04, rho_buf = 4.0, z_buf = 3.0,
+         N1d = 1400, L_iso = 12.0, warm = true,  tol_prof = 0.005, tol_iso = 0.01),
+        (name = "strong3", p = P_strong3(), bc_reg = 0.05, d = 10.0,
+         Nrho = 467, dz_target = 0.03, rho_buf = 4.0, z_buf = 3.0,
+         N1d = 1400, L_iso = 12.0, warm = true,  tol_prof = 0.006, tol_iso = 0.01),
+    ]
 
-    geom = res[:geom]
+    for c in cases
+        @testset "$(c.name)" begin
+            p     = c.p
+            L_iso = c.L_iso
+            Nz    = _Nz_for(p, c.d; dz_target = c.dz_target, z_buf = c.z_buf)
 
-    # test_axial_profile_matches_1d
-    let z_query = collect(range(p.R + 0.05, p.R + 0.5 * L_iso; length = 30))
-        phi_2d = interp_phi(res[:phi], geom, zeros(length(z_query)), z_query)
-        phi_1d = sol1d(z_query .- p.R)
-        @test maximum(abs.(phi_2d .- phi_1d)) < 0.005
-    end
+            sol1d = solve_isolated_sphere(with(p; L = L_iso);
+                                          L_iso = L_iso, N = c.N1d, bc_reg = c.bc_reg)
+            @test sol1d.success
 
-    # test_equatorial_profile_matches_1d
-    let rho_query = collect(range(p.R + 0.05, p.R + 0.5 * L_iso; length = 30))
-        phi_2d = interp_phi(res[:phi], geom, rho_query, zeros(length(rho_query)))
-        phi_1d = sol1d(rho_query .- p.R)
-        @test maximum(abs.(phi_2d .- phi_1d)) < 0.005
-    end
+            # Warm start the stiff post-transition solves from the 1D profile.
+            x0 = nothing
+            if c.warm
+                g0 = build_geometry(p, c.d; rho_max = p.R + c.rho_buf, z_buf = c.z_buf,
+                                    Nrho = c.Nrho, Nz = Nz, bc_reg = c.bc_reg)
+                x0 = _x0_from_1d(g0, sol1d)
+            end
+            res = solve_two_spheres(p, c.d;
+                                    Nrho = c.Nrho, Nz = Nz,
+                                    rho_max = p.R + c.rho_buf, z_buf = c.z_buf,
+                                    bc_reg = c.bc_reg, x0_init = x0, verbose = false)
+            @test res[:success]
+            geom = res[:geom]
 
-    # test_spherical_isotropy
-    for s in (0.3, 0.7, 1.5)
-        r = p.R + s
-        theta_samples = [1e-3, π / 4.0, π / 2.0]
-        rho_q = r .* sin.(theta_samples)
-        z_q   = geom.z_c1 .+ r .* cos.(theta_samples)
-        phi_at_angles = interp_phi(res[:phi], geom, rho_q, z_q)
-        spread = maximum(phi_at_angles) - minimum(phi_at_angles)
-        @test spread < 0.01
+            # test_axial_profile_matches_1d
+            let z_query = collect(range(p.R + 0.05, p.R + 0.5 * L_iso; length = 30))
+                phi_2d = interp_phi(res[:phi], geom, zeros(length(z_query)), z_query)
+                phi_1d = sol1d(z_query .- p.R)
+                @test maximum(abs.(phi_2d .- phi_1d)) < c.tol_prof
+            end
+
+            # test_equatorial_profile_matches_1d
+            let rho_query = collect(range(p.R + 0.05, p.R + 0.5 * L_iso; length = 30))
+                phi_2d = interp_phi(res[:phi], geom, rho_query, zeros(length(rho_query)))
+                phi_1d = sol1d(rho_query .- p.R)
+                @test maximum(abs.(phi_2d .- phi_1d)) < c.tol_prof
+            end
+
+            # test_spherical_isotropy
+            for s in (0.3, 0.7, 1.5)
+                r = p.R + s
+                theta_samples = [1e-3, π / 4.0, π / 2.0]
+                rho_q = r .* sin.(theta_samples)
+                z_q   = geom.z_c1 .+ r .* cos.(theta_samples)
+                phi_at_angles = interp_phi(res[:phi], geom, rho_q, z_q)
+                spread = maximum(phi_at_angles) - minimum(phi_at_angles)
+                @test spread < c.tol_iso
+            end
+        end
     end
 end
 

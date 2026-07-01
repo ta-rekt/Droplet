@@ -49,6 +49,9 @@ mutable struct Geometry
     ghost_delta::Vector{Float64}
     ghost_d1::Vector{Float64}
     ghost_d2::Vector{Float64}
+    # Surface-BC regularization strength (0 = plain Robin BC).  When > 0 the
+    # adsorption BC carries a + bc_reg*log(phi_s/(1-phi_s)) term (see scatter!).
+    bc_reg::Float64
 end
 
 n_ghost(g::Geometry) = length(g.ghost_i)
@@ -138,7 +141,8 @@ end
 
 function build_geometry(p::Parameters, d::Real;
                         rho_max = nothing, z_buf = nothing,
-                        Nrho::Int = 80, Nz::Int = 200)
+                        Nrho::Int = 80, Nz::Int = 200,
+                        bc_reg::Real = 0.0)
     R   = p.R
     ell = decay_length(p)
     rho_max = rho_max === nothing ? R + 4.0 * ell : Float64(rho_max)
@@ -258,6 +262,7 @@ function build_geometry(p::Parameters, d::Real;
         gi1, gj1, ghost_wts_1,
         gi2, gj2, ghost_wts_2,
         α1v, α2v, βv, gulin, gdelta, gd1, gd2,
+        Float64(bc_reg),
     )
 end
 
@@ -275,7 +280,8 @@ function scatter!(phi::AbstractMatrix, x_unk::AbstractVector, geom::Geometry)
             phi[i, j] = x_unk[k]
         end
     end
-    bc = p.omega_b / p.kappa
+    bc0 = p.omega_b / p.kappa
+    reg = geom.bc_reg
     @inbounds for k in 1:n_ghost(geom)
         i  = geom.ghost_i[k]
         j  = geom.ghost_j[k]
@@ -289,6 +295,21 @@ function scatter!(phi::AbstractMatrix, x_unk::AbstractVector, geom::Geometry)
                  geom.ghost_wts_2[2, k] * phi[i02 + 1, j02]     +
                  geom.ghost_wts_2[3, k] * phi[i02,     j02 + 1] +
                  geom.ghost_wts_2[4, k] * phi[i02 + 1, j02 + 1]
+        # Surface-BC slope, optionally regularized to pin a unique finite
+        # adsorption branch (mirrors the 1D _surf_slope / make_bc).  The surface
+        # value phi_s is reconstructed from the two clean probe points P1, P2 by
+        # linear extrapolation to s = delta; this is an explicit function of the
+        # current iterate, so scatter! stays a pure function of x (the resulting
+        # Jacobian inexactness in bc is handled by the line search in
+        # _solve_newton_sparse).
+        bc = bc0
+        if reg != 0.0
+            d1 = geom.ghost_d1[k]; d2 = geom.ghost_d2[k]
+            phi_s = geom.ghost_used_linear[k] ? phi_P1 :
+                    phi_P1 + (phi_P2 - phi_P1) * (geom.ghost_delta[k] - d1) / (d2 - d1)
+            ps = clamp(phi_s, p.eps, 1.0 - p.eps)
+            bc = (p.omega_b + reg * log(ps / (1.0 - ps))) / p.kappa
+        end
         phi[i, j] = geom.ghost_coef_phi1[k] * phi_P1 +
                     geom.ghost_coef_phi2[k] * phi_P2 +
                     geom.ghost_coef_bc[k]   * bc
@@ -552,9 +573,10 @@ function solve_two_spheres(p::Parameters, d::Real;
                            maxiter::Int = 200,
                            verbose::Bool = false,
                            omega_continuation::Bool = true,
+                           bc_reg::Real = 0.0,
                            x0_init = nothing)
     geom   = build_geometry(p, d; rho_max = rho_max, z_buf = z_buf,
-                            Nrho = Nrho, Nz = Nz)
+                            Nrho = Nrho, Nz = Nz, bc_reg = bc_reg)
     mu_inf = compute_mu_inf(p)
     # Optional warm start (e.g. a neighbouring-d solution interpolated onto this
     # grid); must already match n_unknowns(geom).  Falls back to the analytic guess.
@@ -573,7 +595,7 @@ function solve_two_spheres(p::Parameters, d::Real;
         n_steps = 6
         p0   = with(p; omega_b = 0.0)
         geom0 = build_geometry(p0, d; rho_max = rho_max, z_buf = z_buf,
-                               Nrho = Nrho, Nz = Nz)
+                               Nrho = Nrho, Nz = Nz, bc_reg = bc_reg)
         x_cur = initial_guess(geom0)
         geom_k = geom
         ok_k = true
@@ -581,7 +603,7 @@ function solve_two_spheres(p::Parameters, d::Real;
             frac = k / n_steps
             p_k = with(p; omega_b = frac * p.omega_b)
             geom_k = build_geometry(p_k, d; rho_max = rho_max, z_buf = z_buf,
-                                    Nrho = Nrho, Nz = Nz)
+                                    Nrho = Nrho, Nz = Nz, bc_reg = bc_reg)
             x_k, ok_step = try
                 _solve_newton_sparse(geom_k, compute_mu_inf(p_k), x_cur;
                                      f_tol = f_tol, maxiter = maxiter)

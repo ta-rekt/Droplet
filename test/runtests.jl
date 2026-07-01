@@ -44,4 +44,6 @@ using Random
     # Rouse polymer overdamped Langevin solver
     include("test_rouse.jl")
     include("test_rouse_sojourn.jl")
+    # 1D backward-FPE first-passage-time solver
+    include("test_fpt_solver.jl")
 end
