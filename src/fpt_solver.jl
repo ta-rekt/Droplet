@@ -144,7 +144,7 @@ function boltzmann_ic(prob::FPTProblem)
     return p
 end
 
-_auto_tgrid(mfpt; n=300) = exp.(range(log(mfpt / 1e4), log(mfpt * 15.0); length=n))
+_auto_tgrid(mfpt; n=500) = exp.(range(log(mfpt / 1e4), log(mfpt * 20.0); length=n))
 
 """
     solve_fpt(prob::FPTProblem)

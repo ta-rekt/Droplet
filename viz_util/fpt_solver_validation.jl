@@ -25,10 +25,6 @@ function bd_first_passage(Ufun, Uprime, xmin, xmax; D, kBT, dt, nsamples, seed)
     β = 1.0 / kBT
     c1 = D * β * dt
     c2 = sqrt(2 * D * dt)
-    # Milstein absorbing-boundary correction: discrete steps miss brief crossings,
-    # so the effective boundary sits ~0.5826*sqrt(2D dt) beyond xmax; absorb that
-    # much earlier to recover the continuum first-passage time.
-    xabs = xmax - 0.5826 * sqrt(2 * D * dt)
     umin = Ufun(xmin)   # potential increases away from the reflecting wall here
     times = Float64[]
     maxstep = 5_000_000
@@ -42,7 +38,7 @@ function bd_first_passage(Ufun, Uprime, xmin, xmax; D, kBT, dt, nsamples, seed)
         for step in 1:maxstep
             xc += -c1 * Uprime(xc) + c2 * randn(rng)
             xc <= xmin && (xc = 2 * xmin - xc)        # reflect
-            if xc >= xabs                              # absorb (corrected boundary)
+            if xc >= xmax                              # absorb
                 push!(times, step * dt); break
             end
         end
@@ -90,23 +86,19 @@ for c in cases
     vline!(pp, [c.xmax]; color = :crimson,    ls = :solid, lw = 2) # absorbing
     push!(pot_panels, pp)
 
-    # FPT panel (semilog-y): Langevin histogram + solver density.  The log y-axis
-    # shows the exponential (Kramers) tail as a straight line — where a linear
-    # axis hides everything under the short-time peak.
-    thi = quantile(times, 0.999)
-    edges = range(0, thi; length = 60)
-    keep = res.t .<= thi
-    ymax = maximum(res.pdf[keep])
+    # FPT panel: Langevin histogram + solver density
+    tmax = quantile(times, 0.99)
+    edges = range(0, tmax; length = 60)
     pf = histogram(times; bins = edges, normalize = :pdf,
                    color = :dodgerblue, alpha = 0.45, linecolor = :white,
                    label = "Langevin (n=$nsamples)",
-                   yscale = :log10, ylims = (ymax / 300, ymax * 1.5),
-                   xlims = (0, thi),
                    xlabel = "first-passage time t", ylabel = "PDF  f(t)",
                    title = @sprintf("MFPT: solver %.3f / BD %.3f", res.mfpt, mfpt_bd))
+    keep = res.t .<= tmax
     plot!(pf, res.t[keep], res.pdf[keep]; lw = 3, color = :crimson,
           label = "backward-FPE solver")
     vline!(pf, [res.mfpt]; color = :crimson, ls = :dot, lw = 2, label = "MFPT (solver)")
+    xlims!(pf, 0, tmax)
     push!(fpt_panels, pf)
 end
 

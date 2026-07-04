@@ -15,7 +15,7 @@
 # BELOW the dilute binodal (set chi_b = 2.5; binodal ~ 0.145).  At the spec's old
 # chi_b = 4 / phi_inf = 0.01 the bulk is far undersaturated and no bridged branch
 # exists -- see scouting notes.
-#
+
 # Driver: sim/sweep.jl.  Pipe builder: runJL.
 
 using Droplet
@@ -24,10 +24,17 @@ using Droplet
 slist = []
 checkpoint_path = ""
 
+# P_strong3() = Parameters(chi_b = 4.0, omega_b = -1.35, kappa = 1.0,
+#                         phi_inf = 0.01, R = 10.0, eps = 1e-6)    
+
+# (name = "strong3", p = P_strong3(), bc_reg = 0.05, d = 10.0,
+#     Nrho = 467, dz_target = 0.03, rho_buf = 4.0, z_buf = 3.0,
+#     N1d = 1400, L_iso = 12.0, warm = true,  tol_prof = 0.006, tol_iso = 0.01),
+
 # Fixed physical and numerical configuration.
-const R_FIXED       = 5.0
+const R_FIXED       = 10.0
 const NB            = 1.0
-const CHI_B         = 2.5            # > 2 so bulk coexistence (bridging) exists
+const CHI_B         = 4.0            # > 2 so bulk coexistence (bridging) exists
 const KAPPA         = 1.0
 const L_PARAM       = 20.0
 const EPS_PARAM     = 1e-6
@@ -37,10 +44,10 @@ const D_MAX_FACTOR  = 1.5
 const N_D           = 30
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 120
-const DZ_TARGET     = 0.1
-const RHO_MAX       = 10.0
-const Z_BUF         = 4.0
+const NRHO          = 467
+const DZ_TARGET     = 0.03
+const RHO_MAX       = 15.0
+const Z_BUF         = 3.0
 const F_TOL         = 1e-6
 const MAXITER       = 200
 const BRIDGE_PHI    = 0.5            # gap-centre phi above this => "bridged"
@@ -65,9 +72,9 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
 # as a fraction of the binodal (near-saturation), where bridging is active.
-betas = BINODAL .* collect(range(0.20, 0.90; length = 32))   # phi_inf
-# alphas = [0.90 * BINODAL]
-alphas  = [-0.5]                                                  # omega_b
+# betas = BINODAL .* collect(range(0.20, 0.90; length = 32))   # phi_inf
+betas = collect(range(0.006, stop=0.010, length=9))
+alphas  = [-1.4]                                                  # omega_b
 
 nparams = length(alphas)
 
@@ -157,7 +164,7 @@ function target!(res, args...)
                           Nrho = NRHO, Nz = _nz_for(dd),
                           f_tol = F_TOL, maxiter = MAXITER,
                           x0_init = x0, omega_continuation = omega_cont,
-                          verbose = false)
+                          verbose = false, bc_reg = 2e-2)
 
     # Reference: spheres far apart on the dilute branch.
     res_ref = _solve(d_ref)
