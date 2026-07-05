@@ -15,8 +15,22 @@
 #   2. return  ("into the well"):   start at the ridge on the right (reflecting
 #      wall), absorbing at x = R  -> time to reach x = R starting from the right.
 #
-# Both densities, their means (MFPTs), the potential on the grid, and every
-# fixed/varied parameter are dumped to data/<today>/fpt_solver_c_sweep/.
+# On top of the sweep this script also estimates the FISHER INFORMATION RATE of
+# the exit/return times with respect to phi.  At each phi_inf[k] we:
+#   * solve the escape/return PDFs on the solver's auto time grids and freeze
+#     those grids (t_esc_grid, t_ret_grid);
+#   * re-solve at phi_inf[k+1] and phi_inf[k+2] on the SAME grids so the PDFs are
+#     directly comparable time-point by time-point;
+#   * form the central 3-point second derivative of log P wrt phi and average it
+#     over the base PDF,  A = ∫_0^{Tmax} dt P(t|phi) ∂²logP(t|phi)/∂phi²
+#     (this equals -I(phi), the negative Fisher information, since ∫P dt = 1);
+#   * report (A_exit + A_return) / (MFPT_exit + MFPT_return): the averaged
+#     second derivative per unit time.  It is stored in `fisher_rate`, indexed by
+#     the index k of phi (the last two entries are absent — the stencil needs
+#     phi[k+1], phi[k+2]).
+#
+# Both densities, their means (MFPTs), the potential on the grid, the Fisher rate,
+# and every fixed/varied parameter are dumped to data/<today>/fpt_solver_c_sweep/.
 #
 #   julia --project=@. viz_util/fpt_solver_c_sweep.jl
 
@@ -49,59 +63,120 @@ make_U_tot(p, lam) =
          2 * log(x) +                                     # radial Jacobian
          3 * x^2 / (2 * beadSep * kuhnLength^2)           # Rouse spring
 
-# --- Sweep -------------------------------------------------------------------
-records = Vector{Dict{String,Any}}()
-for k in eachindex(phi_infs[1:end-2])
-    φ = phi_infs[k]
-    φn = phi_infs[k + 1]
-    φnn = phi_infs[k + 2]
-
-    # fix t_grid, calculate second derivative of pdf wrsp to φ, integrate and record it
-
-    p   = Droplet.with(p_base; phi_inf = φ)
-    lam = sqrt(d2fb_dphi2(φ, p) / p.kappa)
+# Solve the escape and return FPT problems at a single phi_inf.  If `t_esc`/`t_ret`
+# are supplied (non-empty) the PDFs are evaluated on exactly those grids; empty =>
+# the solver's own auto log-spaced grid.  Returns the two solver results plus the
+# geometry/potential, so neighbouring phi values can reuse the base phi's grids.
+function solve_phi(φ_loc; t_esc = Float64[], t_ret = Float64[])
+    p   = Droplet.with(p_base; phi_inf = φ_loc)
+    lam = sqrt(d2fb_dphi2(φ_loc, p) / p.kappa)
     U_tot = make_U_tot(p, lam)
 
-    # locate the ridge (barrier top = absorbing point for escape)
+    # locate the ridge (barrier top = absorbing point for escape).  Refine the
+    # discrete maximum to sub-grid accuracy with a parabolic vertex: otherwise
+    # x_ridge snaps to the xs spacing (~0.0025) and climbs in a staircase as phi
+    # varies, which the d²/dφ² finite difference (÷dφ²≈6e-8) blows up into spikes.
     xs = collect(range(p.R, 25.0; length = 8000))
     Us = U_tot.(xs)
     ridge_idx = findfirst(i -> Us[i] > Us[i-1] && Us[i] > Us[i+1], 2:length(xs)-1)
-    x_ridge = ridge_idx === nothing ? xs[argmax(Us)] : xs[ridge_idx + 1]
+    i_ridge = ridge_idx === nothing ? argmax(Us) : ridge_idx + 1
+    if 1 < i_ridge < length(xs)
+        a, b, c = Us[i_ridge-1], Us[i_ridge], Us[i_ridge+1]
+        x_ridge = xs[i_ridge] + 0.5 * (xs[2] - xs[1]) * (a - c) / (a - 2b + c)
+    else
+        x_ridge = xs[i_ridge]
+    end
     barrier = U_tot(x_ridge) - U_tot(p.R)
 
-    # potential on the [R, ridge] grid shared by both directions
+    # 1. escape: R -> ridge (start at contact, reflecting at R, absorbing at ridge)
     xg_esc = collect(range(p.R, x_ridge; length = Ngrid))
     Ug_esc = U_tot.(xg_esc)
-
-    # 1. escape: R -> ridge (start at contact, reflecting at R, absorbing at ridge)
     p0_esc = zeros(Ngrid); p0_esc[1] = 1.0
-    prob_esc = FPTProblem(xg_esc, Ug_esc; D = D_eff, kBT = kBT, t=t_esc_grid,
+    prob_esc = FPTProblem(xg_esc, Ug_esc; D = D_eff, kBT = kBT, t = t_esc,
                           left_bc = :reflecting, right_bc = :absorbing, p0 = p0_esc)
     res_esc = solve_fpt(prob_esc)
 
-    # 2. return: ridge -> R (start at ridge, absorbing at R, reflecting at infty)
+    # 2. return: ridge -> R (start at ridge, absorbing at R, reflecting at infty).
+    # spread the start delta over the two xg_ret nodes bracketing x_ridge (weighted
+    # by distance) so the return IC moves continuously with x_ridge, instead of
+    # snapping to the nearest node (spacing ~0.029) and jumping in a staircase.
     xg_ret = collect(range(p.R, 4*kuhnLength*sqrt(beadSep); length = Ngrid))
     Ug_ret = U_tot.(xg_ret)
-    p0_ret = zeros(Ngrid); p0_ret[ridge_idx] = 1.0
-    prob_ret = FPTProblem(xg_ret, Ug_ret; D = D_eff, kBT = kBT, t=t_ret_grid,
+    j = clamp(searchsortedlast(xg_ret, x_ridge), 1, Ngrid - 1)
+    w = (x_ridge - xg_ret[j]) / (xg_ret[2] - xg_ret[1])
+    p0_ret = zeros(Ngrid); p0_ret[j] = 1 - w; p0_ret[j+1] = w
+    prob_ret = FPTProblem(xg_ret, Ug_ret; D = D_eff, kBT = kBT, t = t_ret,
                           left_bc = :absorbing, right_bc = :reflecting, p0 = p0_ret)
     res_ret = solve_fpt(prob_ret)
 
+    return (lam = lam, x_ridge = x_ridge, barrier = barrier, well_depth = U_tot(p.R),
+            xg_esc = xg_esc, Ug_esc = Ug_esc, xg_ret = xg_ret, Ug_ret = Ug_ret,
+            res_esc = res_esc, res_ret = res_ret)
+end
+
+# ∫ P(t|φ) ∂²logP(t|φ)/∂φ² dt with the second derivative from the central 3-point
+# stencil on (φ, φn, φnn) and the base PDF `p0` as the integration weight.
+# Non-uniform-t trapezoid; tail nodes where any PDF underflows (or goes ≤ 0 from
+# eigen roundoff) are dropped so log(...) stays finite and 0·(-Inf) can't appear.
+function avg_d2logp(t, p0, pn, pnn, dφ)
+    fl   = maximum(p0) * 1e-10
+    lp0  = log.(max.(p0,  fl))
+    lpn  = log.(max.(pn,  fl))
+    lpnn = log.(max.(pnn, fl))
+    integrand = p0 .* (lp0 .- 2 .* lpn .+ lpnn) ./ dφ^2
+    @inbounds for i in eachindex(integrand)
+        (p0[i] > fl && pn[i] > fl && pnn[i] > fl) || (integrand[i] = 0.0)
+    end
+    s = 0.0
+    @inbounds for i in 1:length(t)-1
+        s += 0.5 * (integrand[i] + integrand[i+1]) * (t[i+1] - t[i])
+    end
+    return s
+end
+
+# --- Sweep -------------------------------------------------------------------
+records = Vector{Dict{String,Any}}()
+fisher_rate = fill(NaN, length(phi_infs) - 2)   # indexed by k = index of φ; last two absent
+
+for k in eachindex(phi_infs[1:end-2])
+    φ   = phi_infs[k]
+    φn  = phi_infs[k + 1]
+    φnn = phi_infs[k + 2]
+    dφ  = φn - φ                                  # uniform phi spacing
+
+    # 1-2. base phi: solve on the auto grids, then freeze them for the neighbours
+    base = solve_phi(φ)
+    t_esc_grid = base.res_esc.t
+    t_ret_grid = base.res_ret.t
+
+    # 3. neighbours on the SAME time grids (PDFs comparable point-by-point)
+    nb  = solve_phi(φn;  t_esc = t_esc_grid, t_ret = t_ret_grid)
+    nnb = solve_phi(φnn; t_esc = t_esc_grid, t_ret = t_ret_grid)
+
+    # 4-5. central 2nd derivative of log P wrt φ, averaged over the base PDF
+    avg2_esc = avg_d2logp(t_esc_grid, base.res_esc.pdf, nb.res_esc.pdf, nnb.res_esc.pdf, dφ)
+    avg2_ret = avg_d2logp(t_ret_grid, base.res_ret.pdf, nb.res_ret.pdf, nnb.res_ret.pdf, dφ)
+
+    # 6. summed averaged second derivatives per unit (MFPT_esc + MFPT_ret)
+    fisher_rate[k] = - φ^2 * (avg2_esc + avg2_ret) / (base.res_esc.mfpt + base.res_ret.mfpt)
+
     push!(records, Dict(
         "phi_inf"     => φ,
-        "lam"         => lam,
-        "x_ridge"     => x_ridge,
-        "barrier"     => barrier,
-        "well_depth"  => U_tot(p.R),
-        "x_grid_esc"  => xg_esc,
-        "U_tot_esc"   => Ug_esc,
-        "x_grid_ret"  => xg_ret,
-        "U_tot_ret"   => Ug_ret,
-        "escape_t"    => res_esc.t, "escape_pdf" => res_esc.pdf, "escape_mfpt" => res_esc.mfpt,
-        "return_t"    => res_ret.t, "return_pdf" => res_ret.pdf, "return_mfpt" => res_ret.mfpt))
+        "lam"         => base.lam,
+        "x_ridge"     => base.x_ridge,
+        "barrier"     => base.barrier,
+        "well_depth"  => base.well_depth,
+        "x_grid_esc"  => base.xg_esc,
+        "U_tot_esc"   => base.Ug_esc,
+        "x_grid_ret"  => base.xg_ret,
+        "U_tot_ret"   => base.Ug_ret,
+        "escape_t"    => base.res_esc.t, "escape_pdf" => base.res_esc.pdf, "escape_mfpt" => base.res_esc.mfpt,
+        "return_t"    => base.res_ret.t, "return_pdf" => base.res_ret.pdf, "return_mfpt" => base.res_ret.mfpt,
+        "avg_d2logp_esc" => avg2_esc, "avg_d2logp_ret" => avg2_ret,
+        "fisher_rate" => fisher_rate[k]))
 
-    @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  MFPT_esc=%.4g  MFPT_ret=%.4g\n",
-            φ, lam, x_ridge, barrier, res_esc.mfpt, res_ret.mfpt)
+    @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  MFPT_esc=%.4g  MFPT_ret=%.4g  I_rate=%.4g\n",
+            φ, base.lam, base.x_ridge, base.barrier, base.res_esc.mfpt, base.res_ret.mfpt, fisher_rate[k])
 end
 
 # --- Dump everything to data/<today>/fpt_solver_c_sweep/ ----------------------
@@ -116,28 +191,33 @@ open(jsonpath, "w") do io
             "h0" => h0, "kBT" => kBT, "friction" => friction, "D_eff" => D_eff,
             "beadSep" => beadSep, "kuhnLength" => kuhnLength, "Ngrid" => Ngrid,
             "escape_setup" => "IC=delta at R; reflecting at R, absorbing at ridge (time R->ridge)",
-            "return_setup" => "IC=delta at ridge; absorbing at R, reflecting at ridge (time ridge->R)"),
-        "phi_infs" => phi_infs,
-        "per_phi"  => records))
+            "return_setup" => "IC=delta at ridge; absorbing at R, reflecting at ridge (time ridge->R)",
+            "fisher_rate_def" => "(A_esc+A_ret)/(MFPT_esc+MFPT_ret), A=∫P(t|φ) ∂²logP/∂φ² dt (central 3-pt in φ); = -I(φ)/(τ_esc+τ_ret)"),
+        "phi_infs"    => phi_infs,
+        "fisher_rate" => fisher_rate,      # length length(phi_infs)-2, indexed by φ-index
+        "per_phi"     => records))
 end
 println("saved -> ", jsonpath)
 
-# --- Overview figure: MFPTs and barrier vs concentration ---------------------
+# --- Overview figure: MFPTs, barrier and Fisher rate vs concentration --------
 mfpt_esc = [r["escape_mfpt"] for r in records]
 mfpt_ret = [r["return_mfpt"] for r in records]
 barriers = [r["barrier"]     for r in records]
 
-pm = plot(phi_infs, mfpt_esc; lw = 2.5, color = :crimson, yscale = :log10,
-          label = "escape  (R -> ridge)", marker = :circle, ms = 3,
-          xlabel = "bulk volume fraction phi_inf", ylabel = "MFPT",
-          title = "First-passage times vs concentration", legend = :topleft)
-plot!(pm, phi_infs, mfpt_ret; lw = 2.5, color = :seagreen, marker = :circle, ms = 3,
-      label = "return  (ridge -> R)")
-pb = plot(phi_infs, barriers; lw = 2.5, color = :black, marker = :circle, ms = 3,
-          xlabel = "bulk volume fraction phi_inf", ylabel = "barrier / k_BT",
-          title = "Escape barrier vs concentration", legend = false)
-fig = plot(pm, pb; layout = (1, 2), size = (1400, 550), dpi = 150,
-           left_margin = 6Plots.mm, bottom_margin = 6Plots.mm)
-pngpath = joinpath(outdir, "fpt_solver_c_sweep.png")
-savefig(fig, pngpath)
-println("saved -> ", pngpath)
+# pm = plot(phi_infs, mfpt_esc; lw = 2.5, color = :crimson, yscale = :log10,
+#           label = "escape  (R -> ridge)", marker = :circle, ms = 3,
+#           xlabel = "bulk volume fraction phi_inf", ylabel = "MFPT",
+#           title = "First-passage times vs concentration", legend = :topleft)
+# plot!(pm, phi_infs, mfpt_ret; lw = 2.5, color = :seagreen, marker = :circle, ms = 3,
+#       label = "return  (ridge -> R)")
+# pb = plot(phi_infs, barriers; lw = 2.5, color = :black, marker = :circle, ms = 3,
+#           xlabel = "bulk volume fraction phi_inf", ylabel = "barrier / k_BT",
+#           title = "Escape barrier vs concentration", legend = false)
+# pf = plot(phi_infs[1:end-2], fisher_rate; lw = 2.5, color = :navy, marker = :circle, ms = 3,
+#           xlabel = "bulk volume fraction phi_inf", ylabel = "avg ∂²logP/∂φ²  per unit time",
+#           title = "Fisher information rate vs concentration", legend = false)
+# fig = plot(pm, pb, pf; layout = (1, 3), size = (2000, 550), dpi = 150,
+#            left_margin = 6Plots.mm, bottom_margin = 6Plots.mm)
+# pngpath = joinpath(outdir, "fpt_solver_c_sweep.png")
+# savefig(fig, pngpath)
+# println("saved -> ", pngpath)
