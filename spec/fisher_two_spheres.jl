@@ -32,7 +32,7 @@ checkpoint_path = ""
 #     N1d = 1400, L_iso = 12.0, warm = true,  tol_prof = 0.006, tol_iso = 0.01),
 
 # Fixed physical and numerical configuration.
-const R_FIXED       = 10.0
+const R_FIXED       = 5.0
 const NB            = 1.0
 const CHI_B         = 4.0            # > 2 so bulk coexistence (bridging) exists
 const KAPPA         = 1.0
@@ -40,12 +40,12 @@ const L_PARAM       = 20.0
 const EPS_PARAM     = 1e-6
 
 const D_MIN_FACTOR  = 0.05
-const D_MAX_FACTOR  = 1.5
-const N_D           = 30
+const D_MAX_FACTOR  = 1.0
+const N_D           = 20
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 467
-const DZ_TARGET     = 0.03
+const NRHO          = 200
+const DZ_TARGET     = 0.05
 const RHO_MAX       = 15.0
 const Z_BUF         = 3.0
 const F_TOL         = 1e-6
@@ -72,8 +72,8 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
 # as a fraction of the binodal (near-saturation), where bridging is active.
-# betas = BINODAL .* collect(range(0.20, 0.90; length = 32))   # phi_inf
-betas = collect(range(0.006, stop=0.010, length=9))
+# betas = BINODAL .* collect(range(0.10, 0.90; length = 5))   # phi_inf
+betas = collect(range(0.002, stop=0.006, length=5))
 alphas  = [-1.4]                                                  # omega_b
 
 nparams = length(alphas)

@@ -43,10 +43,26 @@ using Printf
 using Dates
 import JSON
 
+nonlinear_path = "/home/tohme/.julia/dev/Droplet/media/figures/20260628/fisher_two_spheres_chi_2.5_h0_-0.5_R_5.0_sweep_c.json"
+nl_data    = JSON.parsefile(nonlinear_path)
+nl_group   = nl_data["groups"][1]
+nl_d       = Vector{Float64}(nl_group["d_grid"])     # surface-to-surface gap
+nl_U       = nl_group["U_full_grid"]                 # one U(d) curve per phi_inf
+nl_phi_inf = Vector{Float64}(nl_group["phi_inf"])    # bulk volume fractions
+
+function _dilute_binodal(chi::Real; nb::Real = 1.0)
+    g(phi) = log(phi / (1.0 - phi)) + nb * chi * (1.0 - 2.0 * phi)
+    lo, hi = 1e-8, 0.5 - 1e-9
+    for _ in 1:200
+        mid = 0.5 * (lo + hi)
+        if g(mid) < 0.0; lo = mid; else; hi = mid; end
+    end
+    return 0.5 * (lo + hi)
+end
+
 # --- Fixed parameters (only phi_inf is varied) -------------------------------
-phi_infs   = collect(range(0.001, stop = 0.05, length = 50))
-p_base     = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.25, kappa = 1.0,
-                        phi_inf = 0.1, eps = 1e-6, R = 5.0)
+p_base     = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.3, kappa = 1.0,
+phi_inf = 0.1, eps = 1e-6, R = 5.0)
 h0         = p_base.omega_b        # adsorption strength, fixed across the sweep
 kuhnLength = 1.0
 beadSep    = 150
@@ -55,6 +71,9 @@ friction   = 1.0
 D_bead     = kBT / friction
 D_eff      = 2 * D_bead            # relative coord of the two end beads
 Ngrid      = 1500                  # grid points on [R, x_ridge]
+
+const BINODAL = _dilute_binodal(p_base.chi_b; nb = p_base.nb)
+phi_infs   = collect(range(0.05*BINODAL, stop = 0.9*BINODAL, length = 32))
 
 # combined potential for a given screening length lam (h0, beadSep etc. fixed)
 make_U_tot(p, lam) =
@@ -136,7 +155,7 @@ end
 
 # --- Sweep -------------------------------------------------------------------
 records = Vector{Dict{String,Any}}()
-fisher_rate = fill(NaN, length(phi_infs) - 2)   # indexed by k = index of φ; last two absent
+fisher_rate = fill(NaN, length(phi_infs) - 2)   # indexed by k = index of φ
 
 for k in eachindex(phi_infs[1:end-2])
     φ   = phi_infs[k]
@@ -154,11 +173,18 @@ for k in eachindex(phi_infs[1:end-2])
     nnb = solve_phi(φnn; t_esc = t_esc_grid, t_ret = t_ret_grid)
 
     # 4-5. central 2nd derivative of log P wrt φ, averaged over the base PDF
-    avg2_esc = avg_d2logp(t_esc_grid, base.res_esc.pdf, nb.res_esc.pdf, nnb.res_esc.pdf, dφ)
-    avg2_ret = avg_d2logp(t_ret_grid, base.res_ret.pdf, nb.res_ret.pdf, nnb.res_ret.pdf, dφ)
+    avg2_esc = avg_d2logp(t_esc_grid, 
+                          base.res_esc.pdf, 
+                          nb.res_esc.pdf, 
+                          nnb.res_esc.pdf, dφ)
+    avg2_ret = avg_d2logp(t_ret_grid, 
+                          base.res_ret.pdf, 
+                          nb.res_ret.pdf, 
+                          nnb.res_ret.pdf, dφ)
 
     # 6. summed averaged second derivatives per unit (MFPT_esc + MFPT_ret)
-    fisher_rate[k] = - φ^2 * (avg2_esc + avg2_ret) / (base.res_esc.mfpt + base.res_ret.mfpt)
+    fisher_rate[k] = (- φ^2 * (avg2_esc + avg2_ret) 
+                        / (base.res_esc.mfpt + base.res_ret.mfpt))
 
     push!(records, Dict(
         "phi_inf"     => φ,
@@ -170,17 +196,23 @@ for k in eachindex(phi_infs[1:end-2])
         "U_tot_esc"   => base.Ug_esc,
         "x_grid_ret"  => base.xg_ret,
         "U_tot_ret"   => base.Ug_ret,
-        "escape_t"    => base.res_esc.t, "escape_pdf" => base.res_esc.pdf, "escape_mfpt" => base.res_esc.mfpt,
-        "return_t"    => base.res_ret.t, "return_pdf" => base.res_ret.pdf, "return_mfpt" => base.res_ret.mfpt,
+        "escape_t"    => base.res_esc.t, 
+        "escape_pdf" => base.res_esc.pdf, 
+        "escape_mfpt" => base.res_esc.mfpt,
+        "return_t"    => base.res_ret.t, 
+        "return_pdf" => base.res_ret.pdf, 
+        "return_mfpt" => base.res_ret.mfpt,
         "avg_d2logp_esc" => avg2_esc, "avg_d2logp_ret" => avg2_ret,
         "fisher_rate" => fisher_rate[k]))
 
-    @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  MFPT_esc=%.4g  MFPT_ret=%.4g  I_rate=%.4g\n",
-            φ, base.lam, base.x_ridge, base.barrier, base.res_esc.mfpt, base.res_ret.mfpt, fisher_rate[k])
+    @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  
+            MFPT_esc=%.4g  MFPT_ret=%.4g  I_rate=%.4g\n",
+            φ, base.lam, base.x_ridge, base.barrier, 
+            base.res_esc.mfpt, base.res_ret.mfpt, fisher_rate[k])
 end
 
 # --- Dump everything to data/<today>/fpt_solver_c_sweep/ ----------------------
-outdir = joinpath("data", Dates.format(today(), "yyyymmdd"), "fpt_solver_c_sweep")
+outdir = joinpath("data", Dates.format(today(), "yyyymmdd"), "fpt_solver_c_sweep_h0_-0.3")
 mkpath(outdir)
 jsonpath = joinpath(outdir, "fpt_solver_c_sweep.json")
 open(jsonpath, "w") do io
