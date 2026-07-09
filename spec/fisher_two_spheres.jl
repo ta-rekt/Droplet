@@ -34,18 +34,18 @@ checkpoint_path = ""
 # Fixed physical and numerical configuration.
 const R_FIXED       = 5.0
 const NB            = 1.0
-const CHI_B         = 4.0            # > 2 so bulk coexistence (bridging) exists
+const CHI_B         = 2.5            # > 2 so bulk coexistence (bridging) exists
 const KAPPA         = 1.0
 const L_PARAM       = 20.0
 const EPS_PARAM     = 1e-6
 
 const D_MIN_FACTOR  = 0.05
-const D_MAX_FACTOR  = 1.0
-const N_D           = 20
+const D_MAX_FACTOR  = 0.5
+const N_D           = 30
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 200
-const DZ_TARGET     = 0.05
+const NRHO          = 467
+const DZ_TARGET     = 0.02
 const RHO_MAX       = 15.0
 const Z_BUF         = 3.0
 const F_TOL         = 1e-6
@@ -72,9 +72,9 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
 # as a fraction of the binodal (near-saturation), where bridging is active.
-# betas = BINODAL .* collect(range(0.10, 0.90; length = 5))   # phi_inf
-betas = collect(range(0.002, stop=0.006, length=5))
-alphas  = [-1.4]                                                  # omega_b
+betas = BINODAL .* collect(range(0.10, 0.90; length = 5))   # phi_inf
+# betas = collect(range(0.002, stop=0.008, length=5))
+alphas  = [-0.5]                                                  # omega_b
 
 nparams = length(alphas)
 
@@ -164,7 +164,7 @@ function target!(res, args...)
                           Nrho = NRHO, Nz = _nz_for(dd),
                           f_tol = F_TOL, maxiter = MAXITER,
                           x0_init = x0, omega_continuation = omega_cont,
-                          verbose = false, bc_reg = 2e-2)
+                          verbose = false, bc_reg = 5e-2)
 
     # Reference: spheres far apart on the dilute branch.
     res_ref = _solve(d_ref)

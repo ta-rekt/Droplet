@@ -43,12 +43,12 @@ using Printf
 using Dates
 import JSON
 
-nonlinear_path = "/home/tohme/.julia/dev/Droplet/media/figures/20260628/fisher_two_spheres_chi_2.5_h0_-0.5_R_5.0_sweep_c.json"
-nl_data    = JSON.parsefile(nonlinear_path)
-nl_group   = nl_data["groups"][1]
-nl_d       = Vector{Float64}(nl_group["d_grid"])     # surface-to-surface gap
-nl_U       = nl_group["U_full_grid"]                 # one U(d) curve per phi_inf
-nl_phi_inf = Vector{Float64}(nl_group["phi_inf"])    # bulk volume fractions
+# nonlinear_path = "/home/tohme/.julia/dev/Droplet/media/figures/20260628/fisher_two_spheres_chi_2.5_h0_-0.5_R_5.0_sweep_c.json"
+# nl_data    = JSON.parsefile(nonlinear_path)
+# nl_group   = nl_data["groups"][1]
+# nl_d       = Vector{Float64}(nl_group["d_grid"])     # surface-to-surface gap
+# nl_U       = nl_group["U_full_grid"]                 # one U(d) curve per phi_inf
+# nl_phi_inf = Vector{Float64}(nl_group["phi_inf"])    # bulk volume fractions
 
 function _dilute_binodal(chi::Real; nb::Real = 1.0)
     g(phi) = log(phi / (1.0 - phi)) + nb * chi * (1.0 - 2.0 * phi)
@@ -61,7 +61,7 @@ function _dilute_binodal(chi::Real; nb::Real = 1.0)
 end
 
 # --- Fixed parameters (only phi_inf is varied) -------------------------------
-p_base     = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.3, kappa = 1.0,
+p_base     = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.4, kappa = 1.0,
 phi_inf = 0.1, eps = 1e-6, R = 5.0)
 h0         = p_base.omega_b        # adsorption strength, fixed across the sweep
 kuhnLength = 1.0
@@ -153,9 +153,64 @@ function avg_d2logp(t, p0, pn, pnn, dφ)
     return s
 end
 
+# --- Local concentration in the adsorption well ------------------------------
+# Linear-response volume-fraction profile
+#   phi(x) = phi_inf - h0 * exp(-lam(x-R)) * R/x / (kappa (lam + 1/R))   (h0<0 => surface enrichment),
+# averaged over the Boltzmann weight exp(-U_tot/kBT) CONDITIONED on the well
+# [R, x_ridge] (barrier top = the Langevin pipeline's x_bar). Mirrors the "Local
+# concentration and transcription dynamics" cell of viz-rouse.ipynb: the outer
+# normalization cancels in the conditional average, so only the well is integrated.
+# A dedicated dense grid keeps the trapezoid tight independently of Ngrid.
+Nlocal = 100_000
+
+_trapz(x, y) = sum(0.5 * (y[i] + y[i+1]) * (x[i+1] - x[i]) for i in 1:length(x)-1)
+
+function local_conc(φ_loc)
+    p     = Droplet.with(p_base; phi_inf = φ_loc)
+    lam   = sqrt(d2fb_dphi2(φ_loc, p) / p.kappa)
+    U_tot = make_U_tot(p, lam)
+
+    # well boundary x_ridge (barrier top), located exactly as in solve_phi
+    xs = collect(range(p.R, 25.0; length = 8000))
+    Us = U_tot.(xs)
+    ridge_idx = findfirst(i -> Us[i] > Us[i-1] && Us[i] > Us[i+1], 2:length(xs)-1)
+    i_ridge = ridge_idx === nothing ? argmax(Us) : ridge_idx + 1
+    if 1 < i_ridge < length(xs)
+        a, b, c = Us[i_ridge-1], Us[i_ridge], Us[i_ridge+1]
+        x_ridge = xs[i_ridge] + 0.5 * (xs[2] - xs[1]) * (a - c) / (a - 2b + c)
+    else
+        x_ridge = xs[i_ridge]
+    end
+
+    # Boltzmann-weighted conditional average of the profile over the well.
+    xg      = collect(range(p.R, x_ridge; length = Nlocal))
+    Ug      = U_tot.(xg)
+    w       = exp.(-(Ug .- minimum(Ug)) ./ kBT)    # shift for overflow safety (cancels in the ratio)
+    profile = φ_loc .- h0 .* (exp.(-lam .* (xg .- p.R)) .* p.R ./ xg) ./
+              (p.kappa * (lam + 1 / p.R))
+    return _trapz(xg, w .* profile) / _trapz(xg, w)
+end
+
+# np.gradient-style central differences (÷ the true φ spacing) for d/dφ_inf.
+function _gradient(y, h)
+    n = length(y); g = similar(y)
+    g[1] = (y[2] - y[1]) / h
+    g[n] = (y[n] - y[n-1]) / h
+    for i in 2:n-1
+        g[i] = (y[i+1] - y[i-1]) / (2h)
+    end
+    return g
+end
+
 # --- Sweep -------------------------------------------------------------------
 records = Vector{Dict{String,Any}}()
 fisher_rate = fill(NaN, length(phi_infs) - 2)   # indexed by k = index of φ
+
+# local concentration + its 1st/2nd derivatives wrt phi_inf across the whole sweep
+phi_local_vals   = [local_conc(φ) for φ in phi_infs]
+dφ_grid          = phi_infs[2] - phi_infs[1]                 # uniform φ spacing
+dphi_local_vals  = _gradient(phi_local_vals, dφ_grid)
+d2phi_local_vals = _gradient(dphi_local_vals, dφ_grid)
 
 for k in eachindex(phi_infs[1:end-2])
     φ   = phi_infs[k]
@@ -202,17 +257,21 @@ for k in eachindex(phi_infs[1:end-2])
         "return_t"    => base.res_ret.t, 
         "return_pdf" => base.res_ret.pdf, 
         "return_mfpt" => base.res_ret.mfpt,
-        "avg_d2logp_esc" => avg2_esc, "avg_d2logp_ret" => avg2_ret,
+        "avg_d2logp_esc" => avg2_esc,
+        "avg_d2logp_ret" => avg2_ret,
+        "phi_local"   => phi_local_vals[k],
+        "dphi_local"  => dphi_local_vals[k],
+        "d2phi_local" => d2phi_local_vals[k],
         "fisher_rate" => fisher_rate[k]))
 
-    @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  
+    @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  phi_loc=%.4g
             MFPT_esc=%.4g  MFPT_ret=%.4g  I_rate=%.4g\n",
-            φ, base.lam, base.x_ridge, base.barrier, 
+            φ, base.lam, base.x_ridge, base.barrier, phi_local_vals[k],
             base.res_esc.mfpt, base.res_ret.mfpt, fisher_rate[k])
 end
 
 # --- Dump everything to data/<today>/fpt_solver_c_sweep/ ----------------------
-outdir = joinpath("data", Dates.format(today(), "yyyymmdd"), "fpt_solver_c_sweep_h0_-0.3")
+outdir = joinpath("data", Dates.format(today(), "yyyymmdd"), "fpt_solver_c_sweep_h0_-0.4")
 mkpath(outdir)
 jsonpath = joinpath(outdir, "fpt_solver_c_sweep.json")
 open(jsonpath, "w") do io
@@ -222,11 +281,16 @@ open(jsonpath, "w") do io
             "kappa" => p_base.kappa, "R" => p_base.R, "eps" => p_base.eps,
             "h0" => h0, "kBT" => kBT, "friction" => friction, "D_eff" => D_eff,
             "beadSep" => beadSep, "kuhnLength" => kuhnLength, "Ngrid" => Ngrid,
+            "Nlocal" => Nlocal,
             "escape_setup" => "IC=delta at R; reflecting at R, absorbing at ridge (time R->ridge)",
             "return_setup" => "IC=delta at ridge; absorbing at R, reflecting at ridge (time ridge->R)",
-            "fisher_rate_def" => "(A_esc+A_ret)/(MFPT_esc+MFPT_ret), A=∫P(t|φ) ∂²logP/∂φ² dt (central 3-pt in φ); = -I(φ)/(τ_esc+τ_ret)"),
+            "fisher_rate_def" => "(A_esc+A_ret)/(MFPT_esc+MFPT_ret), A=∫P(t|φ) ∂²logP/∂φ² dt (central 3-pt in φ); = -I(φ)/(τ_esc+τ_ret)",
+            "phi_local_def" => "Boltzmann-weighted avg of phi(x)=phi_inf - h0*exp(-lam(x-R))*R/x/(kappa*(lam+1/R)) conditioned on the well [R,x_ridge]; dphi_local/d2phi_local are central FD wrt phi_inf"),
         "phi_infs"    => phi_infs,
         "fisher_rate" => fisher_rate,      # length length(phi_infs)-2, indexed by φ-index
+        "phi_local"             => phi_local_vals,     # length length(phi_infs)
+        "dphi_local_dphi_inf"   => dphi_local_vals,
+        "d2phi_local_dphi_inf2" => d2phi_local_vals,
         "per_phi"     => records))
 end
 println("saved -> ", jsonpath)

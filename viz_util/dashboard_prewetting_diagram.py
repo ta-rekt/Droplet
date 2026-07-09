@@ -22,12 +22,12 @@ import matplotlib.pyplot as plt
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
-EXP_NAME = "prewetting_diagram_R_inf"
+EXP_NAME = "prewetting_diagram_R_3"
 Y_AXIS    = "omega_b"
 X_AXIS    = "phi_inf"
 SLICE_AT  = None                       # value for the third axis; None => median
 # OUT_DATE  = date.today().strftime("%Y%m%d")
-OUT_DATE = "20260521"
+OUT_DATE = "20260706"
 DATA_DIR  = f"data/{OUT_DATE}/{EXP_NAME}"
 OUT_PATH  = f"media/figures/{OUT_DATE}/{EXP_NAME}.png"
 
@@ -104,7 +104,7 @@ axes.set_ylabel(axis_label[Y_AXIS], fontsize=12)
 axes.set_title(r"Surface composition $\phi_0$", fontsize=10)
 fig.colorbar(im0, ax=axes, label=r"$\phi(0)$")
 # axes.axvline(x=0.009, color="red")
-axes.scatter([0.009, 0.009], [-1.24, -1.28], color="red", s=50)
+# axes.scatter([0.009, 0.009], [-1.24, -1.28], color="red", s=50)
 
 # im1 = axes[1].imshow(P0, origin="lower", aspect="auto",
 #                      extent=[xlo, xhi, ylo, yhi], cmap="magma")
