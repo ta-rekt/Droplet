@@ -26,9 +26,9 @@ from viz_util.bvp_solver import Parameters, d2fb_dphi2
 
 
 # ── Config ───────────────────────────────────────────────────────────────────
-EXP_NAME = "fisher_two_spheres_chi_4.0_h0_-1.4_R_5.0"
+EXP_NAME = "fisher_two_spheres_chi_2.5_h0_-0.5_R_5.0_sweep_c"
 # OUT_DATE = date.today().strftime("%Y%m%d")
-OUT_DATE = "20260706"
+OUT_DATE = "20260716"
 DATA_DIR = f"data/{OUT_DATE}/{EXP_NAME}"
 OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}.png"
 OUT_JSON = f"media/figures/{OUT_DATE}/{EXP_NAME}.json"

@@ -72,6 +72,8 @@ const _NBR_OFFSETS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 # Walk a probe point outward along (u_rho, u_z) until its 4-cell bilinear
 # stencil contains no inside-sphere cells.  Returns (d_used, i0, j0, w_tuple,
 # clean::Bool) with `w_tuple` ordered (i0,j0),(i0+1,j0),(i0,j0+1),(i0+1,j0+1).
+# `d_max` caps the walk (e.g. at the entry into the OTHER sphere near contact:
+# a "clean" stencil found beyond it would sit on the far side of that sphere).
 function find_clean_stencil(rho_G::Real, z_G::Real,
                             u_rho::Real, u_z::Real,
                             d_initial::Real, step::Real,
@@ -80,7 +82,7 @@ function find_clean_stencil(rho_G::Real, z_G::Real,
                             drho::Real, dz::Real,
                             Nrho::Int, Nz::Int,
                             inside_mask::AbstractMatrix{Bool};
-                            max_iter::Int = 80)
+                            max_iter::Int = 80, d_max::Real = Inf)
     d_use = float(d_initial)
     i0 = 1; j0 = 1
     w = (0.0, 0.0, 0.0, 0.0)
@@ -88,6 +90,7 @@ function find_clean_stencil(rho_G::Real, z_G::Real,
     rho_lo, rho_hi = rho_grid[1], rho_grid[end]
     z_lo,   z_hi   = z_grid[1],   z_grid[end]
     @inbounds for _ in 1:max_iter
+        d_use > d_max && break
         rho_I = rho_G + d_use * u_rho
         z_I   = z_G   + d_use * u_z
         rho_Ic = clamp(rho_I, rho_lo, rho_hi - 1e-12 * drho)
@@ -113,6 +116,18 @@ function find_clean_stencil(rho_G::Real, z_G::Real,
         d_use += step
     end
     return d_use, i0, j0, w, clean
+end
+
+# Distance along the ray (rho0, z0) + t*(u_rho, u_z) to its entry into the
+# sphere of radius R centred on the axis at z = zo (Inf if the ray misses it).
+function _ray_sphere_entry(rho0::Real, z0::Real, u_rho::Real, u_z::Real,
+                           zo::Real, R::Real)
+    b = rho0 * u_rho + (z0 - zo) * u_z
+    c = rho0^2 + (z0 - zo)^2 - R^2
+    disc = b * b - c
+    disc <= 0.0 && return Inf
+    t = -b - sqrt(disc)
+    return t > 0.0 ? t : Inf
 end
 
 # Closed-form (alpha1, alpha2, beta) such that
@@ -211,25 +226,60 @@ function build_geometry(p::Parameters, d::Real;
         u_z   = (z_G - zc) / Gc
         delta = R - Gc
 
+        # Near contact the outward normal of one sphere runs into the other:
+        # cap the probe walk at that entry so the BC closure never couples to
+        # fluid on the far side of the neighbouring sphere.
+        d_cap = _ray_sphere_entry(rho_G, z_G, u_rho, u_z,
+                                  zc == z_c1 ? z_c2 : z_c1, R)
+
         d1u, i0_1, j0_1, w1, clean1 = find_clean_stencil(
             rho_G, z_G, u_rho, u_z, 2.0 * delta, step,
             rho_grid, z_grid, drho, dz, Nrho, Nz, inside_mask;
-            max_iter = max_iter)
+            max_iter = max_iter, d_max = d_cap)
         d2u, i0_2, j0_2, w2, clean2 = find_clean_stencil(
             rho_G, z_G, u_rho, u_z, d1u + step, step,
             rho_grid, z_grid, drho, dz, Nrho, Nz, inside_mask;
-            max_iter = max_iter)
+            max_iter = max_iter, d_max = d_cap)
 
-        use_linear = (!clean1) || (!clean2) ||
-                     ((d2u - d1u) < sep_min) ||
-                     (abs(d1u + d2u - 2.0 * delta) < K_min) ||
-                     (abs(d1u - d2u) < K_min)
-        if use_linear
+        if !clean1
+            # Sub-resolution neck (spheres at/near contact): no clean stencil
+            # exists between this ghost and the other sphere.  Close the Robin
+            # BC through the ghost's own fluid 4-neighbour (exists by
+            # construction, and is never an inside/ghost cell), taken most
+            # aligned with the outward normal.
+            ii, jj = i, j
+            best = -Inf
+            for (di, dj) in _NBR_OFFSETS
+                i2 = i + di
+                j2 = j + dj
+                (1 <= i2 <= Nrho && 1 <= j2 <= Nz && fluid_mask[i2, j2]) || continue
+                al = di * drho * u_rho + dj * dz * u_z
+                if al > best
+                    best = al; ii = i2; jj = j2
+                end
+            end
+            i0_1 = clamp(ii, 1, Nrho - 1)
+            j0_1 = clamp(jj, 1, Nz - 1)
+            corner = 1 + (ii - i0_1) + 2 * (jj - j0_1)
+            w1 = ntuple(c -> c == corner ? 1.0 : 0.0, 4)
+            d1u = hypot((ii - i) * drho, (jj - j) * dz)
+            d2u = d1u + step
+            use_linear = true
             α1, α2, β = 1.0, 0.0, -d1u
             i0_2, j0_2 = i0_1, j0_1
             w2 = (0.0, 0.0, 0.0, 0.0)
         else
-            α1, α2, β = quadratic_ghost_coefficients(delta, d1u, d2u)
+            use_linear = (!clean2) ||
+                         ((d2u - d1u) < sep_min) ||
+                         (abs(d1u + d2u - 2.0 * delta) < K_min) ||
+                         (abs(d1u - d2u) < K_min)
+            if use_linear
+                α1, α2, β = 1.0, 0.0, -d1u
+                i0_2, j0_2 = i0_1, j0_1
+                w2 = (0.0, 0.0, 0.0, 0.0)
+            else
+                α1, α2, β = quadratic_ghost_coefficients(delta, d1u, d2u)
+            end
         end
 
         push!(gi, i);   push!(gj, j)
@@ -724,6 +774,16 @@ function phi_on_sphere(phi::AbstractMatrix, geom::Geometry,
     bad1 = falses(n)
     bad2 = falses(n)
 
+    # Probe cap per theta: entry of the outward-normal ray into the OTHER
+    # sphere (see build_geometry).  Thetas whose probes cannot find clean
+    # stencils within the cap are unresolvable at this grid (sub-resolution
+    # contact cap); their phi_s is filled from the nearest resolvable theta
+    # after the fit -- the adsorbed film there is slaved to the shoulder.
+    zo = abs(zc - geom.z_c1) < abs(zc - geom.z_c2) ? geom.z_c2 : geom.z_c1
+    cap = [_ray_sphere_entry(rho_s[k], z_s[k], sin_t[k], cos_t[k], zo, R)
+           for k in 1:n]
+    unresolved = falses(n)
+
     function stencil_dirty!(d_arr::Vector{Float64}, bad_out::BitVector)
         @inbounds for k in 1:n
             rho_P = rho_s[k] + d_arr[k] * sin_t[k]
@@ -744,13 +804,27 @@ function phi_on_sphere(phi::AbstractMatrix, geom::Geometry,
     for _ in 1:probe_steps
         stencil_dirty!(d1, bad1)
         stencil_dirty!(d2, bad2)
-        any(bad1) || any(bad2) || break
         @inbounds for k in 1:n
-            bad1[k] && (d1[k] += step)
-            bad2[k] && (d2[k] += step)
-            d2[k] = max(d2[k], d1[k] + step)
+            if (bad1[k] && d1[k] + step > cap[k]) ||
+               (bad2[k] && d2[k] + step > cap[k])
+                unresolved[k] = true
+            end
         end
+        done = true
+        @inbounds for k in 1:n
+            unresolved[k] && continue
+            if bad1[k] || bad2[k]
+                done = false
+                bad1[k] && (d1[k] += step)
+                bad2[k] && (d2[k] += step)
+                d2[k] = max(d2[k], d1[k] + step)
+            end
+        end
+        done && break
     end
+    stencil_dirty!(d1, bad1)
+    stencil_dirty!(d2, bad2)
+    unresolved .|= bad1 .| bad2
 
     rho_P1 = rho_s .+ d1 .* sin_t
     z_P1   = z_s   .+ d1 .* cos_t
@@ -764,6 +838,12 @@ function phi_on_sphere(phi::AbstractMatrix, geom::Geometry,
         c_k = ((phi_P1[k] - phi_P2[k]) / (d1[k] - d2[k]) - omega_kappa) /
               (d1[k] + d2[k])
         out[k] = phi_P1[k] - omega_kappa * d1[k] - c_k * d1[k]^2
+    end
+    if any(unresolved) && !all(unresolved)
+        res_idx = findall(.!unresolved)
+        @inbounds for k in findall(unresolved)
+            out[k] = out[res_idx[argmin(abs.(res_idx .- k))]]
+        end
     end
     return out
 end

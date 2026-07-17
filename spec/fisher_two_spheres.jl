@@ -39,19 +39,19 @@ const KAPPA         = 1.0
 const L_PARAM       = 20.0
 const EPS_PARAM     = 1e-6
 
-const D_MIN_FACTOR  = 0.05
+const D_MIN_FACTOR  = 0.0            # include contact (d = 0) exactly
 const D_MAX_FACTOR  = 0.5
 const N_D           = 30
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 467
-const DZ_TARGET     = 0.02
+const NRHO          = 200
+const DZ_TARGET     = 0.05
 const RHO_MAX       = 15.0
 const Z_BUF         = 3.0
 const F_TOL         = 1e-6
 const MAXITER       = 200
 const BRIDGE_PHI    = 0.5            # gap-centre phi above this => "bridged"
-
+    
 # Polymer (matches fisher_rate_from_profile)
 const S_POLYMER     = 150.0
 const A_BOND        = 1.0
@@ -72,9 +72,9 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
 # as a fraction of the binodal (near-saturation), where bridging is active.
-betas = BINODAL .* collect(range(0.10, 0.90; length = 5))   # phi_inf
-# betas = collect(range(0.002, stop=0.008, length=5))
-alphas  = [-0.5]                                                  # omega_b
+betas = BINODAL .* collect(range(0.05, 0.90; length = 32))   # phi_inf
+# betas = [BINODAL * 0.5]
+alphas  = [-0.4]                                                  # omega_b
 
 nparams = length(alphas)
 
@@ -207,6 +207,28 @@ function target!(res, args...)
                 prev_geom   = rk[:geom]
                 break
             end
+        end
+    end
+
+    # --- Backfill: inward march over any d the outward march left unsolved.
+    # Cold dense seeds are fragile at isolated d; warm-starting from the
+    # nearest converged bridged solution at larger d usually converges. ---
+    prev_phi = nothing; prev_geom = nothing
+    for k in sortperm(d_grid; rev = true)
+        if res_brid[k] !== nothing
+            prev_phi  = res_brid[k][:phi]
+            prev_geom = res_brid[k][:geom]
+            continue
+        end
+        prev_phi === nothing && continue
+        dd = d_grid[k]
+        rk = _solve(dd; x0 = _warm_x0(geom_at(dd), prev_phi, prev_geom),
+                    omega_cont = false)
+        if rk[:success] && _gap_center(rk[:geom], rk[:phi]) > BRIDGE_PHI
+            res_brid[k] = rk
+            F_brid[k]   = excess_free_energy_two_spheres(rk)
+            prev_phi    = rk[:phi]
+            prev_geom   = rk[:geom]
         end
     end
 
