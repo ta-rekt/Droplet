@@ -43,12 +43,18 @@ using Printf
 using Dates
 import JSON
 
-# nonlinear_path = "/home/tohme/.julia/dev/Droplet/media/figures/20260628/fisher_two_spheres_chi_2.5_h0_-0.5_R_5.0_sweep_c.json"
-# nl_data    = JSON.parsefile(nonlinear_path)
-# nl_group   = nl_data["groups"][1]
-# nl_d       = Vector{Float64}(nl_group["d_grid"])     # surface-to-surface gap
-# nl_U       = nl_group["U_full_grid"]                 # one U(d) curve per phi_inf
-# nl_phi_inf = Vector{Float64}(nl_group["phi_inf"])    # bulk volume fractions
+include(joinpath(@__DIR__, "bvp_potential_interp.jl"))
+
+# --- Attractive-potential source ---------------------------------------------
+# :linear -> closed-form linear-response adsorption well (make_U_tot, below).
+# :bvp    -> the nonlinear two-sphere BVP U_full(d) (from dashboard_fisher_two_
+#            spheres.py), interpolated to high resolution by an isotonic + monotone
+#            PCHIP scheme (bvp_potential_interp.jl) and mapped onto the FPT
+#            coordinate x = d + R.  build_U_tot adds the SAME radial Jacobian and
+#            Rouse spring on top; only the attractive term switches.
+const POTENTIAL = :bvp
+const BVP_JSON  = joinpath(@__DIR__, "..", "media", "figures", "20260716",
+                           "fisher_two_spheres_chi_2.5_h0_-0.5_R_5.0_sweep_c.json")
 
 function _dilute_binodal(chi::Real; nb::Real = 1.0)
     g(phi) = log(phi / (1.0 - phi)) + nb * chi * (1.0 - 2.0 * phi)
@@ -73,7 +79,26 @@ D_eff      = 2 * D_bead            # relative coord of the two end beads
 Ngrid      = 1500                  # grid points on [R, x_ridge]
 
 const BINODAL = _dilute_binodal(p_base.chi_b; nb = p_base.nb)
-phi_infs   = collect(range(0.05*BINODAL, stop = 0.9*BINODAL, length = 32))
+
+# Sweep axis (phi_inf) and, in :bvp mode, the per-phi high-resolution attractive
+# potential built from the matching BVP U_full(d) row.  :bvp restricts the sweep to
+# the phi rows that solved (finite U_full); the NaN rows near saturation are
+# skipped.  The two phi grids coincide to machine precision, so :linear and :bvp
+# results are directly comparable index-for-index.
+if POTENTIAL == :bvp
+    _grp     = JSON.parsefile(BVP_JSON)["groups"][1]
+    nl_d     = Float64.(_grp["d_grid"])                    # surface-to-surface gap
+    _phi_all = Float64.(_grp["phi_inf"])
+    _U_all   = _grp["U_full_grid"]                         # one U(d) row per phi
+    _fin     = [k for k in eachindex(_phi_all) if all(isfinite, Float64.(_U_all[k]))]
+    nl_phi   = _phi_all[_fin]
+    nl_U_att = [make_U_att_bvp(nl_d, Float64.(_U_all[k]), p_base.R) for k in _fin]
+    phi_infs = nl_phi
+    @printf("BVP attractive potential: %d finite phi rows (of %d) from %s\n",
+            length(_fin), length(_phi_all), basename(BVP_JSON))
+else
+    phi_infs = collect(range(0.05 * BINODAL, stop = 0.9 * BINODAL, length = 32))
+end
 
 # combined potential for a given screening length lam (h0, beadSep etc. fixed)
 make_U_tot(p, lam) =
@@ -82,14 +107,32 @@ make_U_tot(p, lam) =
          2 * log(x) +                                     # radial Jacobian
          3 * x^2 / (2 * beadSep * kuhnLength^2)           # Rouse spring
 
+# Total potential U_tot(x) for a bulk fraction phi, dispatched on POTENTIAL.  Both
+# options share the radial Jacobian (-2 log x) and Rouse spring; only the
+# attractive term differs (linear-response well vs interpolated nonlinear BVP).
+# In :bvp the interpolant is flat (~0) beyond the BVP range d_max, so U_att safely
+# vanishes over the long return grid where no BVP data exists.
+function build_U_tot(φ_loc)
+    if POTENTIAL == :linear
+        p   = Droplet.with(p_base; phi_inf = φ_loc)
+        lam = sqrt(d2fb_dphi2(φ_loc, p) / p.kappa)
+        return make_U_tot(p, lam)
+    else
+        k = argmin(abs.(nl_phi .- φ_loc))
+        @assert abs(nl_phi[k] - φ_loc) < 1e-9 "no BVP row matches phi_inf=$φ_loc"
+        U_att = nl_U_att[k]                                # x -> U_full(x - R)
+        return x -> U_att(x) - 2 * log(x) + 3 * x^2 / (2 * beadSep * kuhnLength^2)
+    end
+end
+
 # Solve the escape and return FPT problems at a single phi_inf.  If `t_esc`/`t_ret`
 # are supplied (non-empty) the PDFs are evaluated on exactly those grids; empty =>
 # the solver's own auto log-spaced grid.  Returns the two solver results plus the
 # geometry/potential, so neighbouring phi values can reuse the base phi's grids.
 function solve_phi(φ_loc; t_esc = Float64[], t_ret = Float64[])
-    p   = Droplet.with(p_base; phi_inf = φ_loc)
-    lam = sqrt(d2fb_dphi2(φ_loc, p) / p.kappa)
-    U_tot = make_U_tot(p, lam)
+    p     = Droplet.with(p_base; phi_inf = φ_loc)
+    lam   = sqrt(d2fb_dphi2(φ_loc, p) / p.kappa)          # screening length (reported)
+    U_tot = build_U_tot(φ_loc)
 
     # locate the ridge (barrier top = absorbing point for escape).  Refine the
     # discrete maximum to sub-grid accuracy with a parabolic vertex: otherwise
@@ -167,8 +210,8 @@ _trapz(x, y) = sum(0.5 * (y[i] + y[i+1]) * (x[i+1] - x[i]) for i in 1:length(x)-
 
 function local_conc(φ_loc)
     p     = Droplet.with(p_base; phi_inf = φ_loc)
-    lam   = sqrt(d2fb_dphi2(φ_loc, p) / p.kappa)
-    U_tot = make_U_tot(p, lam)
+    lam   = sqrt(d2fb_dphi2(φ_loc, p) / p.kappa)          # linear-response profile width
+    U_tot = build_U_tot(φ_loc)                            # well boundary uses the selected potential
 
     # well boundary x_ridge (barrier top), located exactly as in solve_phi
     xs = collect(range(p.R, 25.0; length = 8000))
@@ -271,7 +314,8 @@ for k in eachindex(phi_infs[1:end-2])
 end
 
 # --- Dump everything to data/<today>/fpt_solver_c_sweep/ ----------------------
-outdir = joinpath("data", Dates.format(today(), "yyyymmdd"), "fpt_solver_c_sweep_h0_-0.4")
+outdir = joinpath("data", Dates.format(today(), "yyyymmdd"),
+                  "fpt_solver_c_sweep_$(POTENTIAL)")
 mkpath(outdir)
 jsonpath = joinpath(outdir, "fpt_solver_c_sweep.json")
 open(jsonpath, "w") do io
@@ -282,6 +326,8 @@ open(jsonpath, "w") do io
             "h0" => h0, "kBT" => kBT, "friction" => friction, "D_eff" => D_eff,
             "beadSep" => beadSep, "kuhnLength" => kuhnLength, "Ngrid" => Ngrid,
             "Nlocal" => Nlocal,
+            "potential" => String(POTENTIAL),
+            "bvp_json"  => POTENTIAL == :bvp ? basename(BVP_JSON) : "",
             "escape_setup" => "IC=delta at R; reflecting at R, absorbing at ridge (time R->ridge)",
             "return_setup" => "IC=delta at ridge; absorbing at R, reflecting at ridge (time ridge->R)",
             "fisher_rate_def" => "(A_esc+A_ret)/(MFPT_esc+MFPT_ret), A=∫P(t|φ) ∂²logP/∂φ² dt (central 3-pt in φ); = -I(φ)/(τ_esc+τ_ret)",
