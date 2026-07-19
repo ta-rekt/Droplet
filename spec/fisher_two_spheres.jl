@@ -41,7 +41,7 @@ const EPS_PARAM     = 1e-6
 
 const D_MIN_FACTOR  = 0.0            # include contact (d = 0) exactly
 const D_MAX_FACTOR  = 0.5
-const N_D           = 30
+const N_D           = 15
 const D_REF_FACTOR  = 8.0
 
 const NRHO          = 100
@@ -72,9 +72,9 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
 # as a fraction of the binodal (near-saturation), where bridging is active.
-betas = BINODAL .* collect(range(0.05, 0.90; length = 32))   # phi_inf
-# betas = [BINODAL * 0.5]
-alphas  = [-0.5]                                                  # omega_b
+alphas = BINODAL .* collect(range(0.05, 0.90; length = 9))   # phi_inf
+# alphas = [BINODAL * 0.1]
+betas  = [-0.5]                                                  # omega_b
 
 nparams = length(alphas)
 
@@ -136,8 +136,8 @@ function target!(res, args...)
 
     t0 = time()
 
-    omega_b = alpha
-    phi_inf = beta
+    omega_b = beta
+    phi_inf = alpha
     R       = R_FIXED
 
     p = Parameters(nb              = NB,
