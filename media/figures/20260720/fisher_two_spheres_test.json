@@ -1,0 +1,51 @@
+{
+  "blurb": "Fisher information rate from the full 2D two-sphere BVP, capturing both sides of the capillary-bridging bifurcation.  Sweeps phi_inf (alphas, as a fraction of the dilute binodal) at fixed (omega_b, R, chi_b=2.5); for each phi_inf solves the unbridged (inward) and bridged (outward, dense-seeded) branches on a d-grid, takes the equilibrium U_full(d)=min(F)-F_ref and Phi_surf(d) on that branch, and integrates the polymer P_eq(d) to get phi_probe.",
+  "chi_b": 2.5,
+  "s": 150.0,
+  "a": 1.0,
+  "kb": 1.0,
+  "ku": 1.0,
+  "groups": [
+    {
+      "omega_b": -0.5,
+      "R": 5.0,
+      "phi_inf": [
+        0.09
+      ],
+      "phi_probe": [
+        0.3906846931264325
+      ],
+      "d_grid": [
+        0.5,
+        1.0,
+        1.5
+      ],
+      "U_full_grid": [
+        [
+          -2.9762539368065433,
+          -0.7948608714505099,
+          -0.12947001063945152
+        ]
+      ],
+      "Phi_surf_grid": [
+        [
+          0.39068469316861926,
+          0.3906846929556117,
+          0.39068469284096835
+        ]
+      ],
+      "fisher_base": [
+        NaN
+      ],
+      "fisher_probe": [
+        NaN
+      ],
+      "phi_R": [
+        0.26330141966643883
+      ],
+      "fisher_upper": [
+        0.0862044650835407
+      ]
+    }
+  ]
+}

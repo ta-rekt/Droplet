@@ -60,3 +60,5 @@ When the task is generating proposals, specs, or visualizations, read the corres
 - `context/experiment_types.md` — catalog of existing experiments to copy from
 - `context/domain_knowledge.md` — physics/biology background
 - `context/heterogeneous_polymer_implementation.md` — heteropolymer subsystem details
+- VERY IMPORTANT: please don't use skills without asking first. do not load a skill
+autonomously, even if it seems relevant in the context of the prompt
