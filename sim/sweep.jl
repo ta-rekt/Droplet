@@ -21,6 +21,14 @@ let
     specpath = string("../", specfile)
     include(specpath)
 
+    ### stamp run metadata into the spec's PARAMS (if it defines one), so every
+    ### record's `params` dict records where this data came from and how it ran.
+    if isdefined(Main, :PARAMS) && hasproperty(Main.PARAMS, :sim)
+        Main.PARAMS.sim.spec_path  = specfile
+        Main.PARAMS.sim.output_dir = outdir
+        Main.PARAMS.sim.ncpus      = Int(ncpus)
+    end
+
     nparams_per_cpu = div(nparams, ncpus)
 
     ### output data
