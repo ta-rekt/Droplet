@@ -345,21 +345,3 @@ println("saved -> ", jsonpath)
 mfpt_esc = [r["escape_mfpt"] for r in records]
 mfpt_ret = [r["return_mfpt"] for r in records]
 barriers = [r["barrier"]     for r in records]
-
-# pm = plot(phi_infs, mfpt_esc; lw = 2.5, color = :crimson, yscale = :log10,
-#           label = "escape  (R -> ridge)", marker = :circle, ms = 3,
-#           xlabel = "bulk volume fraction phi_inf", ylabel = "MFPT",
-#           title = "First-passage times vs concentration", legend = :topleft)
-# plot!(pm, phi_infs, mfpt_ret; lw = 2.5, color = :seagreen, marker = :circle, ms = 3,
-#       label = "return  (ridge -> R)")
-# pb = plot(phi_infs, barriers; lw = 2.5, color = :black, marker = :circle, ms = 3,
-#           xlabel = "bulk volume fraction phi_inf", ylabel = "barrier / k_BT",
-#           title = "Escape barrier vs concentration", legend = false)
-# pf = plot(phi_infs[1:end-2], fisher_rate; lw = 2.5, color = :navy, marker = :circle, ms = 3,
-#           xlabel = "bulk volume fraction phi_inf", ylabel = "avg ∂²logP/∂φ²  per unit time",
-#           title = "Fisher information rate vs concentration", legend = false)
-# fig = plot(pm, pb, pf; layout = (1, 3), size = (2000, 550), dpi = 150,
-#            left_margin = 6Plots.mm, bottom_margin = 6Plots.mm)
-# pngpath = joinpath(outdir, "fpt_solver_c_sweep.png")
-# savefig(fig, pngpath)
-# println("saved -> ", pngpath)

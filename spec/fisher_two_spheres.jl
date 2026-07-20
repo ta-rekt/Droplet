@@ -10,7 +10,7 @@
 # the surface volume fraction Phi_surf(d) is read off the equilibrium branch.
 # These are integrated against the polymer P_eq(d) to obtain phi_probe; the
 # Fisher rate is assembled across phi_inf in the dashboard.
-#
+# 
 # Bridging only exists when the bulk is near saturation, so phi_inf is swept just
 # BELOW the dilute binodal (set chi_b = 2.5; binodal ~ 0.145).  At the spec's old
 # chi_b = 4 / phi_inf = 0.01 the bulk is far undersaturated and no bridged branch
