@@ -39,13 +39,13 @@ const KAPPA         = 1.0
 const L_PARAM       = 20.0
 const EPS_PARAM     = 1e-6
 
-const D_MIN_FACTOR  = 0.0            # include contact (d = 0) exactly
-const D_MAX_FACTOR  = 0.5
-const N_D           = 15
+const D_MIN_FACTOR  = 0.1            # include contact (d = 0) exactly
+const D_MAX_FACTOR  = 0.3
+const N_D           = 10
 const D_REF_FACTOR  = 8.0
 
-const NRHO          = 100
-const DZ_TARGET     = 0.1
+const NRHO          = 200
+const DZ_TARGET     = 0.05
 const RHO_MAX       = 15.0
 const Z_BUF         = 3.0
 const F_TOL         = 1e-6
@@ -72,8 +72,8 @@ const BINODAL = _dilute_binodal(CHI_B; nb = NB)
 
 # Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
 # as a fraction of the binodal (near-saturation), where bridging is active.
-alphas = BINODAL .* collect(range(0.05, 0.90; length = 9))   # phi_inf
-# alphas = [BINODAL * 0.1]
+# alphas = BINODAL .* collect(range(0.05, 0.90; length = 9))   # phi_inf
+alphas = [0.09]    # test value
 betas  = [-0.5]                                                  # omega_b
 
 nparams = length(alphas)
