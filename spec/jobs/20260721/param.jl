@@ -90,7 +90,7 @@ end
 # process (sweep.jl overwrites it in-process on a forward run; ncpus likewise).
 Base.@kwdef mutable struct SimulationParams
     spec_path::Union{Nothing, String}   = "spec/jobs/20260721/fisher_two_spheres.jl"
-    output_dir::Union{Nothing, String}  = "data/20260721/fisher_two_spheres_pipeline_test"
+    output_dir::Union{Nothing, String}  = "data/20260721/test"
     ncpus::Int          = 0    # placeholder; set to sweep.jl's ncpus (ARGS[3])
     # Output filenames for the downstream stages (written into output_dir).
     interp_file::String = "bvp_potential_interp.json"

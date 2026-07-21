@@ -233,8 +233,9 @@ for k in 1:max(nphi - 2, 0)
     avg2_ret = avg_d2logp(t_ret_grid, base.res_ret.pdf, nb.res_ret.pdf, nnb.res_ret.pdf, dφ)
 
     # 6. summed averaged second derivatives per unit (MFPT_esc + MFPT_ret)
-    fisher_rate[k] = -φ^2 * (avg2_esc + avg2_ret) /
-                     (base.res_esc.mfpt + base.res_ret.mfpt)
+    fisher_rate_esc[k] = -φ^2 * avg2_esc / (base.res_esc.mfpt + base.res_ret.mfpt)
+    fisher_rate_ret[k] = -φ^2 * avg2_ret / (base.res_esc.mfpt + base.res_ret.mfpt)
+    fisher_rate = fisher_rate_esc .+ fisher_rate_ret
 
     push!(records, Dict(
         "phi_inf"     => φ,
@@ -257,6 +258,8 @@ for k in 1:max(nphi - 2, 0)
         "phi_local"   => phi_local_vals[k],
         "dphi_local"  => dphi_local_vals[k],
         "d2phi_local" => d2phi_local_vals[k],
+        "fisher_rate_esc" => fisher_rate_esc[k],
+        "fisher_rate_ret" => fisher_rate_ret[k]
         "fisher_rate" => fisher_rate[k]))
 
     @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  phi_loc=%.4g  MFPT_esc=%.4g  MFPT_ret=%.4g  I_rate=%.4g\n",
