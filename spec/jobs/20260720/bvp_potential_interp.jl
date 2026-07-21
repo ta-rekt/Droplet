@@ -206,7 +206,7 @@ for f in files
         rec  = recs[kbs[argmin([abs(_f(recs[kb]["omega_b"]) - h0) for kb in kbs])]]
         push!(phis, _f(rec["phi_inf"]))
         push!(Us,   _farr(rec["U_full"]))
-        push!(Ps,   _farr(rec["Phi_surf"]))
+        push!(Ps,   _farr(rec["phi_surf"]))
         isempty(dgrid) && (dgrid = _farr(rec["d_grid"]))
     end
     by_cpu[cpu] = (phi_inf = phis, U_full = Us, phi_surf = Ps, d_grid = dgrid)

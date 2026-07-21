@@ -229,6 +229,10 @@ function target!(res, args...)
         push!(profile_phi, [chosen[:phi][i, :] for i in 1:size(chosen[:phi], 1)])
     end
 
+    ok = isfinite.(U_full) .& isfinite.(Phi_surf)
+    n_ok = count(ok)
+    success = isfinite(F_ref) && all(ok)   # reference + every d converged
+
     res["blurb"]         = blurb
     res["phi_inf"]       = phi_inf
     res["omega_b"]       = omega_b
@@ -253,6 +257,6 @@ function target!(res, args...)
     res["profile_rho"]   = profile_rho
     res["profile_z"]     = profile_z
     # res["profile_phi"]   = profile_phi
-    # res["params"]        = to_dict(PARAMS)   # full parameter set, for provenance
+    res["params"]        = to_dict(PARAMS)   # full parameter set, for provenance
     return res
 end

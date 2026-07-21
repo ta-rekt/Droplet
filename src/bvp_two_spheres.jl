@@ -845,7 +845,11 @@ function phi_on_sphere(phi::AbstractMatrix, geom::Geometry,
             out[k] = out[res_idx[argmin(abs.(res_idx .- k))]]
         end
     end
-    return out
+    # A surface volume fraction is physically in [0,1]; the quadratic extrapolation
+    # overshoots (phi_s ~ 5) where the probe stencil degenerates near contact, which
+    # both reports nonsense and inflates the surface free-energy term in
+    # excess_free_energy_two_spheres.  Clamp to the physical range.
+    return clamp.(out, 0.0, 1.0)
 end
 
 # Simpson's 1/3 rule on a uniform grid, length(y) must be odd.
