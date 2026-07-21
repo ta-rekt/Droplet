@@ -47,7 +47,7 @@ WINDOW_WIDTH  = 30.0    # top-plot visible time span (zoom / flow speed)
 WINDOW_MIN    = 2.0     # slider range (interactive mode)
 WINDOW_MAX    = T_TOTAL
 
-BOTTOM_XWIN0  = 3s00.0    # bottom-plot initial (fixed) x-axis width
+BOTTOM_XWIN0  = 300.0    # bottom-plot initial (fixed) x-axis width
 BOTTOM_YWIN0  = 150.0     # bottom-plot initial y-axis height
 RESCALE_GROW  = 1.6     # bottom-plot axes grow by this factor on hitting an edge
 
@@ -136,7 +136,7 @@ ax_bot.set_ylim(0, BOTTOM_YWIN0)
 ax_bot.set_xlabel("time")
 ax_bot.set_ylabel("cumulative mRNA")
 ax_bot.set_title("accumulated mRNA", fontsize=11)
-ax_bot.grid(True, alpha=0.2)
+# ax_bot.grid(True, alpha=0.2)
 
 # --- speed/zoom slider (interactive only) ---
 if RENDER == "interactive":
