@@ -10,72 +10,29 @@
 # the surface volume fraction Phi_surf(d) is read off the equilibrium branch.
 # These are integrated against the polymer P_eq(d) to obtain phi_probe; the
 # Fisher rate is assembled across phi_inf in the dashboard.
-# 
+#
 # Bridging only exists when the bulk is near saturation, so phi_inf is swept just
-# BELOW the dilute binodal (set chi_b = 2.5; binodal ~ 0.145).  At the spec's old
-# chi_b = 4 / phi_inf = 0.01 the bulk is far undersaturated and no bridged branch
-# exists -- see scouting notes.
-
-# Driver: sim/sweep.jl.  Pipe builder: runJL.
+# BELOW the dilute binodal (set chi_b = 2.5; binodal ~ 0.145).
+#
+# ALL parameters (surface adsorption model, BVP solver, Rouse chain, FPT solver,
+# and the swept axes) come from spec/jobs/20260720/param.jl via `PARAMS`; edit
+# that file to reconfigure.  Driver: sim/sweep.jl.  Pipe builder: runJL.
 
 using Droplet
+
+include(joinpath(@__DIR__, "param.jl"))
 
 # Lattice species (unused -- the BVP doesn't simulate particles).
 slist = []
 checkpoint_path = ""
 
-# P_strong3() = Parameters(chi_b = 4.0, omega_b = -1.35, kappa = 1.0,
-#                         phi_inf = 0.01, R = 10.0, eps = 1e-6)    
+# Dilute binodal for the configured (chi_b, nb): bridging needs phi_inf just below
+# it, and the dense coexistence value 1 - BINODAL seeds the bridged branch.
+const BINODAL = dilute_binodal(PARAMS.surface.chi_b; nb = PARAMS.surface.nb)
 
-# (name = "strong3", p = P_strong3(), bc_reg = 0.05, d = 10.0,
-#     Nrho = 467, dz_target = 0.03, rho_buf = 4.0, z_buf = 3.0,
-#     N1d = 1400, L_iso = 12.0, warm = true,  tol_prof = 0.006, tol_iso = 0.01),
-
-# Fixed physical and numerical configuration.
-const R_FIXED       = 5.0
-const NB            = 1.0
-const CHI_B         = 2.5            # > 2 so bulk coexistence (bridging) exists
-const KAPPA         = 1.0
-const L_PARAM       = 20.0
-const EPS_PARAM     = 1e-6
-
-const D_MIN_FACTOR  = 0.1            # include contact (d = 0) exactly
-const D_MAX_FACTOR  = 0.3
-const N_D           = 10
-const D_REF_FACTOR  = 8.0
-
-const NRHO          = 200
-const DZ_TARGET     = 0.05
-const RHO_MAX       = 15.0
-const Z_BUF         = 3.0
-const F_TOL         = 1e-6
-const MAXITER       = 200
-const BRIDGE_PHI    = 0.5            # gap-centre phi above this => "bridged"
-    
-# Polymer (matches fisher_rate_from_profile)
-const S_POLYMER     = 150.0
-const A_BOND        = 1.0
-
-# Dilute binodal phi_b(chi): small root of the symmetric-FH coexistence
-# condition log(phi/(1-phi)) + nb*chi*(1-2phi) = 0.  Bridging needs phi_inf just
-# below this; the dense coexistence value is 1 - phi_b (used to seed the bridge).
-function _dilute_binodal(chi::Real; nb::Real = 1.0)
-    g(phi) = log(phi / (1.0 - phi)) + nb * chi * (1.0 - 2.0 * phi)
-    lo, hi = 1e-8, 0.5 - 1e-9
-    for _ in 1:200
-        mid = 0.5 * (lo + hi)
-        if g(mid) < 0.0; lo = mid; else; hi = mid; end
-    end
-    return 0.5 * (lo + hi)
-end
-const BINODAL = _dilute_binodal(CHI_B; nb = NB)
-
-# Sweep axes.  alphas is sharded across CPUs by sim/sweep.jl.  phi_inf is swept
-# as a fraction of the binodal (near-saturation), where bridging is active.
-# alphas = BINODAL .* collect(range(0.05, 0.90; length = 9))   # phi_inf
-alphas = [0.09]    # test value
-betas  = [-0.5]                                                  # omega_b
-
+# Sweep axes (sharded across CPUs by sim/sweep.jl): phi_inf signal x omega_b field.
+alphas  = phi_inf_grid(PARAMS)          # phi_inf
+betas   = PARAMS.sweep.omega_b_values   # omega_b
 nparams = length(alphas)
 
 blurb = "Fisher information rate from the full 2D two-sphere BVP, capturing " *
@@ -86,14 +43,16 @@ blurb = "Fisher information rate from the full 2D two-sphere BVP, capturing " *
         "equilibrium U_full(d)=min(F)-F_ref and Phi_surf(d) on that branch, " *
         "and integrates the polymer P_eq(d) to get phi_probe."
 
-# Fixed, anchored grid.  (1) build_geometry spans z over length 4R + d + 2*z_buf;
-# (2) pin dz EXACTLY to DZ_TARGET and place z_buf on the grid so the symmetry
-# plane (sphere 1 at z=0) is a grid line; snapping d to a multiple of dz puts
-# BOTH sphere surfaces on grid lines for every d, so the film free energy
-# discretises identically and cancels in U = F(d) - F_ref.
-const Z_BUF_GRID = ceil(Int, (R_FIXED + Z_BUF) / DZ_TARGET) * DZ_TARGET - R_FIXED
-_snap(d::Real)   = round(d / DZ_TARGET) * DZ_TARGET
-_nz_for(d::Real) = Int(round((4.0 * R_FIXED + _snap(d) + 2.0 * Z_BUF_GRID) / DZ_TARGET)) + 1
+# Fixed, anchored grid (R and dz are constant across the sweep).  (1) build_geometry
+# spans z over length 4R + d + 2*z_buf; (2) pin dz EXACTLY to bvp.dz_target and place
+# z_buf on the grid so the symmetry plane (sphere 1 at z=0) is a grid line; snapping d
+# to a multiple of dz puts BOTH sphere surfaces on grid lines for every d, so the film
+# free energy discretises identically and cancels in U = F(d) - F_ref.
+const _R  = PARAMS.surface.R
+const _DZ = PARAMS.bvp.dz_target
+const Z_BUF_GRID = ceil(Int, (_R + PARAMS.bvp.z_buf) / _DZ) * _DZ - _R
+_snap(d::Real)   = round(d / _DZ) * _DZ
+_nz_for(d::Real) = Int(round((4.0 * _R + _snap(d) + 2.0 * Z_BUF_GRID) / _DZ)) + 1
 
 # Warm-start guess for `geom` from a previous solution (phi_prev on geom_prev):
 # sample it at geom's unknown cells, folding sphere-2's half onto the fixed
@@ -136,35 +95,29 @@ function target!(res, args...)
 
     t0 = time()
 
+    bp      = PARAMS.bvp
     omega_b = beta
     phi_inf = alpha
-    R       = R_FIXED
 
-    p = Parameters(nb              = NB,
-                   chi_b           = CHI_B,
-                   kappa           = KAPPA,
-                   L               = L_PARAM,
-                   eps             = EPS_PARAM,
-                   conserve_volume = false,
-                   parallel_plates = false,
-                   omega_b         = omega_b,
-                   R               = R,
-                   phi_inf         = phi_inf)
+    # Surface adsorption model: base Parameters from PARAMS, swept fields overridden.
+    p = Droplet.with(PARAMS.surface; phi_inf = phi_inf, omega_b = omega_b)
+    R = p.R
 
-    d_min  = D_MIN_FACTOR * R
-    d_max  = D_MAX_FACTOR * R
+    N_D    = bp.n_d
+    d_min  = bp.d_min_factor * R
+    d_max  = bp.d_max_factor * R
     d_grid = _snap.(collect(range(d_min, d_max; length = N_D)))
-    d_ref  = _snap(D_REF_FACTOR * R)
+    d_ref  = _snap(bp.d_ref_factor * R)
     phi_dense = 1.0 - BINODAL
 
-    geom_at(dd) = build_geometry(p, dd; rho_max = RHO_MAX, z_buf = Z_BUF_GRID,
-                                 Nrho = NRHO, Nz = _nz_for(dd))
+    geom_at(dd) = build_geometry(p, dd; rho_max = bp.rho_max, z_buf = Z_BUF_GRID,
+                                 Nrho = bp.Nrho, Nz = _nz_for(dd))
     _solve(dd; x0 = nothing, omega_cont = true) =
-        solve_two_spheres(p, dd; rho_max = RHO_MAX, z_buf = Z_BUF_GRID,
-                          Nrho = NRHO, Nz = _nz_for(dd),
-                          f_tol = F_TOL, maxiter = MAXITER,
+        solve_two_spheres(p, dd; rho_max = bp.rho_max, z_buf = Z_BUF_GRID,
+                          Nrho = bp.Nrho, Nz = _nz_for(dd),
+                          f_tol = bp.f_tol, maxiter = bp.maxiter,
                           x0_init = x0, omega_continuation = omega_cont,
-                          verbose = false, bc_reg = 5e-2)
+                          verbose = false, bc_reg = bp.bc_reg)
 
     # Reference: spheres far apart on the dilute branch.
     res_ref = _solve(d_ref)
@@ -183,7 +136,7 @@ function target!(res, args...)
         x0 = prev_phi === nothing ? nothing :
              _warm_x0(geom_at(dd), prev_phi, prev_geom)
         rk = _solve(dd; x0 = x0)
-        (rk[:success] && _gap_center(rk[:geom], rk[:phi]) < BRIDGE_PHI) || continue
+        (rk[:success] && _gap_center(rk[:geom], rk[:phi]) < bp.bridge_phi) || continue
         res_unbr[k] = rk
         F_unbr[k]   = excess_free_energy_two_spheres(rk)
         prev_phi    = rk[:phi]
@@ -200,7 +153,7 @@ function target!(res, args...)
             (_warm_x0(geom_k, prev_phi, prev_geom), _dense_seed(geom_k, phi_dense))
         for x0 in guesses
             rk = _solve(dd; x0 = x0, omega_cont = false)
-            if rk[:success] && _gap_center(rk[:geom], rk[:phi]) > BRIDGE_PHI
+            if rk[:success] && _gap_center(rk[:geom], rk[:phi]) > bp.bridge_phi
                 res_brid[k] = rk
                 F_brid[k]   = excess_free_energy_two_spheres(rk)
                 prev_phi    = rk[:phi]
@@ -224,7 +177,7 @@ function target!(res, args...)
         dd = d_grid[k]
         rk = _solve(dd; x0 = _warm_x0(geom_at(dd), prev_phi, prev_geom),
                     omega_cont = false)
-        if rk[:success] && _gap_center(rk[:geom], rk[:phi]) > BRIDGE_PHI
+        if rk[:success] && _gap_center(rk[:geom], rk[:phi]) > bp.bridge_phi
             res_brid[k] = rk
             F_brid[k]   = excess_free_energy_two_spheres(rk)
             prev_phi    = rk[:phi]
@@ -239,7 +192,11 @@ function target!(res, args...)
     F_arr    = fill(NaN, N_D)
     Phi_surf = fill(NaN, N_D)
     branch   = zeros(Int, N_D)     # 0 none, 1 unbridged, 2 bridged
-    south    = [Float64(π)]
+    # Gap-facing pole of sphere 1: theta = 0 => z = z_c1 + R, the point pointing
+    # inward toward sphere 2 (the enriched adsorption film).  The far-side pole
+    # (theta = pi, z = z_c1 - R) sits in open bulk and reads ~phi_inf -- that was
+    # the previous bug.  Matches inner_pole_phi in visualize_two_spheres_2d.py.
+    gap_pole = [0.0]
 
     # Per-d full 2D phi(rho,z) of the equilibrium branch.  Stored as
     # Vector{Vector{Float64}}, outer index rho, inner z, so on the Python side
@@ -264,8 +221,11 @@ function target!(res, args...)
         chosen === nothing && continue
         F_arr[k]    = F_eq
         U_full[k]   = isfinite(F_ref) ? F_eq - F_ref : NaN
-        Phi_surf[k] = phi_on_sphere(chosen[:phi], chosen[:geom],
-                                    chosen[:geom].z_c1, south)[1]
+        # Clamp to the physical range: phi_on_sphere's quadratic extrapolation
+        # overshoots (phi_s ~ 5) where the probe stencil degenerates at contact,
+        # and >1 / <0 surface concentrations are nonsense downstream.
+        Phi_surf[k] = clamp(phi_on_sphere(chosen[:phi], chosen[:geom],
+                                          chosen[:geom].z_c1, gap_pole)[1], 0.0, 1.0)
         push!(profile_d,   d_grid[k])
         push!(profile_rho, copy(chosen[:geom].rho_grid))
         push!(profile_z,   copy(chosen[:geom].z_grid))
@@ -274,30 +234,16 @@ function target!(res, args...)
 
     ok = isfinite.(U_full) .& isfinite.(Phi_surf)
     n_ok = count(ok)
-    phi_probe = NaN
-    success   = false
-    if n_ok >= 2
-        d_ok   = d_grid[ok]
-        U_ok   = U_full[ok]
-        Phi_ok = Phi_surf[ok]
-        U_ent  = 3.0 .* (d_ok .+ R) .^ 2 ./ (2.0 * S_POLYMER * A_BOND^2)
-        P_eq_un = (d_ok .+ R) .^ 2 .* exp.(-U_ent .- U_ok)
-        denom   = sum(P_eq_un)
-        if denom > 0.0 && isfinite(denom)
-            P_eq    = P_eq_un ./ denom
-            phi_probe = sum(P_eq .* Phi_ok)
-            success   = isfinite(F_ref) && all(ok)
-        end
-    end
+    success = isfinite(F_ref) && all(ok)   # reference + every d converged
 
     res["blurb"]         = blurb
     res["phi_inf"]       = phi_inf
     res["omega_b"]       = omega_b
     res["R"]             = R
-    res["chi_b"]         = CHI_B
+    res["chi_b"]         = p.chi_b
     res["binodal"]       = BINODAL
-    res["s"]             = S_POLYMER
-    res["a"]             = A_BOND
+    res["s"]             = PARAMS.rouse.s
+    res["a"]             = PARAMS.rouse.a
     res["d_grid"]        = d_grid
     res["d_ref"]         = d_ref
     res["F_ref"]         = F_ref
@@ -306,14 +252,14 @@ function target!(res, args...)
     res["U_unbridged"]   = U_unbr
     res["U_bridged"]     = U_brid
     res["branch"]        = branch          # 1 unbridged, 2 bridged, 0 none
-    res["Phi_surf"]      = Phi_surf
-    res["phi_probe"]     = phi_probe
+    res["phi_surf"]      = Phi_surf
     res["success"]       = success
     res["n_d_failed"]    = N_D - n_ok
     res["runtime_min"]   = (time() - t0) / 60.0
     res["profile_d"]     = profile_d
     res["profile_rho"]   = profile_rho
     res["profile_z"]     = profile_z
-    res["profile_phi"]   = profile_phi
+    # res["profile_phi"]   = profile_phi
+    res["params"]        = to_dict(PARAMS)   # full parameter set, for provenance
     return res
 end

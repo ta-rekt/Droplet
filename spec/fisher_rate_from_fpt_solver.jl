@@ -22,8 +22,9 @@
 # sub-grid by a parabola on the stored tabulation (as the original did on its fine
 # scan) so x_ridge moves smoothly with phi and the d^2/dphi^2 stencil stays clean.
 #
-# The Fisher information rate of the exit/return times wrt phi is the central 3-point
-# second derivative of log P wrt phi, averaged over the base PDF, summed over
+# The Fisher information rate of the exit/return times wrt phi is the base-PDF average of
+# the SQUARED central first derivative of log P wrt phi (the first-derivative-squared form
+# of I(phi), numerically stabler than differencing second derivatives), summed over
 # escape+return and divided by (MFPT_esc + MFPT_ret).  Everything (both densities,
 # their MFPTs, the potentials on the grids, the local concentration and its phi
 # derivatives, the Fisher rate, and to_dict(PARAMS)) is written to
@@ -134,15 +135,18 @@ function solve_phi(phi, Urow; t_esc = Float64[], t_ret = Float64[])
             res_esc = res_esc, res_ret = res_ret)
 end
 
-# ∫ P(t|phi) ∂²logP(t|phi)/∂phi² dt with the second derivative from the central 3-point
-# stencil on (phi, phin, phinn) and the base PDF `p0` as the integration weight.
-# Non-uniform-t trapezoid; tail nodes where any PDF underflows (or goes ≤ 0) are dropped.
-function avg_d2logp(t, p0, pn, pnn, dφ)
+# ∫ P(t|phi) (∂logP(t|phi)/∂phi)² dt — the first-derivative-squared form of the Fisher
+# information.  It equals -∫P ∂²logP/∂phi² dt but is numerically stabler: the integrand
+# is non-negative by construction and never differences large curvatures against each
+# other.  The score ∂logP/∂phi is the central 2-point derivative on the outer pair
+# (phi, phinn) (spacing 2 dφ, so it is centred on phin like the old 3-pt stencil was); the
+# base PDF `p0` is the integration weight.  Non-uniform-t trapezoid; tail nodes where any
+# of the three PDFs underflows (or goes ≤ 0) are dropped.
+function avg_dlogp2(t, p0, pn, pnn, dφ)
     fl   = maximum(p0) * 1e-10
     lp0  = log.(max.(p0,  fl))
-    lpn  = log.(max.(pn,  fl))
     lpnn = log.(max.(pnn, fl))
-    integrand = p0 .* (lp0 .- 2 .* lpn .+ lpnn) ./ dφ^2
+    integrand = p0 .* ((lpnn .- lp0) ./ (2 * dφ)).^2
     @inbounds for i in eachindex(integrand)
         (p0[i] > fl && pn[i] > fl && pnn[i] > fl) || (integrand[i] = 0.0)
     end
@@ -197,6 +201,8 @@ end
 nphi        = length(phi_infs)
 records     = Vector{Dict{String,Any}}()
 fisher_rate = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
+fisher_rate_esc = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
+fisher_rate_ret = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
 
 # local concentration + its 1st/2nd derivatives wrt phi_inf across the whole sweep
 phi_local_vals = [local_conc(phi_infs[k], U_tot_rows[k], phi_surf_rows[k]) for k in 1:nphi]
@@ -228,13 +234,13 @@ for k in 1:max(nphi - 2, 0)
     nb  = solve_phi(φn,  U_tot_rows[k+1]; t_esc = t_esc_grid, t_ret = t_ret_grid)
     nnb = solve_phi(φnn, U_tot_rows[k+2]; t_esc = t_esc_grid, t_ret = t_ret_grid)
 
-    # 4-5. central 2nd derivative of log P wrt phi, averaged over the base PDF
-    avg2_esc = avg_d2logp(t_esc_grid, base.res_esc.pdf, nb.res_esc.pdf, nnb.res_esc.pdf, dφ)
-    avg2_ret = avg_d2logp(t_ret_grid, base.res_ret.pdf, nb.res_ret.pdf, nnb.res_ret.pdf, dφ)
+    # 4-5. squared central 1st derivative of log P wrt phi, averaged over the base PDF
+    sc2_esc = avg_dlogp2(t_esc_grid, base.res_esc.pdf, nb.res_esc.pdf, nnb.res_esc.pdf, dφ)
+    sc2_ret = avg_dlogp2(t_ret_grid, base.res_ret.pdf, nb.res_ret.pdf, nnb.res_ret.pdf, dφ)
 
-    # 6. summed averaged second derivatives per unit (MFPT_esc + MFPT_ret)
-    fisher_rate_esc[k] = -φ^2 * avg2_esc / (base.res_esc.mfpt + base.res_ret.mfpt)
-    fisher_rate_ret[k] = -φ^2 * avg2_ret / (base.res_esc.mfpt + base.res_ret.mfpt)
+    # 6. summed averaged squared scores per unit (MFPT_esc + MFPT_ret); I(phi) ≥ 0 (no −)
+    fisher_rate_esc[k] = φ^2 * sc2_esc / (base.res_esc.mfpt + base.res_ret.mfpt)
+    fisher_rate_ret[k] = φ^2 * sc2_ret / (base.res_esc.mfpt + base.res_ret.mfpt)
     fisher_rate = fisher_rate_esc .+ fisher_rate_ret
 
     push!(records, Dict(
@@ -253,13 +259,13 @@ for k in 1:max(nphi - 2, 0)
         "return_t"    => base.res_ret.t,
         "return_pdf"  => base.res_ret.pdf,
         "return_mfpt" => base.res_ret.mfpt,
-        "avg_d2logp_esc" => avg2_esc,
-        "avg_d2logp_ret" => avg2_ret,
+        "avg_dlogp2_esc" => sc2_esc,
+        "avg_dlogp2_ret" => sc2_ret,
         "phi_local"   => phi_local_vals[k],
         "dphi_local"  => dphi_local_vals[k],
         "d2phi_local" => d2phi_local_vals[k],
         "fisher_rate_esc" => fisher_rate_esc[k],
-        "fisher_rate_ret" => fisher_rate_ret[k]
+        "fisher_rate_ret" => fisher_rate_ret[k],
         "fisher_rate" => fisher_rate[k]))
 
     @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  phi_loc=%.4g  MFPT_esc=%.4g  MFPT_ret=%.4g  I_rate=%.4g\n",
@@ -277,8 +283,8 @@ open(outpath, "w") do io
         "meta" => Dict(
             "escape_setup" => "IC=delta at R; reflecting at R, absorbing at ridge (time R->ridge)",
             "return_setup" => "IC=delta at ridge; absorbing at R, reflecting far end (time ridge->R)",
-            "fisher_rate_def" => "-phi^2 (A_esc+A_ret)/(MFPT_esc+MFPT_ret), " *
-                                 "A=∫P(t|phi) ∂²logP/∂phi² dt (central 3-pt in phi)",
+            "fisher_rate_def" => "phi^2 (A_esc+A_ret)/(MFPT_esc+MFPT_ret), " *
+                                 "A=∫P(t|phi) (∂logP/∂phi)² dt (squared central 1st deriv in phi)",
             "phi_local_def" => "Boltzmann-weighted (w=exp(-U_tot/kBT)) avg over the well " *
                                "[R,x_ridge] of the profile from the SELECTED model: :bvp uses " *
                                "the interpolated BVP surface conc phi_surf(x-R); :linear uses " *

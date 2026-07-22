@@ -26,12 +26,12 @@ import JSON
 Base.@kwdef struct BVPParams
     # surface-to-surface gap grid (as factors of the sphere radius R)
     d_min_factor::Float64 = 0.0      # near-contact end of the d-sweep
-    d_max_factor::Float64 = 0.5
-    n_d::Int              = 20
+    d_max_factor::Float64 = 1.0
+    n_d::Int              = 50
     d_ref_factor::Float64 = 8.0      # reference gap (spheres far apart): U = F(d) - F_ref
     # spatial discretisation of the (rho, z) half-plane
-    Nrho::Int             = 100
-    dz_target::Float64    = 0.1
+    Nrho::Int             = 200
+    dz_target::Float64    = 0.05
     rho_max::Float64      = 15.0
     z_buf::Float64        = 3.0
     # Newton / fixed-point solve
@@ -71,7 +71,7 @@ end
 # bridging is active.  (The full study sweep is phi_inf_values = Float64[],
 # phi_frac_min = 0.05, phi_frac_max = 0.90, n_phi = 9.)
 Base.@kwdef struct SweepParams
-    phi_inf_values::Vector{Float64} = []
+    phi_inf_values::Vector{Float64} = Float64[]
     phi_frac_min::Float64           = 0.05
     phi_frac_max::Float64           = 0.90
     n_phi::Int                      = 16
@@ -89,8 +89,8 @@ end
 # that data and write their own output alongside it.  Point it at the run to
 # process (sweep.jl overwrites it in-process on a forward run; ncpus likewise).
 Base.@kwdef mutable struct SimulationParams
-    spec_path::Union{Nothing, String}   = "spec/jobs/20260721/fisher_two_spheres.jl"
-    output_dir::Union{Nothing, String}  = "data/20260721/test"
+    spec_path::Union{Nothing, String}   = ""
+    output_dir::Union{Nothing, String}  = ""
     ncpus::Int          = 0    # placeholder; set to sweep.jl's ncpus (ARGS[3])
     # Output filenames for the downstream stages (written into output_dir).
     interp_file::String = "bvp_potential_interp.json"
@@ -103,7 +103,7 @@ end
 Base.@kwdef struct FisherParams
     surface::Parameters       = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.5,
                                            kappa = 1.0, phi_inf = 0.09, L = 20.0,
-                                           R = 5.0, eps = 1e-6,
+                                           R = 3.0, eps = 1e-6,
                                            conserve_volume = false,
                                            parallel_plates = false)
     bvp::BVPParams            = BVPParams()
