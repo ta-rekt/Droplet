@@ -119,48 +119,93 @@ function target!(res, args...)
                           x0_init = x0, omega_continuation = omega_cont,
                           verbose = false, bc_reg = bp.bc_reg)
 
+    # A dense (bridged) solution has gap-centre phi above bridge_phi.
+    bridged_ok(r) = _gap_center(r[:geom], r[:phi]) > bp.bridge_phi
+
+    # Delta-d subdivision retry: when a warm-started step to `dd` fails, re-
+    # approach it from the last converged neighbour (phi0 on geom0 at gap d0)
+    # through a few dz-snapped intermediate gaps, warm-starting each.  Returns
+    # the converged result at `dd` on the intended branch (`accept`), or nothing
+    # when the branch cannot be continued that far (e.g. it folds before `dd`);
+    # at a genuine fold the sub-steps fail too, so no spurious point is emitted.
+    function _retry(dd, d0, phi0, geom0, accept; nsub = 3, oc = false)
+        inner = unique(_snap.(collect(range(d0, dd; length = nsub + 2))[2:end-1]))
+        lo, hi = minmax(d0, dd)
+        filter!(x -> lo + 1e-9 < x < hi - 1e-9, inner)
+        pphi, pgeom = phi0, geom0
+        for ds in inner
+            r = _solve(ds; x0 = _warm_x0(geom_at(ds), pphi, pgeom), omega_cont = oc)
+            (r[:success] && accept(r)) || return nothing
+            pphi, pgeom = r[:phi], r[:geom]
+        end
+        r = _solve(dd; x0 = _warm_x0(geom_at(dd), pphi, pgeom), omega_cont = oc)
+        return (r[:success] && accept(r)) ? r : nothing
+    end
+
     # Reference: spheres far apart on the dilute branch.
     res_ref = _solve(d_ref)
     F_ref = res_ref[:success] ? excess_free_energy_two_spheres(res_ref) : NaN
 
-    res_unbr = Vector{Any}(nothing, N_D)   # dilute branch result per d
-    res_brid = Vector{Any}(nothing, N_D)   # bridged branch result per d
+    res_unbr = Vector{Any}(nothing, N_D)   # adiabatic inward-march result per d
+    res_brid = Vector{Any}(nothing, N_D)   # dense-seeded (bridged) result per d
     F_unbr   = fill(NaN, N_D)
     F_brid   = fill(NaN, N_D)
 
-    # --- Unbridged (dilute) branch: inward march from large d ---
+    # --- Adiabatic inward march from large d ---
+    # Warm-march from the reference inward, keeping EVERY converged solution so
+    # the equilibrium field is tracked continuously from the isolated-sphere
+    # state.  This captures the dilute (thin-film) branch AND, near saturation
+    # where the film continuously thickens into a bridge, the merged branch --
+    # which a gap-centre (bridge_phi) label would wrongly split, dropping the
+    # moderate-density points that neither the pure-dilute nor the dense-seed
+    # march recovers.  The dense-seeded outward march below then only has to
+    # supply the small-d region where this branch folds before contact (strongly
+    # undersaturated / chi >= 4).  min-F over both branches is taken per d.
+    any_ok(r) = r[:success]
     prev_phi  = res_ref[:success] ? res_ref[:phi]  : nothing
     prev_geom = res_ref[:success] ? res_ref[:geom] : nothing
+    prev_d    = res_ref[:success] ? d_ref : NaN
     for k in sortperm(d_grid; rev = true)
         dd = d_grid[k]
         x0 = prev_phi === nothing ? nothing :
              _warm_x0(geom_at(dd), prev_phi, prev_geom)
         rk = _solve(dd; x0 = x0)
-        (rk[:success] && _gap_center(rk[:geom], rk[:phi]) < bp.bridge_phi) || continue
+        if !rk[:success] && prev_phi !== nothing
+            rk = _retry(dd, prev_d, prev_phi, prev_geom, any_ok)
+        end
+        (rk !== nothing && rk[:success]) || continue
         res_unbr[k] = rk
         F_unbr[k]   = excess_free_energy_two_spheres(rk)
         prev_phi    = rk[:phi]
         prev_geom   = rk[:geom]
+        prev_d      = dd
     end
 
     # --- Bridged (dense gap) branch: outward march from contact ---
-    prev_phi = nothing; prev_geom = nothing
+    prev_phi = nothing; prev_geom = nothing; prev_d = NaN
     for k in sortperm(d_grid)
         dd = d_grid[k]
         geom_k = geom_at(dd)
         guesses = prev_phi === nothing ?
             (_dense_seed(geom_k, phi_dense),) :
             (_warm_x0(geom_k, prev_phi, prev_geom), _dense_seed(geom_k, phi_dense))
+        rk = nothing
         for x0 in guesses
-            rk = _solve(dd; x0 = x0, omega_cont = false)
-            if rk[:success] && _gap_center(rk[:geom], rk[:phi]) > bp.bridge_phi
-                res_brid[k] = rk
-                F_brid[k]   = excess_free_energy_two_spheres(rk)
-                prev_phi    = rk[:phi]
-                prev_geom   = rk[:geom]
+            r = _solve(dd; x0 = x0, omega_cont = false)
+            if r[:success] && bridged_ok(r)
+                rk = r
                 break
             end
         end
+        if rk === nothing && prev_phi !== nothing
+            rk = _retry(dd, prev_d, prev_phi, prev_geom, bridged_ok)
+        end
+        rk === nothing && continue
+        res_brid[k] = rk
+        F_brid[k]   = excess_free_energy_two_spheres(rk)
+        prev_phi    = rk[:phi]
+        prev_geom   = rk[:geom]
+        prev_d      = dd
     end
 
     # --- Backfill: inward march over any d the outward march left unsolved.
@@ -191,12 +236,21 @@ function target!(res, args...)
     U_full   = fill(NaN, N_D)      # equilibrium pair potential
     F_arr    = fill(NaN, N_D)
     Phi_surf = fill(NaN, N_D)
-    branch   = zeros(Int, N_D)     # 0 none, 1 unbridged, 2 bridged
+    branch   = zeros(Int, N_D)     # 0 none, 1 adiabatic-inward, 2 dense-seeded
     # Gap-facing pole of sphere 1: theta = 0 => z = z_c1 + R, the point pointing
     # inward toward sphere 2 (the enriched adsorption film).  The far-side pole
     # (theta = pi, z = z_c1 - R) sits in open bulk and reads ~phi_inf -- that was
     # the previous bug.  Matches inner_pole_phi in visualize_two_spheres_2d.py.
-    gap_pole = [0.0]
+    #
+    # Near contact the *exact* pole is grid-unresolvable: its outward surface
+    # normal immediately enters sphere 2, so the phi_on_sphere probe finds no
+    # clean stencil and a lone theta=0 sample returns garbage (e.g. 0.08 on a
+    # dense bridged neck -> erratic spikes in Phi_surf(d)).  Sampling a small
+    # theta band and reading the pole entry ([1]) fixes this: phi_on_sphere fills
+    # an unresolved pole from the nearest resolvable angle (the adsorption
+    # shoulder just off-axis), which is smooth in d; for well-separated spheres
+    # the pole is resolvable and band[1] equals the plain pole value.
+    gap_pole = collect(range(0.0, 0.35; length = 8))
 
     # Per-d full 2D phi(rho,z) of the equilibrium branch.  Stored as
     # Vector{Vector{Float64}}, outer index rho, inner z, so on the Python side

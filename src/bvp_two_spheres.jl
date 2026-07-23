@@ -481,7 +481,13 @@ end
 # (hundreds of residual evaluations per step).  Ghost cells are expanded into
 # their clean P1/P2 corner cells with the same weights scatter! uses; those
 # corners are guaranteed fluid (unknown or Dirichlet), so there is no recursion.
-function build_linear_operator(geom::Geometry)
+#
+# When `sd` is supplied (bc_reg > 0), it holds d(bc)/d(phi_s) per ghost at the
+# current iterate (see ghost_slope_derivs); the regularized surface term
+# `ghost_coef_bc * bc(phi_s)` then also depends on the unknowns through
+# phi_s(phi_P1, phi_P2), and that dependence is folded into the operator here.
+function build_linear_operator(geom::Geometry;
+                               sd::Union{Nothing, AbstractVector{Float64}} = nothing)
     p = geom.p
     Nrho, Nz = geom.Nrho, geom.Nz
     κ      = p.kappa
@@ -532,6 +538,32 @@ function build_linear_operator(geom::Geometry)
             add_unk!(row, i02 + 1, j02,     c2 * geom.ghost_wts_2[2, g])
             add_unk!(row, i02,     j02 + 1, c2 * geom.ghost_wts_2[3, g])
             add_unk!(row, i02 + 1, j02 + 1, c2 * geom.ghost_wts_2[4, g])
+            # bc_reg surface term: phi_G also depends on the unknowns through
+            # phi_s(phi_P1, phi_P2) in the regularized Robin slope.  sd[g] is
+            # d(bc)/d(phi_s) at the current iterate (0 for bc_reg = 0 or where
+            # phi_s is clamped); this is the 2D analogue of the 1D
+            # _surf_slope_deriv contribution to the surface node's Jacobian.
+            if sd !== nothing && sd[g] != 0.0
+                cbc = coef * geom.ghost_coef_bc[g] * sd[g]
+                # phi_s = a1 * phi_P1 + a2 * phi_P2 (linear closure: a1=1,a2=0).
+                if geom.ghost_used_linear[g]
+                    a1 = 1.0; a2 = 0.0
+                else
+                    w  = (geom.ghost_delta[g] - geom.ghost_d1[g]) /
+                         (geom.ghost_d2[g] - geom.ghost_d1[g])
+                    a1 = 1.0 - w; a2 = w
+                end
+                cb1 = cbc * a1
+                add_unk!(row, i01,     j01,     cb1 * geom.ghost_wts_1[1, g])
+                add_unk!(row, i01 + 1, j01,     cb1 * geom.ghost_wts_1[2, g])
+                add_unk!(row, i01,     j01 + 1, cb1 * geom.ghost_wts_1[3, g])
+                add_unk!(row, i01 + 1, j01 + 1, cb1 * geom.ghost_wts_1[4, g])
+                cb2 = cbc * a2
+                add_unk!(row, i02,     j02,     cb2 * geom.ghost_wts_2[1, g])
+                add_unk!(row, i02 + 1, j02,     cb2 * geom.ghost_wts_2[2, g])
+                add_unk!(row, i02,     j02 + 1, cb2 * geom.ghost_wts_2[3, g])
+                add_unk!(row, i02 + 1, j02 + 1, cb2 * geom.ghost_wts_2[4, g])
+            end
         end
     end
 
@@ -557,6 +589,38 @@ function build_linear_operator(geom::Geometry)
     return sparse(Irow, Jcol, Val, n, n)
 end
 
+# Per-ghost d(bc)/d(phi_s) at the current field phi -- the regularized Robin
+# slope derivative (mirrors _surf_slope_deriv in bvp_solver.jl).  Zero when
+# bc_reg = 0 or where the reconstructed surface value phi_s falls outside
+# (eps, 1-eps) (there scatter! clamps phi_s, so the slope is flat).  phi_s is
+# reconstructed from the two clean probe points exactly as in scatter!.
+function ghost_slope_derivs(geom::Geometry, phi::AbstractMatrix)
+    ng  = n_ghost(geom)
+    sd  = zeros(Float64, ng)
+    p   = geom.p
+    reg = geom.bc_reg
+    reg == 0.0 && return sd
+    @inbounds for k in 1:ng
+        i01 = geom.ghost_i0_1[k]; j01 = geom.ghost_j0_1[k]
+        i02 = geom.ghost_i0_2[k]; j02 = geom.ghost_j0_2[k]
+        phi_P1 = geom.ghost_wts_1[1, k] * phi[i01,     j01]     +
+                 geom.ghost_wts_1[2, k] * phi[i01 + 1, j01]     +
+                 geom.ghost_wts_1[3, k] * phi[i01,     j01 + 1] +
+                 geom.ghost_wts_1[4, k] * phi[i01 + 1, j01 + 1]
+        phi_P2 = geom.ghost_wts_2[1, k] * phi[i02,     j02]     +
+                 geom.ghost_wts_2[2, k] * phi[i02 + 1, j02]     +
+                 geom.ghost_wts_2[3, k] * phi[i02,     j02 + 1] +
+                 geom.ghost_wts_2[4, k] * phi[i02 + 1, j02 + 1]
+        d1 = geom.ghost_d1[k]; d2 = geom.ghost_d2[k]
+        phi_s = geom.ghost_used_linear[k] ? phi_P1 :
+                phi_P1 + (phi_P2 - phi_P1) * (geom.ghost_delta[k] - d1) / (d2 - d1)
+        if p.eps < phi_s < 1.0 - p.eps
+            sd[k] = reg / (p.kappa * phi_s * (1.0 - phi_s))
+        end
+    end
+    return sd
+end
+
 # Newton with the analytic sparse Jacobian J = A - Diagonal(d2fb_dphi2.(x)) and a
 # direct sparse LU per step.  Returns (x, converged).  Mirrors the abstol/maxiter
 # semantics of _run_newton but is matrix-free-GMRES-free.
@@ -566,12 +630,14 @@ function _solve_newton_sparse(geom::Geometry, mu_inf::Float64,
                               verbose::Bool = false)
     p = geom.p
     n = n_unknowns(geom)
-    A = build_linear_operator(geom)
+    reg = geom.bc_reg
+    A = build_linear_operator(geom)             # bc_reg-independent linear part
     res! = make_residual_inplace(geom, mu_inf)
     x = copy(x0)
     xtrial = Vector{Float64}(undef, n)
     F = Vector{Float64}(undef, n)
     diagv = Vector{Float64}(undef, n)
+    phi_buf = reg == 0.0 ? nothing : Matrix{Float64}(undef, geom.Nrho, geom.Nz)
     res!(F, x, nothing)
     nrm = maximum(abs, F)
     it = 0
@@ -580,7 +646,16 @@ function _solve_newton_sparse(geom::Geometry, mu_inf::Float64,
         @inbounds for k in 1:n
             diagv[k] = d2fb_dphi2(x[k], p)
         end
-        δ = (A - Diagonal(diagv)) \ F
+        # Linear part of the Jacobian.  For bc_reg = 0 it is the constant A;
+        # for bc_reg > 0 the surface-BC term is iterate-dependent, so fold its
+        # analytic derivative (sd per ghost) into the operator at the current x.
+        Jlin = if reg == 0.0
+            A
+        else
+            scatter!(phi_buf, x, geom)
+            build_linear_operator(geom; sd = ghost_slope_derivs(geom, phi_buf))
+        end
+        δ = (Jlin - Diagonal(diagv)) \ F
         # Backtracking line search: keep halving the step until ‖F‖ decreases,
         # clamping φ to the physical interval.  λ = 1 (full Newton) is accepted
         # on the first try for well-behaved problems, so smooth solves are
