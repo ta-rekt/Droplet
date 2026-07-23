@@ -27,11 +27,11 @@ Base.@kwdef struct BVPParams
     # surface-to-surface gap grid (as factors of the sphere radius R)
     d_min_factor::Float64 = 0.0      # near-contact end of the d-sweep
     d_max_factor::Float64 = 0.5
-    n_d::Int              = 30
+    n_d::Int              = 50
     d_ref_factor::Float64 = 8.0      # reference gap (spheres far apart): U = F(d) - F_ref
     # spatial discretisation of the (rho, z) half-plane
-    Nrho::Int             = 100
-    dz_target::Float64    = 0.07
+    Nrho::Int             = 250
+    dz_target::Float64    = 0.04
     rho_max::Float64      = 15.0
     z_buf::Float64        = 3.0
     # Newton / fixed-point solve
@@ -90,7 +90,7 @@ end
 # process (sweep.jl overwrites it in-process on a forward run; ncpus likewise).
 Base.@kwdef mutable struct SimulationParams
     spec_path::Union{Nothing, String}   = ""
-    output_dir::Union{Nothing, String}  = ""
+    output_dir::Union{Nothing, String}  = "data/20260722/fisher_two_spheres_chi_3_h0_-0.5_R_4"
     ncpus::Int          = 0    # placeholder; set to sweep.jl's ncpus (ARGS[3])
     # Output filenames for the downstream stages (written into output_dir).
     interp_file::String = "bvp_potential_interp.json"

@@ -6,6 +6,7 @@ Output: media/figures/20260508/bvp_concentration_profile.png
 """
 
 import sys, os
+import json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
@@ -103,9 +104,17 @@ ax.legend(fontsize=10)
 ax.grid(True, alpha=0.3)
 fig.suptitle(rf"$R={p.R}$, $\chi_b={p.chi_b}$, $\omega_b={p.omega_b}$")
 
+# ── Config ───────────────────────────────────────────────────────────────────
+EXP_NAME = "fisher_two_spheres_test"
+OUT_DATE = "20260722"
+OUT_PNG  = f"media/figures/{OUT_DATE}/{EXP_NAME}.png"
+OUT_JSON = f"media/figures/{OUT_DATE}/{EXP_NAME}.json"
 
 fig.tight_layout()
-out = "media/figures/20260519/bvp_concentration_profiles_R_10.png"
-os.makedirs(os.path.dirname(out), exist_ok=True)
-fig.savefig(out, dpi=150, bbox_inches="tight")
-print(f"\nSaved figure → {out}")
+os.makedirs(os.path.dirname(OUT_PNG), exist_ok=True)
+fig.savefig(OUT_PNG, dpi=150, bbox_inches="tight")
+print(f"\nSaved figure → {OUT_PNG}")
+
+with open(OUT_JSON, "w") as f:
+    json.dump(phi_profiles, f, indent=2)
+print(f"wrote -> {OUT_JSON}")
