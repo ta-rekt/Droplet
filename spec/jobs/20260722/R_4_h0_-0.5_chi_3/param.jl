@@ -56,7 +56,7 @@ D_eff(r::RouseParams) = 2 * r.kBT / r.friction
 
 # --- FPT solver (downstream; carried here so PARAMS is the single source) -----
 Base.@kwdef struct FPTParams
-    potential::Symbol       = :bvp     # :bvp (nonlinear BVP U_full) or :linear (closed-form well)
+    potential::Symbol       = :linear     # :bvp (nonlinear BVP U_full) or :linear (closed-form well)
     Ngrid::Int              = 1500     # grid points on [R, x_ridge] (escape / return problems)
     Nlocal::Int             = 100_000  # dense grid for the local-concentration integral
     ridge_scan_max::Float64 = 25.0     # x-range scanned to locate the barrier ridge
