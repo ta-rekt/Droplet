@@ -1,4 +1,4 @@
-# Monotone, shape-preserving interpolation of a low-resolution BVP pair potential.
+# Faithful (non-monotone) cubic-Hermite interpolation of a low-res BVP pair potential.
 #
 # JOB SCRIPT (spec/jobs/20260720/): a self-contained copy of the viz_util library,
 # run as `julia --project=@. spec/jobs/20260720/bvp_potential_interp.jl`.  Beyond
@@ -22,105 +22,66 @@
 # a COARSE surface-to-surface gap grid d_grid (N_D ~ 30 nodes).  The FPT script
 # (fisher_rate_from_fpt_solver.jl) needs the attractive potential as a smooth
 # FUNCTION evaluated on a FINE grid (Ngrid ~ 1500) that also feeds finite
-# differences into the backward-FPE generator -- so the resampled potential must be
-# monotone and have a continuous, wiggle-free derivative or the drift term spikes.
+# differences into the backward-FPE generator -- so the resampled potential must
+# have a continuous first derivative or the drift term spikes.
 #
-# Design (why not a plain spline):
-#   * The raw BVP tail carries ~1e-6 non-monotone solver noise around U = 0 (the
-#     film free energy is at its floor there).  A faithful interpolant -- even a
-#     monotonicity-PRESERVING one -- reproduces those dips as wiggles.  So we first
-#     project the nodes onto the nearest NON-DECREASING sequence (pool-adjacent-
-#     violators, an O(n) L2 isotonic regression); it only touches the noisy tail.
+# Design (faithful, non-monotone):
+#   * We interpolate the raw BVP nodes FAITHFULLY: no isotonic pre-projection and no
+#     monotonicity constraint, so any real non-monotone structure in U(d) survives.
+#     (Trade-off: ~1e-6 solver noise in the U = 0 tail is reproduced as small wiggles
+#     too -- drop this constraint only when the BVP rows are clean enough to trust.)
 #   * A natural cubic spline (C2) would OVERSHOOT at the deep-well / flat-tail
-#     asymmetry and dip below the asymptote -> non-monotone.  We instead use a
-#     Fritsch-Butland monotone cubic Hermite (PCHIP, as in MATLAB pchip / scipy
-#     PchipInterpolator): C1, shape-preserving (NO overshoot => no wiggles),
-#     monotone on monotone data.  We trade C2 smoothness (which reintroduces
-#     wiggles here) for a guaranteed monotone, continuous first derivative.
+#     asymmetry and dip below the asymptote.  We instead use a cubic Hermite with
+#     3-point centred (weighted) node slopes: C1, faithful to the data, and far less
+#     prone to overshoot than a C2 spline -- trading C2 smoothness for shape control.
 #
 # Exposes:
-#   isotonic_nondecreasing(y)      -- L2 projection onto non-decreasing sequences
-#   PCHIP(x, y)                    -- monotone cubic Hermite; callable; deriv/deriv2
-#   interp_U_full(d_grid, U_full)  -- cleaned PCHIP of one BVP U(d) row
+#   CubicHermite(x, y)             -- cubic Hermite, centred slopes; callable; deriv/deriv2
+#   interp_U_full(d_grid, U_full)  -- CubicHermite of one BVP U(d) row
 #   make_U_att_bvp(d_grid, U, R)   -- drop-in U_ads replacement: x -> U_att(x-R)
 
 using Droplet          # linear-response screening length (d2fb_dphi2, with)
 import JSON
 
-# --- Isotonic regression (pool-adjacent-violators) ---------------------------
-# Closest non-decreasing sequence to y in L2 (equal weights).  Merges any block
-# whose running mean would violate monotonicity; O(n) via a value/weight/count
-# stack.  Only the ~1e-6 non-monotone tail is modified.
-function isotonic_nondecreasing(y::AbstractVector)
-    vals = Float64[]; wts = Float64[]; cnts = Int[]
-    @inbounds for yi in y
-        v = float(yi); w = 1.0; c = 1
-        while !isempty(vals) && vals[end] > v
-            pv = pop!(vals); pw = pop!(wts); pc = pop!(cnts)
-            v = (pv * pw + v * w) / (pw + w); w += pw; c += pc
-        end
-        push!(vals, v); push!(wts, w); push!(cnts, c)
-    end
-    out = Vector{Float64}(undef, length(y)); i = 1
-    @inbounds for k in eachindex(vals)
-        for _ in 1:cnts[k]
-            out[i] = vals[k]; i += 1
-        end
-    end
-    return out
-end
-
-# --- Monotone cubic Hermite (PCHIP) ------------------------------------------
-struct PCHIP
+# --- Cubic Hermite (centred slopes) ------------------------------------------
+struct CubicHermite
     x::Vector{Float64}
     y::Vector{Float64}
-    m::Vector{Float64}   # node slopes (Fritsch-Butland)
+    m::Vector{Float64}   # node slopes (3-point centred finite differences)
 end
 
-# Shape-preserving one-sided endpoint slope (scipy PchipInterpolator._edge_case):
-# a non-centred 3-point estimate, clamped so it cannot flip sign or overshoot.
-function _pchip_edge(h0, h1, d0, d1)
-    d = ((2h0 + h1) * d0 - h0 * d1) / (h0 + h1)
-    if sign(d) != sign(d0)
-        d = 0.0
-    elseif sign(d0) != sign(d1) && abs(d) > 3abs(d0)
-        d = 3d0
-    end
-    return d
-end
+# Interior slope: the two one-sided secants averaged, each weighted by the OPPOSITE
+# interval (reduces to the centred difference on a uniform grid).  Endpoint slope:
+# the non-centred 3-point (parabolic) estimate.  Neither is sign-clamped, so the
+# interpolant is free to be non-monotone through a node.
+_edge_slope(h0, h1, d0, d1) = ((2h0 + h1) * d0 - h0 * d1) / (h0 + h1)
 
-function _pchip_slopes(x, y)
+function _hermite_slopes(x, y)
     n = length(x)
     h = diff(x)
     δ = diff(y) ./ h
     m = zeros(n)
     @inbounds for i in 2:n-1
-        if δ[i-1] * δ[i] > 0                     # same sign => monotone through node
-            w1 = 2h[i] + h[i-1]                  # Fritsch-Butland weighted harmonic
-            w2 = h[i] + 2h[i-1]                  # mean of the two secants
-            m[i] = (w1 + w2) / (w1 / δ[i-1] + w2 / δ[i])
-        else
-            m[i] = 0.0                           # local extremum / flat => zero slope
-        end
+        m[i] = (h[i] * δ[i-1] + h[i-1] * δ[i]) / (h[i-1] + h[i])
     end
     if n >= 3
-        m[1] = _pchip_edge(h[1], h[2], δ[1], δ[2])
-        m[n] = _pchip_edge(h[n-1], h[n-2], δ[n-1], δ[n-2])
+        m[1] = _edge_slope(h[1], h[2], δ[1], δ[2])
+        m[n] = _edge_slope(h[n-1], h[n-2], δ[n-1], δ[n-2])
     elseif n == 2
         m[1] = δ[1]; m[2] = δ[1]
     end
     return m
 end
 
-function PCHIP(x::AbstractVector, y::AbstractVector)
+function CubicHermite(x::AbstractVector, y::AbstractVector)
     xs = Float64.(collect(x)); ys = Float64.(collect(y))
     @assert length(xs) == length(ys) "x and y must have equal length"
     @assert length(xs) >= 2 "need at least 2 nodes"
     @assert issorted(xs) && all(diff(xs) .> 0) "x must be strictly increasing"
-    return PCHIP(xs, ys, _pchip_slopes(xs, ys))
+    return CubicHermite(xs, ys, _hermite_slopes(xs, ys))
 end
 
-@inline _seg(p::PCHIP, xq) = clamp(searchsortedlast(p.x, xq), 1, length(p.x) - 1)
+@inline _seg(p::CubicHermite, xq) = clamp(searchsortedlast(p.x, xq), 1, length(p.x) - 1)
 
 # Cubic Hermite basis and its first two derivatives (argument t in [0,1]).
 @inline _h00(t)  = (1 + 2t) * (1 - t)^2
@@ -139,7 +100,7 @@ end
 # Value.  Constant (flat) extension outside the node range: below contact never
 # happens (x >= R); above d_max the pair potential is already ~0, so holding the
 # endpoint value keeps U_att bounded and finite for the FPT integration.
-function (p::PCHIP)(xq::Real)
+function (p::CubicHermite)(xq::Real)
     xq <= p.x[1]   && return p.y[1]
     xq >= p.x[end] && return p.y[end]
     i = _seg(p, xq); h = p.x[i+1] - p.x[i]; t = (xq - p.x[i]) / h
@@ -147,14 +108,14 @@ function (p::PCHIP)(xq::Real)
            p.y[i+1] * _h01(t) + h * p.m[i+1] * _h11(t)
 end
 
-function deriv(p::PCHIP, xq::Real)
+function deriv(p::CubicHermite, xq::Real)
     (xq <= p.x[1] || xq >= p.x[end]) && return 0.0
     i = _seg(p, xq); h = p.x[i+1] - p.x[i]; t = (xq - p.x[i]) / h
     return (p.y[i] * _h00d(t) + h * p.m[i] * _h10d(t) +
             p.y[i+1] * _h01d(t) + h * p.m[i+1] * _h11d(t)) / h
 end
 
-function deriv2(p::PCHIP, xq::Real)
+function deriv2(p::CubicHermite, xq::Real)
     (xq <= p.x[1] || xq >= p.x[end]) && return 0.0
     i = _seg(p, xq); h = p.x[i+1] - p.x[i]; t = (xq - p.x[i]) / h
     return (p.y[i] * _h00dd(t) + h * p.m[i] * _h10dd(t) +
@@ -162,8 +123,9 @@ function deriv2(p::PCHIP, xq::Real)
 end
 
 # --- Adapters for the fisher-rate pipeline -----------------------------------
-# One BVP U(d) row -> a monotone, wiggle-free interpolant on the gap coordinate d.
-interp_U_full(d_grid, U_full) = PCHIP(d_grid, isotonic_nondecreasing(collect(U_full)))
+# One BVP U(d) row -> a faithful (non-monotone) cubic-Hermite interpolant on the gap
+# coordinate d.  Raw nodes are interpolated as-is: no isotonic pre-projection.
+interp_U_full(d_grid, U_full) = CubicHermite(d_grid, collect(U_full))
 
 # Drop-in replacement for the linear-response `U_ads` term in make_U_tot: builds
 # the interpolant once for a given phi_inf's BVP row and returns U_att as a
@@ -268,9 +230,13 @@ for (i, phi) in enumerate(phi_infs)
     if linear_only
         Uf = fill(NaN, Ngrid)
         Ps = fill(NaN, Ngrid)
+
+        p   = Droplet.with(PARAMS.surface; phi_inf = phi)     # omega_b (=h0) preserved
+        psi, _, _ = psi_linear(xg, p)                      # screened adsorption tail
+        Ps        = phi .+ psi                       # far-field value + linear tail
     else
-        # PCHIP over the FINITE (d, U_full) nodes only, so a NaN at some d drops that
-        # node instead of the whole phi_inf row.
+        # CubicHermite over the FINITE (d, U_full) nodes only, so a NaN at some d
+        # drops that node instead of the whole phi_inf row.
         row = U_full_rows[i]
         fin = isfinite.(row)
         if count(fin) >= 2
@@ -281,13 +247,13 @@ for (i, phi) in enumerate(phi_infs)
         end
 
         # phi_surf interpolated onto the same x-grid so the :bvp local_conc can average
-        # it under the nonlinear Boltzmann weight.  Plain (shape-preserving) PCHIP over
-        # the FINITE nodes -- NO isotonic projection here: unlike U_full, phi_surf falls
-        # off with d, so forcing non-decreasing is wrong.
+        # it under the nonlinear Boltzmann weight.  Same faithful CubicHermite over the
+        # FINITE nodes (phi_surf falls off with d, so a monotone projection was never
+        # appropriate here anyway).
         srow = phi_surf_rows[i]
         sfin = isfinite.(srow)
         if count(sfin) >= 2
-            sitp = PCHIP(d_grid[sfin], srow[sfin])
+            sitp = CubicHermite(d_grid[sfin], srow[sfin])
             Ps   = [sitp(x - R) for x in xg]
         else
             Ps   = fill(NaN, Ngrid)
@@ -309,20 +275,20 @@ end
 
 # --- 4. write the output dict beside the input data ---
 out = Dict{String,Any}(
-    "params"        => to_dict(PARAMS),
-    "phi_inf"       => phi_infs,
-    "omega_b"       => h0,
-    "R"             => R,
-    "d_grid"        => d_grid,
-    "x_grid"        => xg,
-    "U_full_raw"    => U_full_rows,        # per (phi_inf, d); NaN where unsolved
-    "phi_surf_raw"  => phi_surf_rows,      # per (phi_inf, d)
-    "U_full_interp" => U_full_interp,      # per (phi_inf, x_grid)
-    "phi_surf_interp" => phi_surf_interp,  # per (phi_inf, x_grid): BVP surface conc(x-R)
-    "U_linear"      => U_linear,           # per (phi_inf, x_grid)
-    "U_tot_full"    => U_tot_full,         # per (phi_inf, x_grid)
-    "U_tot_linear"  => U_tot_linear,       # per (phi_inf, x_grid)
-    "input_by_cpu"  => Dict(string(c) => Dict(
+    "params"          => to_dict(PARAMS),
+    "phi_inf"         => phi_infs,
+    "omega_b"         => h0,
+    "R"               => R,
+    "d_grid"          => d_grid,
+    "x_grid"          => xg,
+    "U_full_raw"      => U_full_rows,        # per (phi_inf, d); NaN where unsolved
+    "phi_surf_raw"    => phi_surf_rows,      # per (phi_inf, d)
+    "U_full_interp"   => U_full_interp,      # per (phi_inf, x_grid)
+    "phi_surf_interp" => phi_surf_interp,    # per (phi_inf, x_grid): BVP surface conc(x-R)
+    "U_linear"        => U_linear,           # per (phi_inf, x_grid)
+    "U_tot_full"      => U_tot_full,         # per (phi_inf, x_grid)
+    "U_tot_linear"    => U_tot_linear,       # per (phi_inf, x_grid)
+    "input_by_cpu"    => Dict(string(c) => Dict(
                             "phi_inf"  => by_cpu[c].phi_inf,
                             "U_full"   => by_cpu[c].U_full,
                             "phi_surf" => by_cpu[c].phi_surf,

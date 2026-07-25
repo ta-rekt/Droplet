@@ -261,6 +261,7 @@ for k in 1:max(nphi - 2, 0)
         "return_mfpt" => base.res_ret.mfpt,
         "avg_dlogp2_esc" => sc2_esc,
         "avg_dlogp2_ret" => sc2_ret,
+        "phi_surf"    => phi_surf_rows[k],
         "phi_local"   => phi_local_vals[k],
         "dphi_local"  => dphi_local_vals[k],
         "d2phi_local" => d2phi_local_vals[k],
