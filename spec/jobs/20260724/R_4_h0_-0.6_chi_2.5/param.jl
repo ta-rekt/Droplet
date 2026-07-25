@@ -74,7 +74,7 @@ Base.@kwdef struct SweepParams
     phi_inf_values::Vector{Float64} = []
     phi_frac_min::Float64           = 0.2
     phi_frac_max::Float64           = 0.90
-    n_phi::Int                      = 16
+    n_phi::Int                      = 64
     omega_b_values::Vector{Float64} = [-0.6]
 end
 
@@ -90,7 +90,7 @@ end
 # process (sweep.jl overwrites it in-process on a forward run; ncpus likewise).
 Base.@kwdef mutable struct SimulationParams
     spec_path::Union{Nothing, String}   = ""
-    output_dir::Union{Nothing, String}  = "data/20260724/R_4_h0_-0.6_chi_2.5/"
+    output_dir::Union{Nothing, String}  = "data/20260724/R_4_h0_-0.6_chi_2.5"
     ncpus::Int          = 0    # placeholder; set to sweep.jl's ncpus (ARGS[3])
     # Output filenames for the downstream stages (written into output_dir).
     interp_file::String = "bvp_potential_interp.json"
