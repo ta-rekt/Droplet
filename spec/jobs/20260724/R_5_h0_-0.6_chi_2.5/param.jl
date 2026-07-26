@@ -63,6 +63,26 @@ Base.@kwdef struct FPTParams
     ridge_scan_n::Int       = 8000
 end
 
+# --- Interpolation smoothing (bvp_potential_interp stage) --------------------
+# How bvp_potential_interp resamples each coarse BVP U_full(d) / phi_surf(d) row onto
+# the fine x-grid.  The faithful cubic-Hermite interpolant (:none) reproduces solver
+# noise in the rows, so its FIRST DERIVATIVE oscillates and the FPT drift term spikes.
+# The other methods smooth instead of interpolate:
+#   :none        faithful CubicHermite (default; no smoothing)
+#   :spline      cubic SMOOTHING spline, minimises Σ(y-g)² + lambda*∫g''² -- C2,
+#                preserves well depth, smooth derivative (the recommended fix)
+#   :gaussian :exponential :epanechnikov :triangular :boxcar
+#                local kernel regression with the named kernel (bandwidth + degree)
+# `lambda` tunes the spline (→0 interpolates, large → straight line); `bandwidth`
+# (in gap-coordinate d units) and `degree` (0 = Nadaraya-Watson, 1 = local linear)
+# tune the kernel methods.  Unused fields are ignored by the chosen method.
+Base.@kwdef struct SmoothingParams
+    method::Symbol     = :spline    # :none | :spline | :gaussian | :exponential | :epanechnikov | :triangular | :boxcar
+    lambda::Float64    = 1e-2     # smoothing-spline roughness penalty (method = :spline)
+    bandwidth::Float64 = 0.4      # kernel scale in d units (kernel methods)
+    degree::Int        = 1        # kernel regression degree: 0 = Nadaraya-Watson, 1 = local linear
+end
+
 # --- Swept axes --------------------------------------------------------------
 # phi_inf is the sensed signal, omega_b the (usually fixed) adsorption field.
 # phi_inf_values, if non-empty, is used verbatim (default: the single test point);
@@ -73,8 +93,8 @@ end
 Base.@kwdef struct SweepParams
     phi_inf_values::Vector{Float64} = []
     phi_frac_min::Float64           = 0.2
-    phi_frac_max::Float64           = 0.90
-    n_phi::Int                      = 64
+    phi_frac_max::Float64           = 0.9
+    n_phi::Int                      = 64    
     omega_b_values::Vector{Float64} = [-0.6]
 end
 
@@ -110,6 +130,7 @@ Base.@kwdef struct FisherParams
     bvp::BVPParams            = BVPParams()
     rouse::RouseParams        = RouseParams()
     fpt::FPTParams            = FPTParams()
+    smoothing::SmoothingParams = SmoothingParams()
     sweep::SweepParams        = SweepParams()
     sim::SimulationParams     = SimulationParams()
 end
@@ -158,4 +179,3 @@ end
 
 # The configured source of truth for this job.
 const PARAMS = FisherParams()
-

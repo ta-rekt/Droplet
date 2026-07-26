@@ -23,24 +23,32 @@
 # (fisher_rate_from_fpt_solver.jl) needs the attractive potential as a smooth
 # FUNCTION evaluated on a FINE grid (Ngrid ~ 1500) that also feeds finite
 # differences into the backward-FPE generator -- so the resampled potential must
-# have a continuous first derivative or the drift term spikes.
+# have a continuous, non-oscillating first derivative or the drift term spikes.
 #
-# Design (faithful, non-monotone):
-#   * We interpolate the raw BVP nodes FAITHFULLY: no isotonic pre-projection and no
-#     monotonicity constraint, so any real non-monotone structure in U(d) survives.
-#     (Trade-off: ~1e-6 solver noise in the U = 0 tail is reproduced as small wiggles
-#     too -- drop this constraint only when the BVP rows are clean enough to trust.)
-#   * A natural cubic spline (C2) would OVERSHOOT at the deep-well / flat-tail
-#     asymmetry and dip below the asymptote.  We instead use a cubic Hermite with
-#     3-point centred (weighted) node slopes: C1, faithful to the data, and far less
-#     prone to overshoot than a C2 spline -- trading C2 smoothness for shape control.
+# Design (faithful interpolation, optional smoothing -- PARAMS.smoothing.method):
+#   * :none (default) interpolates the raw BVP nodes FAITHFULLY with a cubic Hermite
+#     (centred, unclamped slopes): no isotonic pre-projection, no monotonicity
+#     constraint, so any real structure in U(d) survives.  A natural cubic spline
+#     (C2) would OVERSHOOT the deep-well/flat-tail asymmetry; the C1 centred-slope
+#     Hermite is far less prone to that.
+#   * When the BVP rows are noisy the faithful interpolant reproduces the noise and
+#     its DERIVATIVE oscillates.  The other methods SMOOTH instead of interpolate:
+#     :spline is a cubic SMOOTHING spline (minimises Σ(y-g)² + λ∫g''²; C2, preserves
+#     well depth, derivative smooth -- the recommended fix), and the kernel names
+#     (:gaussian, :exponential, :epanechnikov, :triangular, :boxcar) do local kernel
+#     regression (bandwidth + degree).  See SmoothingParams in param.jl.  Output
+#     format is identical regardless -- only the resampled values change.
 #
 # Exposes:
 #   CubicHermite(x, y)             -- cubic Hermite, centred slopes; callable; deriv/deriv2
+#   SmoothSpline(x, y, λ)          -- cubic smoothing spline (penalty λ); callable; sderiv
+#   kernel_smooth(x, y, xq; ...)   -- local kernel regression (kernel, bandwidth, degree)
+#   smooth_row(d_nodes, y, dq)     -- resample one BVP row per PARAMS.smoothing dispatch
 #   interp_U_full(d_grid, U_full)  -- CubicHermite of one BVP U(d) row
 #   make_U_att_bvp(d_grid, U, R)   -- drop-in U_ads replacement: x -> U_att(x-R)
 
 using Droplet          # linear-response screening length (d2fb_dphi2, with)
+using LinearAlgebra    # dense solve for the cubic smoothing spline (Green-Silverman)
 import JSON
 
 # --- Cubic Hermite (centred slopes) ------------------------------------------
@@ -122,6 +130,91 @@ function deriv2(p::CubicHermite, xq::Real)
             p.y[i+1] * _h01dd(t) + h * p.m[i+1] * _h11dd(t)) / h^2
 end
 
+# --- Cubic smoothing spline (Green & Silverman) ------------------------------
+# Minimises Σ (y_i - g_i)² + λ ∫ g''(x)² dx over natural cubic splines: the C² curve
+# that trades data fidelity against roughness.  Unlike a faithful interpolant it does
+# NOT pass through the noisy BVP nodes, so its first derivative is smooth (the FPT
+# drift term stops spiking).  λ -> 0 recovers interpolation; large λ -> a straight
+# line.  `g` are the smoothed knot values, `M` the knot 2nd derivatives (natural:
+# M[1] = M[n] = 0).
+struct SmoothSpline
+    x::Vector{Float64}
+    g::Vector{Float64}
+    M::Vector{Float64}
+end
+
+function SmoothSpline(x::AbstractVector, y::AbstractVector, λ::Real)
+    xs = Float64.(collect(x)); ys = Float64.(collect(y))
+    n  = length(xs)
+    n < 3 && return SmoothSpline(xs, ys, zeros(n))          # too few nodes to penalise
+    h  = diff(xs)
+    R  = zeros(n-2, n-2); Q = zeros(n, n-2)                 # Green-Silverman bands
+    for p in 1:n-2
+        i = p + 1                                           # interior knot index (2..n-1)
+        R[p, p] = (h[i-1] + h[i]) / 3
+        p < n-2 && (R[p, p+1] = R[p+1, p] = h[i] / 6)
+        Q[i-1, p] = 1 / h[i-1]
+        Q[i,   p] = -(1 / h[i-1] + 1 / h[i])
+        Q[i+1, p] = 1 / h[i]
+    end
+    γ = (R + λ * (Q'Q)) \ (Q' * ys)                         # interior 2nd derivatives
+    g = ys .- λ * (Q * γ)                                   # smoothed knot values
+    M = zeros(n); M[2:n-1] .= γ
+    return SmoothSpline(xs, g, M)
+end
+
+# Natural cubic spline value / first derivative from (g, M); flat outside the knots.
+function (s::SmoothSpline)(xq::Real)
+    xq <= s.x[1]   && return s.g[1]
+    xq >= s.x[end] && return s.g[end]
+    i = clamp(searchsortedlast(s.x, xq), 1, length(s.x) - 1); h = s.x[i+1] - s.x[i]
+    A = (s.x[i+1] - xq) / h; B = (xq - s.x[i]) / h
+    return A * s.g[i] + B * s.g[i+1] + ((A^3 - A) * s.M[i] + (B^3 - B) * s.M[i+1]) * h^2 / 6
+end
+
+function sderiv(s::SmoothSpline, xq::Real)
+    (xq <= s.x[1] || xq >= s.x[end]) && return 0.0
+    i = clamp(searchsortedlast(s.x, xq), 1, length(s.x) - 1); h = s.x[i+1] - s.x[i]
+    A = (s.x[i+1] - xq) / h; B = (xq - s.x[i]) / h
+    return (s.g[i+1] - s.g[i]) / h + ((1 - 3A^2) * s.M[i] + (3B^2 - 1) * s.M[i+1]) * h / 6
+end
+
+# --- Kernel smoothing (local regression) -------------------------------------
+# Nadaraya-Watson (degree 0) / local-linear (degree 1) regression of a coarse BVP row
+# onto a query grid, with a selectable kernel and bandwidth (in gap-coordinate d
+# units).  Local-linear removes the boundary bias that would otherwise flatten the
+# deep well at contact.  A smooth kernel (Gaussian) gives the smoothest derivative;
+# the exponential kernel's cusp at 0 is the noisiest -- offered for completeness.
+_kernel(::Val{:gaussian}, u)     = exp(-0.5u^2)
+_kernel(::Val{:exponential}, u)  = exp(-abs(u))
+_kernel(::Val{:epanechnikov}, u) = (v = 1 - u^2;    v > 0 ? 0.75v : 0.0)
+_kernel(::Val{:triangular}, u)   = (v = 1 - abs(u); v > 0 ? v     : 0.0)
+_kernel(::Val{:boxcar}, u)       = abs(u) <= 1 ? 0.5 : 0.0
+const _KERNELS = (:gaussian, :exponential, :epanechnikov, :triangular, :boxcar)
+
+function kernel_smooth(xn::AbstractVector, yn::AbstractVector, xq::AbstractVector;
+                       kernel::Symbol, bandwidth::Real, degree::Integer = 1)
+    kf = Val(kernel); hb = float(bandwidth)
+    out = Vector{Float64}(undef, length(xq))
+    @inbounds for (k, x) in enumerate(xq)
+        s0 = s1 = s2 = t0 = t1 = 0.0
+        for j in eachindex(xn)
+            w = _kernel(kf, (x - xn[j]) / hb); w == 0.0 && continue
+            dx = xn[j] - x
+            s0 += w; s1 += w*dx; s2 += w*dx^2; t0 += w*yn[j]; t1 += w*dx*yn[j]
+        end
+        if s0 == 0.0
+            out[k] = yn[argmin(abs.(xn .- x))]              # outside support: nearest node
+        elseif degree <= 0
+            out[k] = t0 / s0                                # Nadaraya-Watson (local const)
+        else
+            det = s0*s2 - s1^2                              # local-linear intercept at x
+            out[k] = det <= 1e-12 * s0 * s2 ? t0/s0 : (s2*t0 - s1*t1) / det
+        end
+    end
+    return out
+end
+
 # --- Adapters for the fisher-rate pipeline -----------------------------------
 # One BVP U(d) row -> a faithful (non-monotone) cubic-Hermite interpolant on the gap
 # coordinate d.  Raw nodes are interpolated as-is: no isotonic pre-projection.
@@ -133,6 +226,28 @@ interp_U_full(d_grid, U_full) = CubicHermite(d_grid, collect(U_full))
 function make_U_att_bvp(d_grid, U_full, R)
     itp = interp_U_full(d_grid, U_full)
     return x -> itp(x - R)
+end
+
+# One coarse BVP row (d_nodes, y_nodes) resampled onto the query gaps `dq`, per the
+# PARAMS.smoothing choice: :none -> faithful CubicHermite (as before); :spline ->
+# cubic smoothing spline (roughness penalty PARAMS.smoothing.lambda); a kernel name
+# -> local kernel regression (PARAMS.smoothing.bandwidth / .degree).  Returns the
+# resampled values -- the output format is the same regardless of method.
+function smooth_row(d_nodes, y_nodes, dq)
+    m = PARAMS.smoothing.method
+    if m === :none
+        itp = interp_U_full(d_nodes, y_nodes)
+        return [itp(q) for q in dq]
+    elseif m === :spline
+        sp = SmoothSpline(d_nodes, y_nodes, PARAMS.smoothing.lambda)
+        return [sp(q) for q in dq]
+    else
+        m in _KERNELS || error("unknown PARAMS.smoothing.method = :$m " *
+                               "(expected :none, :spline, or one of $_KERNELS)")
+        return kernel_smooth(d_nodes, y_nodes, dq;
+                             kernel = m, bandwidth = PARAMS.smoothing.bandwidth,
+                             degree = PARAMS.smoothing.degree)
+    end
 end
 
 # ── Interpolation stage ──────────────────────────────────────────────────────
@@ -214,6 +329,7 @@ end
 # --- 3. common x-grid; Rouse end-to-end scale, as in the FPT return domain ---
 x_max     = 4 * a * sqrt(s)
 xg        = collect(range(R, x_max; length = Ngrid))
+dq        = xg .- R                     # gap coordinate d = x - R (the BVP row axis)
 jac(x)    = -2 * log(x)                 # radial Jacobian (build_U_tot)
 spring(x) = 3 * x^2 / (2 * s * a^2)     # Rouse spring    (build_U_tot)
 
@@ -235,29 +351,18 @@ for (i, phi) in enumerate(phi_infs)
         psi, _, _ = psi_linear(xg, p)                      # screened adsorption tail
         Ps        = phi .+ psi                       # far-field value + linear tail
     else
-        # CubicHermite over the FINITE (d, U_full) nodes only, so a NaN at some d
-        # drops that node instead of the whole phi_inf row.
+        # Resample over the FINITE (d, U_full) nodes only, so a NaN at some d drops
+        # that node instead of the whole phi_inf row.  smooth_row applies the chosen
+        # PARAMS.smoothing method (faithful interp / smoothing spline / kernel).
         row = U_full_rows[i]
         fin = isfinite.(row)
-        if count(fin) >= 2
-            itp = interp_U_full(d_grid[fin], row[fin])
-            Uf  = [itp(x - R) for x in xg]
-        else
-            Uf  = fill(NaN, Ngrid)
-        end
+        Uf  = count(fin) >= 2 ? smooth_row(d_grid[fin], row[fin], dq) : fill(NaN, Ngrid)
 
-        # phi_surf interpolated onto the same x-grid so the :bvp local_conc can average
-        # it under the nonlinear Boltzmann weight.  Same faithful CubicHermite over the
-        # FINITE nodes (phi_surf falls off with d, so a monotone projection was never
-        # appropriate here anyway).
+        # phi_surf onto the same x-grid so the :bvp local_conc can average it under the
+        # nonlinear Boltzmann weight -- same smoothing method as U_full.
         srow = phi_surf_rows[i]
         sfin = isfinite.(srow)
-        if count(sfin) >= 2
-            sitp = CubicHermite(d_grid[sfin], srow[sfin])
-            Ps   = [sitp(x - R) for x in xg]
-        else
-            Ps   = fill(NaN, Ngrid)
-        end
+        Ps   = count(sfin) >= 2 ? smooth_row(d_grid[sfin], srow[sfin], dq) : fill(NaN, Ngrid)
     end
 
     # Linear-response adsorption well (U_ads from make_U_tot), at this phi_inf.
