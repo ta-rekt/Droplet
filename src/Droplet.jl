@@ -44,6 +44,8 @@ module Droplet
     export Parameters, with, fb, dfb_dphi, d2fb_dphi2, psi_linear,
            compute_mu_inf, compute_spinodal, is_spherical,
            IsolatedSphere1D, solve_isolated_sphere,
+           PlanarSlab1D, solve_parallel_plates, psi_linear_plates,
+           excess_free_energy, plates_pair_potential,
            Geometry, build_geometry, decay_length,
            scatter, scatter!, laplacian, laplacian!,
            make_residual, make_residual_inplace,
