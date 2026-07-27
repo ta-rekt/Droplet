@@ -94,8 +94,8 @@ Base.@kwdef struct SweepParams
     phi_inf_values::Vector{Float64} = []
     phi_frac_min::Float64           = 0.001
     phi_frac_max::Float64           = 0.40
-    n_phi::Int                      = 64
-    omega_b_values::Vector{Float64} = [-0.55]
+    n_phi::Int                      = 32
+    omega_b_values::Vector{Float64} = [-0.4]
 end
 
 # --- Run metadata ------------------------------------------------------------
