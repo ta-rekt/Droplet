@@ -251,9 +251,14 @@ def render_animation(result, gif_path, outdir, n_outside, n_inside, fps):
     os.makedirs(outdir, exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(gif_path)) or ".", exist_ok=True)
 
-    fig = plt.figure(figsize=(10.0, 8.5))
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif",
+    })
+
+    fig = plt.figure(figsize=(6.0, 5))
     canvas = FigureCanvasAgg(fig)
-    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.2])
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.0])
     axL = fig.add_subplot(gs[0, 0])
     axR = fig.add_subplot(gs[0, 1])
     # Static colorbar (built once off a throwaway mappable).

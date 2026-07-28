@@ -71,7 +71,7 @@ end
 # bridging is active.  (The full study sweep is phi_inf_values = Float64[],
 # phi_frac_min = 0.05, phi_frac_max = 0.90, n_phi = 9.)
 Base.@kwdef struct SweepParams
-    phi_inf_values::Vector{Float64} = []
+    phi_inf_values::Vector{Float64} = [0.068, 0.07, 0.072]
     phi_frac_min::Float64           = 0.05
     phi_frac_max::Float64           = 0.90
     n_phi::Int                      = 32

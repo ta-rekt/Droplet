@@ -122,8 +122,8 @@ end
 # The kwdef defaults ARE this job's configuration; edit them (or construct a
 # modified FisherParams) to reconfigure the whole pipeline from one place.
 Base.@kwdef struct FisherParams
-    surface::Parameters       = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.4,
-                                           kappa = 1.0, phi_inf = 0.09, L = 0.6,
+    surface::Parameters       = Parameters(nb = 1.0, chi_b = 3.5, omega_b = -0.3,
+                                           kappa = 1.0, phi_inf = 0.09, L = 0.5,
                                            R = 5, eps = 1e-8,
                                            conserve_volume = false,
                                            parallel_plates = true)

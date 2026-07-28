@@ -214,6 +214,10 @@ def plot_heatmap(heatmap_data, concentrations, temperatures, date_str, file_name
         staircase_concs: optional concentration values for staircase overlay
         staircase_temps: optional temperature values for staircase overlay
     """
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif",
+    })
     
     fig, ax = plt.subplots(figsize=(14, 6))
     
