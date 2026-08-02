@@ -4,6 +4,19 @@
 # scalar thermodynamic functions (fb, dfb_dphi, d2fb_dphi2, psi_linear,
 # compute_mu_inf, compute_spinodal) that the 2D two-sphere code calls into.
 #
+# FREE-ENERGY CONVENTION: fb is the ASYMMETRIC (polymer-in-solvent) Flory-
+# Huggins form -- chains of nb segments in a monomeric solvent, so only the
+# solute entropy carries the 1/nb:
+#
+#     fb(phi) = (phi/nb)*log(phi) + (1-phi)*log(1-phi) + chi_b*phi*(1-phi)
+#
+# with critical point chi_c = (1 + 1/sqrt(nb))^2 / 2 and an asymmetric binodal
+# (dilute branch far below 1/2, dense branch far above).  This differs from
+# viz_util/bvp_solver.py, which divides the WHOLE entropy by nb and is thus a
+# symmetric blend at effective chi = nb*chi_b (chi_c = 2/nb).  The two agree
+# identically at nb = 1 and nowhere else, so a Julia/Python cross-check is only
+# meaningful at nb = 1.  See the note in compute_spinodal.
+#
 # Only the minimum 1D solver needed by the two-sphere test suite is ported
 # (the test's "single-sphere limit" comparison).  The full robust/shooting/
 # continuation pipeline in the Python file is not reproduced.
@@ -29,20 +42,21 @@ end
 
 @inline function fb(phi::Real, p::Parameters)
     phi_c = clip01(phi, p.eps)
-    (1.0 / p.nb) * (phi_c * regularized_log(phi_c, p.eps) +
-                    (1 - phi_c) * regularized_log(1 - phi_c, p.eps)) +
+    (1.0 / p.nb) * phi_c * regularized_log(phi_c, p.eps) +
+        (1 - phi_c) * regularized_log(1 - phi_c, p.eps) +
         p.chi_b * phi_c * (1 - phi_c)
 end
 
 @inline function dfb_dphi(phi::Real, p::Parameters)
     phi_c = clip01(phi, p.eps)
-    (1.0 / p.nb) * (regularized_log(phi_c, p.eps) - regularized_log(1 - phi_c, p.eps)) +
+    (regularized_log(phi_c, p.eps) + 1.0) / p.nb -
+        regularized_log(1 - phi_c, p.eps) - 1.0 +
         p.chi_b * (1.0 - 2.0 * phi_c)
 end
 
 @inline function d2fb_dphi2(phi::Real, p::Parameters)
     phi_c = clip01(phi, p.eps)
-    (1.0 / p.nb) * (1.0 / phi_c + 1.0 / (1 - phi_c)) - 2.0 * p.chi_b
+    1.0 / (p.nb * phi_c) + 1.0 / (1 - phi_c) - 2.0 * p.chi_b
 end
 
 # Scalar psi_linear: returns (psi, dpsi, lam).
@@ -67,12 +81,20 @@ end
 
 compute_mu_inf(p::Parameters) = p.nb * dfb_dphi(p.phi_inf, p)
 
+# Spinodal: the roots of d2fb_dphi2 = 0, i.e. 1/(nb*phi) + 1/(1-phi) = 2*chi_b.
+# Clearing denominators (phi in (0,1), so the sign is preserved) gives
+#     a*phi^2 + b*phi + 1 = 0,   a = 2*chi_b*nb,  b = (nb - 1) - a,
+# which collapses to the symmetric 0.5*(1 -/+ sqrt(1 - 2/chi_b)) at nb = 1.
+# A negative discriminant means d2fb_dphi2 > 0 everywhere: no spinodal, the
+# single-phase state is stable at every composition.
 function compute_spinodal(p::Parameters)
     p.chi_b <= 0 && return (nothing, nothing)
-    discriminant = 1 - 2 / (p.chi_b * p.nb)
+    a = 2.0 * p.chi_b * p.nb
+    b = (p.nb - 1.0) - a
+    discriminant = b * b - 4.0 * a
     discriminant < 0 && return (nothing, nothing)
     sqrt_d = sqrt(discriminant)
-    return (0.5 * (1 - sqrt_d), 0.5 * (1 + sqrt_d))
+    return ((-b - sqrt_d) / (2 * a), (-b + sqrt_d) / (2 * a))
 end
 
 # ------------------------------------------------------------------

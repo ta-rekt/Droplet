@@ -71,10 +71,10 @@ end
 # bridging is active.  (The full study sweep is phi_inf_values = Float64[],
 # phi_frac_min = 0.05, phi_frac_max = 0.90, n_phi = 9.)
 Base.@kwdef struct SweepParams
-    phi_inf_values::Vector{Float64} = collect(range(0.001, stop=0.015, length=64))
+    phi_inf_values::Vector{Float64} = collect(range(0.00001, stop=0.0002, length=32))
     phi_frac_min::Float64           = 0.05
     phi_frac_max::Float64           = 0.90
-    n_phi::Int                      = 10
+    n_phi::Int                      = 64
     omega_b_values::Vector{Float64} = [-1.3]
 end
 
@@ -102,9 +102,9 @@ end
 # The kwdef defaults ARE this job's configuration; edit them (or construct a
 # modified FisherParams) to reconfigure the whole pipeline from one place.
 Base.@kwdef struct FisherParams
-    surface::Parameters       = Parameters(nb = 1.0, chi_b = 4, omega_b = -1.3,
+    surface::Parameters       = Parameters(nb = 10.0, chi_b = 1.6, omega_b = -0.51,
                                            kappa = 1.0, phi_inf = 0.09, L = 5.0,
-                                           R = 10.0, eps = 1e-8,
+                                           R = 100.0, eps = 1e-10,
                                            conserve_volume = false,
                                            parallel_plates = false)
     bvp::BVPParams            = BVPParams()
@@ -120,7 +120,7 @@ end
 function dilute_binodal(chi::Real; nb::Real = 1.0)
     g(phi) = log(phi / (1.0 - phi)) + nb * chi * (1.0 - 2.0 * phi)
     lo, hi = 1e-8, 0.5 - 1e-9
-    for _ in 1:200
+    for _ in 1:2000
         mid = 0.5 * (lo + hi)
         if g(mid) < 0.0; lo = mid; else; hi = mid; end
     end

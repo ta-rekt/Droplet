@@ -40,6 +40,7 @@ phi_infs = phi_inf_grid(PARAMS)         # swept signal axis, as in fisher_two_sp
 N_solve = 400                           # 1D solver grid
 N_eval  = 500                           # profile-sampling resolution (mirrors demo_bvp.py)
 z       = collect(range(0.0, L_iso; length = N_eval))   # shared x-axis
+binodal = dilute_binodal(PARAMS.surface.chi_b; nb = PARAMS.surface.nb)
 
 # --- Sweep --------------------------------------------------------------------
 println("Solving isolated-sphere BVP over $(length(phi_infs)) phi_inf values ...")
@@ -71,6 +72,7 @@ out = Dict{String,Any}(
     "phi_inf"             => phi_infs,
     "omega_b"             => h0,
     "R"                   => R,
+    "binodal"             => binodal,
     "z_full"              => z,
     "z_linear"            => z,
     "phi_profiles_full"   => phi_profiles_full,      # per (phi_inf, z)
