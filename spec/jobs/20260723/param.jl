@@ -106,7 +106,7 @@ Base.@kwdef struct FisherParams
                                            kappa = 1.0, phi_inf = 0.09, L = 5.0,
                                            R = 100.0, eps = 1e-10,
                                            conserve_volume = false,
-                                           parallel_plates = false)
+                                           parallel_plates = true)
     bvp::BVPParams            = BVPParams()
     rouse::RouseParams        = RouseParams()
     fpt::FPTParams            = FPTParams()

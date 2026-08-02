@@ -91,10 +91,10 @@ end
 # bridging is active.  (The full study sweep is phi_inf_values = Float64[],
 # phi_frac_min = 0.05, phi_frac_max = 0.90, n_phi = 9.)
 Base.@kwdef struct SweepParams
-    phi_inf_values::Vector{Float64} = []
+    phi_inf_values::Vector{Float64} = [] # collect(range(1e-6, stop=5e-2, length=32))
     phi_frac_min::Float64           = 0.001
     phi_frac_max::Float64           = 0.80
-    n_phi::Int                      = 64
+    n_phi::Int                      = 32
     omega_b_values::Vector{Float64} = [-0.55]
 end
 
@@ -122,8 +122,8 @@ end
 # The kwdef defaults ARE this job's configuration; edit them (or construct a
 # modified FisherParams) to reconfigure the whole pipeline from one place.
 Base.@kwdef struct FisherParams
-    surface::Parameters       = Parameters(nb = 1.0, chi_b = 3.5, omega_b = -0.3,
-                                           kappa = 1.0, phi_inf = 0.09, L = 0.5,
+    surface::Parameters       = Parameters(nb = 1.0, chi_b = 2.6, omega_b = -0.65,
+                                           kappa = 1.0, phi_inf = 0.09, L = 1,
                                            R = 5, eps = 1e-8,
                                            conserve_volume = false,
                                            parallel_plates = true)
