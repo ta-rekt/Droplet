@@ -44,6 +44,7 @@ plates = p0.parallel_plates             # geometry switch: two plates vs one sph
 L_iso  = p0.L                           # far-field cutoff (sphere) / plate separation
 bc_reg = PARAMS.bvp.bc_reg              # Robin-BC regularization (as fisher_two_spheres)
 
+mu_infs = Vector{Float64}()
 phi_infs = phi_inf_grid(PARAMS)         # swept signal axis, as in fisher_two_spheres
 
 N_solve = 400                           # 1D solver grid
@@ -70,6 +71,7 @@ for phi in phi_infs
     psi, _, _ = plates ? psi_linear_plates(z, p) : psi_linear(z, p)
     lin      = (plates ? phi : full[end]) .+ psi
 
+    push!(mu_infs, compute_mu_inf(p))
     push!(phi_profiles_full,   full)
     push!(phi_profiles_linear, lin)
     push!(success, sol.success)
@@ -88,6 +90,7 @@ println("  converged: $(count(success))/$(length(success))")
 out = Dict{String,Any}(
     "params"              => to_dict(PARAMS),
     "phi_inf"             => phi_infs,
+    "mu_inf"              => mu_infs,
     "omega_b"             => h0,
     "R"                   => R,
     "chi"                 => p0.chi_b,

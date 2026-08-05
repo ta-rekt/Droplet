@@ -43,6 +43,9 @@ using Random
     include("test_bvp_two_spheres.jl")
     # 1D planar slab BVP (parallel plates)
     include("test_bvp_parallel_plates.jl")
+    # 1D isolated-sphere BVP vs. the prewetting graphical construction
+    # (~7 min; set BVP_SCAN_TRIALS to shorten the robustness scan)
+    include("test_bvp_solver.jl")
     # Rouse polymer overdamped Langevin solver
     include("test_rouse.jl")
     include("test_rouse_sojourn.jl")

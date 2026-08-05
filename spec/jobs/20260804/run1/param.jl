@@ -37,7 +37,7 @@ Base.@kwdef struct BVPParams
     # Newton / fixed-point solve
     f_tol::Float64        = 1e-6
     maxiter::Int          = 200
-    bc_reg::Float64       = 5e-2     # Robin-BC regularization (pins the adsorption branch)
+    bc_reg::Float64       = 0     # Robin-BC regularization (pins the adsorption branch)
     # branch labelling: gap-centre phi above this => "bridged"
     bridge_phi::Float64   = 0.5
 end
@@ -71,9 +71,9 @@ end
 # bridging is active.  (The full study sweep is phi_inf_values = Float64[],
 # phi_frac_min = 0.05, phi_frac_max = 0.90, n_phi = 9.)
 Base.@kwdef struct SweepParams
-    phi_inf_values::Vector{Float64} = [] #collect(range(0.001, stop=0.015, length=64))
+    phi_inf_values::Vector{Float64} = [] # collect(range(0.006, stop=0.012, length=64))
     phi_frac_min::Float64           = 0.1
-    phi_frac_max::Float64           = 0.98
+    phi_frac_max::Float64           = 0.7
     n_phi::Int                      = 64
     omega_b_values::Vector{Float64} = [-1.3]
 end
@@ -102,9 +102,9 @@ end
 # The kwdef defaults ARE this job's configuration; edit them (or construct a
 # modified FisherParams) to reconfigure the whole pipeline from one place.
 Base.@kwdef struct FisherParams
-    surface::Parameters       = Parameters(nb = 1, chi_b = 1.6, omega_b = -0.51,
-                                           kappa = 1.0, phi_inf = 0.09, L = 5.0,
-                                           R = 100.0, eps = 1e-8,
+    surface::Parameters       = Parameters(nb = 3, chi_b = 2.0, omega_b = -0.70,
+                                           kappa = 1.0, phi_inf = 0.09, L = 20.0,
+                                           R = 1000.0, eps = 1e-8,
                                            conserve_volume = false,
                                            parallel_plates = false)
     bvp::BVPParams            = BVPParams()
@@ -127,11 +127,38 @@ function dilute_binodal(chi::Real; nb::Real = 1.0)
     return 0.5 * (lo + hi)
 end
 
+# Bisection on a bracketed sign change; 80 halvings exhaust Float64.
+function _bisect(f, a, b; n = 80)
+    fa = f(a)
+    for _ in 1:n
+        m = 0.5 * (a + b)
+        (fa * f(m) <= 0) ? (b = m) : (a = m; fa = f(m))
+    end
+    return 0.5 * (a + b)
+end
+
+# Common-tangent binodal (phi_dilute, phi_dense) of the asymmetric fb.  dfb_dphi
+# rises, falls between the two spinodal points, then rises again, so each branch
+# holds exactly one root of dfb_dphi = mu; bisect on mu until the two branches
+# have equal grand potential fb - mu*phi.
+function binodal(chi::Real; nb::Real = 1.0)
+    p = Parameters(nb = nb, chi_b = chi, omega_b = 0.0, kappa = 1.0,
+                   phi_inf = 0.1, L = 1.0, R = Inf, eps = 1e-16)
+    lo_sp, hi_sp = compute_spinodal(p)
+    lo_sp === nothing && return (nothing, nothing)
+    dilute(mu) = _bisect(x -> dfb_dphi(x, p) - mu, 1e-300, lo_sp)
+    dense(mu)  = _bisect(x -> dfb_dphi(x, p) - mu, hi_sp, 1 - 1e-16)
+    gap(mu)    = (fb(dense(mu), p) - mu * dense(mu)) -
+                 (fb(dilute(mu), p) - mu * dilute(mu))
+    mu = _bisect(gap, dfb_dphi(hi_sp, p), dfb_dphi(lo_sp, p))
+    return dilute(mu) #, dense(mu)
+end
+
 # The phi_inf sweep grid: explicit list if given, else a binodal-fraction range.
 function phi_inf_grid(P::FisherParams)
     s = P.sweep
     isempty(s.phi_inf_values) || return copy(s.phi_inf_values)
-    b = dilute_binodal(P.surface.chi_b; nb = P.surface.nb)
+    b = binodal(P.surface.chi_b; nb = P.surface.nb)
     return b .* collect(range(s.phi_frac_min, s.phi_frac_max; length = s.n_phi))
 end
 
