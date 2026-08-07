@@ -908,11 +908,33 @@ function phi_on_sphere(phi::AbstractMatrix, geom::Geometry,
     phi_P1 = interp_phi(phi, geom, rho_P1, z_P1)
     phi_P2 = interp_phi(phi, geom, rho_P2, z_P2)
 
+    # Surface value from the quadratic through phi(P1), phi(P2) that carries the
+    # Robin slope at s = 0.  Eliminating the curvature gives phi_s = A - B * slope
+    # with B = d1 d2 / (d1 + d2) > 0.  At bc_reg > 0 the slope is itself a
+    # function of phi_s -- the same regularized BC scatter! applies -- so that
+    # relation is implicit; A - B * slope(phi_s) decreases in phi_s, so the root
+    # is unique and bisection finds it.  Using the bare omega_b/kappa there (as
+    # this did before the regularized branch existed) reports a phi_s that does
+    # not satisfy the BC the solve imposed, which shows up directly as a violated
+    # envelope identity for the free energy.
+    reg_kappa = geom.bc_reg / p.kappa
     out = similar(phi_P1)
     @inbounds for k in 1:n
-        c_k = ((phi_P1[k] - phi_P2[k]) / (d1[k] - d2[k]) - omega_kappa) /
-              (d1[k] + d2[k])
-        out[k] = phi_P1[k] - omega_kappa * d1[k] - c_k * d1[k]^2
+        B_k = d1[k] * d2[k] / (d1[k] + d2[k])
+        A_k = phi_P1[k] -
+              d1[k]^2 * (phi_P1[k] - phi_P2[k]) / (d1[k]^2 - d2[k]^2)
+        if reg_kappa == 0.0
+            out[k] = A_k - B_k * omega_kappa
+        else
+            lo, hi = p.eps, 1.0 - p.eps
+            for _ in 1:60
+                mid = 0.5 * (lo + hi)
+                g = mid - A_k +
+                    B_k * (omega_kappa + reg_kappa * log(mid / (1.0 - mid)))
+                g < 0.0 ? (lo = mid) : (hi = mid)
+            end
+            out[k] = 0.5 * (lo + hi)
+        end
     end
     if any(unresolved) && !all(unresolved)
         res_idx = findall(.!unresolved)
@@ -980,11 +1002,36 @@ function excess_free_energy_two_spheres(result::AbstractDict;
     theta = collect(range(0.0, pi; length = n_t))
     sin_t = sin.(theta)
 
+    # Surface contribution: the surface free energy itself plus the boundary
+    # term left over from integrating the gradient energy by parts.  Writing the
+    # Robin BC as kappa dphi/ds|_S = fs'(phi_s) (s outward from the surface),
+    #
+    #     fs(phi) = omega_b * phi + bc_reg * [phi log phi + (1-phi) log(1-phi)],
+    #
+    # the two pieces are Int[fs(phi_s) - fs(phi_inf)]dA (referenced to a surface
+    # bathed in bulk, as the volume integrand is) and -1/2 Int (phi_s - phi_inf)
+    # fs'(phi_s) dA.  At bc_reg = 0 they collapse to 1/2 omega_b Int (phi_s -
+    # phi_inf) dA, the form this function used before the regularized BC existed,
+    # so nothing changes for the unregularized pipeline.
+    #
+    # The bc_reg piece is NOT optional at bc_reg > 0: it is branch-dependent (the
+    # thin film and the capillary bridge sit at very different phi_s), and
+    # omitting it inverts the ordering of the two stable branches.  See the
+    # envelope-identity testset in test/test_bvp_arclength.jl, which checks
+    # dF/d(omega_b) = Int (phi_s - phi_inf) dA at both bc_reg = 0 and 0.05.
+    reg  = geom.bc_reg
+    _hs(u)   = (v = clip01(u, p.eps); v * log(v) + (1.0 - v) * log(1.0 - v))
+    _fs(u)   = p.omega_b * u + reg * _hs(u)
+    _dfs(u)  = (v = clip01(u, p.eps); p.omega_b + reg * log(v / (1.0 - v)))
+    fs_inf = _fs(phi_inf)
+
     surf_total = 0.0
     for zc in (geom.z_c1, geom.z_c2)
         phi_s = phi_on_sphere(phi, geom, zc, theta)
-        surf_total += _simpson((phi_s .- phi_inf) .* sin_t, theta)
+        surf_total += _simpson((_fs.(phi_s) .- fs_inf .-
+                                0.5 .* (phi_s .- phi_inf) .* _dfs.(phi_s)) .* sin_t,
+                               theta)
     end
-    surf = 0.5 * p.omega_b * 2.0 * pi * p.R^2 * surf_total
+    surf = 2.0 * pi * p.R^2 * surf_total
     return bulk + surf
 end

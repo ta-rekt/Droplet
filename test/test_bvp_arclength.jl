@@ -229,27 +229,31 @@ end
     # variational.  It converges to 1 under refinement at bc_reg = 0 (ratio
     # 0.992 / 0.997 / 0.998 at n = 2.6e3 / 6.5e3 / 1.5e4).
     #
-    # It does NOT hold at bc_reg > 0: that BC is
+    # It must hold at bc_reg > 0 as well.  That BC is
     #     kappa dphi/ds = omega_b + bc_reg * log(phi_s / (1 - phi_s)),
     # whose surface free energy carries an extra
-    #     bc_reg * Int [phi_s log phi_s + (1 - phi_s) log(1 - phi_s)] dA
-    # that excess_free_energy_two_spheres does not account for.  Measured ratio
-    # falls to ~0.87 (thin film) / ~0.81 (bridged) at bc_reg = 0.05, and the
-    # error is branch-dependent, so free energies computed at bc_reg > 0 are not
-    # comparable ACROSS branches.
+    #     bc_reg * Int [phi_s log phi_s + (1 - phi_s) log(1 - phi_s)] dA.
+    # bc_reg still drops out of d/d(omega_b), so the identity is unchanged --
+    # which makes it the guard on that term being present in
+    # excess_free_energy_two_spheres.  Before it was added the ratio fell to
+    # ~0.87 (thin film) / ~0.81 (bridged) at bc_reg = 0.05, branch-dependently,
+    # and free energies at bc_reg > 0 were not comparable across branches.
     s = _benign_setup()
-    sol(w) = solve_two_spheres(Droplet.with(s.p; omega_b = w), s.d;
-                               rho_max = s.rho_max, z_buf = s.z_buf,
-                               Nrho = s.Nrho, Nz = s.Nz, bc_reg = 0.0,
-                               omega_continuation = false)
+    sol(w, reg) = solve_two_spheres(Droplet.with(s.p; omega_b = w), s.d;
+                                    rho_max = s.rho_max, z_buf = s.z_buf,
+                                    Nrho = s.Nrho, Nz = s.Nz, bc_reg = reg,
+                                    omega_continuation = false)
     h = 0.005
-    r_lo, r_0, r_hi = sol(s.p.omega_b - h), sol(s.p.omega_b), sol(s.p.omega_b + h)
-    @test r_lo[:success] && r_0[:success] && r_hi[:success]
+    for reg in (0.0, 0.05)
+        r_lo, r_0, r_hi = sol(s.p.omega_b - h, reg), sol(s.p.omega_b, reg),
+                          sol(s.p.omega_b + h, reg)
+        @test r_lo[:success] && r_0[:success] && r_hi[:success]
 
-    dF = (excess_free_energy_two_spheres(r_hi) -
-          excess_free_energy_two_spheres(r_lo)) / (2h)
-    ads = _surface_adsorption(r_0[:geom], r_0[:phi])
-    @test dF / ads ≈ 1.0 atol = 0.02
+        dF = (excess_free_energy_two_spheres(r_hi) -
+              excess_free_energy_two_spheres(r_lo)) / (2h)
+        ads = _surface_adsorption(r_0[:geom], r_0[:phi])
+        @test dF / ads ≈ 1.0 atol = 0.02
+    end
 end
 
 end  # @testset "bvp_arclength"
