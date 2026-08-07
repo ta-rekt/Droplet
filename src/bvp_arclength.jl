@@ -183,10 +183,11 @@ function polish_at_phi_inf(geom::Geometry, x0::AbstractVector{Float64},
             break
         end
         all(isfinite, δ) || break
-        damp = 1.0
+        # Fraction-to-boundary damping: feasible by construction, so no clamp.
+        damp = _max_feasible_step(x, δ, p.eps, 1.0 - p.eps)
         accepted = false
         for _ in 1:30
-            @inbounds @. xt = clamp(x - damp * δ, p.eps, 1.0 - p.eps)
+            @inbounds @. xt = x - damp * δ
             _res!(rt, xt)
             nn = maximum(abs, rt)
             if nn < nrm
@@ -400,10 +401,12 @@ function arclength_phi_inf(geom::Geometry, x0::AbstractVector{Float64},
                 dx, dl = _bordered_solve(jac(xc), Gl, bx, tl, r, rn)
                 n_newton += 1
                 (all(isfinite, dx) && isfinite(dl)) || break
-                damp = 1.0
+                # Fraction-to-boundary on the field part (feasible, no clamp); the
+                # phi_inf part lamt is bounds-checked separately below.
+                damp = _max_feasible_step(xc, dx, p_base.eps, 1.0 - p_base.eps)
                 accepted = false
                 for _ in 1:30
-                    @inbounds @. xt = clamp(xc - damp * dx, p_base.eps, 1.0 - p_base.eps)
+                    @inbounds @. xt = xc - damp * dx
                     lamt = lamc - damp * dl
                     if !(p_base.eps < lamt < 1.0 - p_base.eps)
                         damp *= 0.5

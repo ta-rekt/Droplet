@@ -621,6 +621,31 @@ function ghost_slope_derivs(geom::Geometry, phi::AbstractMatrix)
     return sd
 end
 
+# Fraction-to-boundary rule: the largest step length in (0, 1] for which
+# x - alpha*delta stays strictly inside (lo, hi) COMPONENTWISE, pulled back by
+# `tau` (< 1) so it stops just short of the boundary (the standard interior-point
+# safeguard).  Returns 1.0 when the full Newton step x - delta is already feasible
+# -- so well-behaved solves keep taking full steps and are numerically unchanged.
+# Used by every Newton line search here and in bvp_arclength.jl so iterates never
+# leave the physical box (0,1): f_b is only evaluated where it is the true free
+# energy, and no non-smooth clip wall is ever created (paired with the C1 smooth
+# extension of f_b in bvp_solver.jl, which handles any residual overshoot cleanly).
+@inline function _max_feasible_step(x::AbstractVector, delta::AbstractVector,
+                                    lo::Real, hi::Real; tau::Real = 0.995)
+    alpha = 1.0
+    @inbounds for k in eachindex(x)
+        d = delta[k]
+        if d > 0.0                       # x - alpha*d moves toward lo
+            a = (x[k] - lo) / d
+            a < alpha && (alpha = a)
+        elseif d < 0.0                   # x - alpha*d moves toward hi (a > 0)
+            a = (x[k] - hi) / d
+            a < alpha && (alpha = a)
+        end
+    end
+    return alpha >= 1.0 ? 1.0 : tau * alpha
+end
+
 # Newton with the analytic sparse Jacobian J = A - Diagonal(d2fb_dphi2.(x)) and a
 # direct sparse LU per step.  Returns (x, converged).  Mirrors the abstol/maxiter
 # semantics of _run_newton but is matrix-free-GMRES-free.
@@ -656,15 +681,18 @@ function _solve_newton_sparse(geom::Geometry, mu_inf::Float64,
             build_linear_operator(geom; sd = ghost_slope_derivs(geom, phi_buf))
         end
         δ = (Jlin - Diagonal(diagv)) \ F
-        # Backtracking line search: keep halving the step until ‖F‖ decreases,
-        # clamping φ to the physical interval.  λ = 1 (full Newton) is accepted
-        # on the first try for well-behaved problems, so smooth solves are
-        # unchanged; stiff condensation/spinodal solves get damped steps and a
-        # stalled step (no descent at a fold) ends the iteration cleanly.
-        λ = 1.0
+        # Backtracking line search from the fraction-to-boundary cap: λ0 is the
+        # largest step that keeps φ strictly inside (eps, 1-eps) componentwise, so
+        # trials are feasible by construction and never clamped.  f_b is thus only
+        # ever evaluated where it is the true FH free energy -- no clip wall.
+        # λ0 = 1 (full Newton) whenever the full step is already feasible, so
+        # smooth solves are unchanged; near saturation λ0 shrinks smoothly instead
+        # of hitting a wall, and a stalled backtrack (no descent) still ends the
+        # iteration cleanly.
+        λ = _max_feasible_step(x, δ, p.eps, 1.0 - p.eps)
         accepted = false
         for _ in 1:30
-            @inbounds @. xtrial = clamp(x - λ * δ, p.eps, 1.0 - p.eps)
+            @inbounds @. xtrial = x - λ * δ
             res!(F, xtrial, nothing)
             newnrm = maximum(abs, F)
             if newnrm < nrm

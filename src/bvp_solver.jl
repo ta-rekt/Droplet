@@ -36,27 +36,50 @@ end
 
 @inline clip01(x::Real, eps_::Real=1e-10) = clamp(x, eps_, 1.0 - eps_)
 
+# C1 smooth extension of log(x): log(x) for x >= eps, its first-order Taylor
+# continuation below.  Value AND slope match at x = eps, so it is C1 and stays
+# monotone; the second derivative simply drops to 0 in the tail.  dregularized_log
+# / ddregularized_log are its exact 1st/2nd derivatives, so fb/dfb_dphi/d2fb_dphi2
+# built from them below form ONE consistent free energy on all of R:
+# d2fb == d(dfb)/dphi == d2(fb)/dphi2 everywhere, extension included.
+#
+# This is what fixes the clip-wall stall.  The old code clip01'd phi to
+# [eps, 1-eps] INSIDE fb/dfb/d2fb, so past the boundary dfb froze flat (slope 0)
+# while d2fb still returned ~1/eps: the Jacobian was no longer dF/dphi there, so
+# Newton took wildly wrong steps and stalled wherever a near-saturated cell hit
+# the clamp.  With the smooth extension an overshoot past (0,1) instead sees a
+# finite, correctly-signed restoring gradient, and the paired fraction-to-boundary
+# line search (_max_feasible_step) keeps iterates strictly inside so the extension
+# is only ever a safety net.  On feasible phi in (eps, 1-eps) every value here is
+# byte-identical to the old clamped form, so converged solutions -- and their free
+# energies -- are unchanged.
 @inline function regularized_log(x::Real, eps_::Real=1e-10)
     x > eps_ ? log(x) : log(eps_) + (x - eps_) / eps_
 end
+@inline dregularized_log(x::Real, eps_::Real=1e-10)  = x > eps_ ?  1.0 / x       : 1.0 / eps_
+@inline ddregularized_log(x::Real, eps_::Real=1e-10) = x > eps_ ? -1.0 / (x * x) : 0.0
 
 @inline function fb(phi::Real, p::Parameters)
-    phi_c = clip01(phi, p.eps)
-    (1.0 / p.nb) * phi_c * regularized_log(phi_c, p.eps) +
-        (1 - phi_c) * regularized_log(1 - phi_c, p.eps) +
-        p.chi_b * phi_c * (1 - phi_c)
+    e  = p.eps
+    L1 = regularized_log(phi, e)
+    L2 = regularized_log(1 - phi, e)
+    (1.0 / p.nb) * phi * L1 + (1 - phi) * L2 + p.chi_b * phi * (1 - phi)
 end
 
 @inline function dfb_dphi(phi::Real, p::Parameters)
-    phi_c = clip01(phi, p.eps)
-    (regularized_log(phi_c, p.eps) + 1.0) / p.nb -
-        regularized_log(1 - phi_c, p.eps) - 1.0 +
-        p.chi_b * (1.0 - 2.0 * phi_c)
+    e   = p.eps
+    L1  = regularized_log(phi, e);   dL1 = dregularized_log(phi, e)
+    L2  = regularized_log(1 - phi, e); dL2 = dregularized_log(1 - phi, e)
+    (1.0 / p.nb) * (L1 + phi * dL1) - (L2 + (1 - phi) * dL2) +
+        p.chi_b * (1.0 - 2.0 * phi)
 end
 
 @inline function d2fb_dphi2(phi::Real, p::Parameters)
-    phi_c = clip01(phi, p.eps)
-    1.0 / (p.nb * phi_c) + 1.0 / (1 - phi_c) - 2.0 * p.chi_b
+    e    = p.eps
+    dL1  = dregularized_log(phi, e);    ddL1 = ddregularized_log(phi, e)
+    dL2  = dregularized_log(1 - phi, e); ddL2 = ddregularized_log(1 - phi, e)
+    (1.0 / p.nb) * (2.0 * dL1 + phi * ddL1) + (2.0 * dL2 + (1 - phi) * ddL2) -
+        2.0 * p.chi_b
 end
 
 # Scalar psi_linear: returns (psi, dpsi, lam).
