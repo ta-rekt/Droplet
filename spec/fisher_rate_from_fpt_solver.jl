@@ -12,15 +12,23 @@
 # coordinate x = surface gap d + R:
 #
 #   1. escape ("out of the well"): start at contact x = R (reflecting), absorbing at
-#      the barrier ridge x_ridge  -> time to climb OUT and reach the ridge.
-#   2. return ("into the well"):   start at the ridge (reflecting far end), absorbing
+#      the dividing surface x_div  -> time to climb OUT and reach x_div.
+#   2. return ("into the well"):   start at x_div (reflecting far end), absorbing
 #      at x = R  -> time to fall back to contact.
 #
-# The stored x-grid IS the FPT return domain (range(R, 4 a sqrt(s), Ngrid)); the
-# return problem uses it directly.  The escape domain [R, x_ridge] is a sub-interval,
-# so U_tot is linearly resampled onto range(R, x_ridge, Ngrid); the ridge is located
-# sub-grid by a parabola on the stored tabulation (as the original did on its fine
-# scan) so x_ridge moves smoothly with phi and the d^2/dphi^2 stencil stays clean.
+# BOTH problems use the SAME two spatial grids at EVERY phi_inf: the escape grid
+# range(R, x_div, Ngrid) and the return grid xg_full == range(R, 4 a sqrt(s), Ngrid).
+# The dividing surface x_div is a single phi-independent node of the stored grid,
+# fixed once for the whole sweep (see below).  This is what keeps the Fisher rate
+# clean: the score is a phi-derivative of logP, so ANY phi-dependence of the
+# discretisation is differenced along with the physics.  Absorbing at each phi's own
+# ridge made the escape domain move with phi, and resampling U_tot onto that sliding
+# domain aliased the d-grid wiggle of U_tot at a shifting phase (the ridge crosses
+# roughly one stored node per phi step), which the derivative turned into a ripple of
+# the same period.  With a frozen grid the resampling phase is identical at every phi
+# and cancels in the difference, leaving only the (smooth) phi-dependence of U_tot.
+# x_ridge(phi) is still located sub-grid by a parabola and reported as a diagnostic
+# (with the barrier height), but it no longer enters the discretisation.
 #
 # The Fisher information rate of the exit/return times wrt phi is the base-PDF average of
 # the SQUARED central first derivative of log P wrt phi (the first-derivative-squared form
@@ -75,7 +83,6 @@ ridge_max = PARAMS.fpt.ridge_scan_max
 
 length(xg_full) == Ngrid ||
     error("interp x_grid has $(length(xg_full)) points, PARAMS.fpt.Ngrid = $Ngrid")
-x_max = xg_full[end]
 
 # ── Potential helpers: consume the tabulated U_tot(x) ────────────────────────
 # Linear interpolation of a tabulated potential onto an arbitrary x (the stored grid
@@ -99,6 +106,29 @@ function _find_ridge(xg, U, xmax)
     return xg[i] + 0.5 * (xg[2] - xg[1]) * (A - C) / (A - 2B + C)
 end
 
+# ── The dividing surface: ONE phi-independent x for the whole sweep ───────────
+# The escape/return split has to happen somewhere; making that somewhere depend on
+# phi makes the grids depend on phi and pollutes the score (see the header).  x_div
+# is therefore the first stored node at or beyond the LARGEST ridge in the sweep, so
+# it sits at/past the barrier top for every phi_inf.  Beyond the top U_tot falls
+# monotonically, so for the smaller-phi rows the extra stretch [x_ridge, x_div] is a
+# short downhill run whose transit time varies smoothly with phi -- it shifts the
+# MFPTs slightly but adds no structure.  Landing x_div exactly ON a node also makes
+# the return IC an exact delta at that node instead of a two-node blend that ripples
+# as the start point drifts between nodes.
+_ridges  = [all(isfinite, r) ? _find_ridge(xg_full, r, ridge_max) : -Inf for r in U_tot_rows]
+_max_ridge = maximum(_ridges)
+isfinite(_max_ridge) ||
+    error("no phi_inf row has a finite U_tot: cannot place the dividing surface")
+i_div = clamp(something(findfirst(>=(_max_ridge), xg_full), Ngrid), 3, Ngrid - 1)
+x_div = xg_full[i_div]
+
+# Frozen escape grid: the same nodes (hence the same _interp phase) at every phi.
+const xg_esc_fixed = collect(range(R, x_div; length = Ngrid))
+
+@printf("dividing surface: x_div=%.4f (node %d of %d), max ridge over sweep=%.4f\n",
+        x_div, i_div, Ngrid, _max_ridge)
+
 # ── Solve the escape and return FPT problems at one phi_inf ───────────────────
 # `Urow` is the stored U_tot(x) on xg_full for this phi_inf.  If t_esc/t_ret are
 # supplied the PDFs are evaluated on exactly those grids (so neighbouring phi are
@@ -107,26 +137,25 @@ function solve_phi(phi, Urow; t_esc = Float64[], t_ret = Float64[])
     p   = Droplet.with(PARAMS.surface; phi_inf = phi)
     lam = sqrt(d2fb_dphi2(phi, p) / p.kappa)              # screening length (reported)
 
-    x_ridge = _find_ridge(xg_full, Urow, ridge_max)
+    x_ridge = _find_ridge(xg_full, Urow, ridge_max)       # diagnostic only (see header)
     U_R     = Urow[1]                                     # U_tot at contact (xg_full[1] == R)
     barrier = _interp(xg_full, Urow, x_ridge) - U_R
 
-    # 1. escape: R -> ridge.  Resample U_tot onto [R, x_ridge] (sub-interval of the
-    #    stored grid); reflecting at R, absorbing at the ridge.
-    xg_esc = collect(range(R, x_ridge; length = Ngrid))
+    # 1. escape: R -> x_div, on the FROZEN grid range(R, x_div, Ngrid) -- same nodes at
+    #    every phi, so the _interp phase is common to the whole sweep and cancels out of
+    #    the phi-derivative.  Reflecting at R, absorbing at x_div.
+    xg_esc = xg_esc_fixed
     Ug_esc = [_interp(xg_full, Urow, x) for x in xg_esc]
     p0_esc = zeros(Ngrid); p0_esc[1] = 1.0
     res_esc = solve_fpt(FPTProblem(xg_esc, Ug_esc; D = Deff, kBT = kBT, t = t_esc,
                                    left_bc = :reflecting, right_bc = :absorbing, p0 = p0_esc))
 
-    # 2. return: ridge -> R, on the stored grid itself (xg_ret == xg_full).  Spread the
-    #    start delta over the two nodes bracketing x_ridge (weighted by distance) so the
-    #    return IC moves continuously with x_ridge.
-    xg_ret = collect(range(R, x_max; length = Ngrid))
-    Ug_ret = copy(Urow)
-    j = clamp(searchsortedlast(xg_ret, x_ridge), 1, Ngrid - 1)
-    w = (x_ridge - xg_ret[j]) / (xg_ret[2] - xg_ret[1])
-    p0_ret = zeros(Ngrid); p0_ret[j] = 1 - w; p0_ret[j+1] = w
+    # 2. return: x_div -> R, on the stored grid itself (xg_ret == xg_full), with no
+    #    resampling at all.  x_div IS node i_div, so the start is an exact delta there
+    #    -- phi-independent, unlike the old two-node blend around a moving ridge.
+    xg_ret = xg_full
+    Ug_ret = Urow
+    p0_ret = zeros(Ngrid); p0_ret[i_div] = 1.0
     res_ret = solve_fpt(FPTProblem(xg_ret, Ug_ret; D = Deff, kBT = kBT, t = t_ret,
                                    left_bc = :absorbing, right_bc = :reflecting, p0 = p0_ret))
 
@@ -241,7 +270,9 @@ for k in 1:max(nphi - 2, 0)
     # 6. summed averaged squared scores per unit (MFPT_esc + MFPT_ret); I(phi) ≥ 0 (no −)
     fisher_rate_esc[k] = φ^2 * sc2_esc / (base.res_esc.mfpt + base.res_ret.mfpt)
     fisher_rate_ret[k] = φ^2 * sc2_ret / (base.res_esc.mfpt + base.res_ret.mfpt)
-    fisher_rate = fisher_rate_esc .+ fisher_rate_ret
+    # elementwise, NOT `fisher_rate = fisher_rate_esc .+ fisher_rate_ret`: a whole-array
+    # rebind inside this soft scope makes a LOCAL and leaves the dumped global all-NaN.
+    fisher_rate[k] = fisher_rate_esc[k] + fisher_rate_ret[k]
 
     push!(records, Dict(
         "phi_inf"     => φ,
@@ -261,6 +292,7 @@ for k in 1:max(nphi - 2, 0)
         "return_mfpt" => base.res_ret.mfpt,
         "avg_dlogp2_esc" => sc2_esc,
         "avg_dlogp2_ret" => sc2_ret,
+        "phi_surf"    => phi_surf_rows[k],
         "phi_local"   => phi_local_vals[k],
         "dphi_local"  => dphi_local_vals[k],
         "d2phi_local" => d2phi_local_vals[k],
@@ -281,8 +313,16 @@ open(outpath, "w") do io
         "potential"    => String(potential),
         "interp_input" => PARAMS.sim.interp_file,
         "meta" => Dict(
-            "escape_setup" => "IC=delta at R; reflecting at R, absorbing at ridge (time R->ridge)",
-            "return_setup" => "IC=delta at ridge; absorbing at R, reflecting far end (time ridge->R)",
+            "escape_setup" => "IC=delta at R; reflecting at R, absorbing at the FIXED dividing " *
+                              "surface x_div (time R->x_div), on the phi-independent grid " *
+                              "range(R,x_div,Ngrid)",
+            "return_setup" => "IC=delta at the node x_div; absorbing at R, reflecting far end " *
+                              "(time x_div->R), on the stored grid x_grid itself",
+            "x_div_def"    => "single phi-independent dividing surface: the first stored node at " *
+                              "or beyond max_phi x_ridge(phi), so it is at/past the barrier top " *
+                              "for every phi.  Freezing it (instead of absorbing at each phi's " *
+                              "own ridge) keeps the phi-derivative of logP from differencing a " *
+                              "phi-dependent discretisation, which is what rippled the rate.",
             "fisher_rate_def" => "phi^2 (A_esc+A_ret)/(MFPT_esc+MFPT_ret), " *
                                  "A=∫P(t|phi) (∂logP/∂phi)² dt (squared central 1st deriv in phi)",
             "phi_local_def" => "Boltzmann-weighted (w=exp(-U_tot/kBT)) avg over the well " *
@@ -291,6 +331,8 @@ open(outpath, "w") do io
                                "phi_inf - h0 exp(-lam(x-R)) R/x /(kappa(lam+1/R)). " *
                                "dphi/d2phi are central FD wrt phi_inf"),
         "phi_infs"    => phi_infs,
+        "x_div"       => x_div,                         # the sweep-wide dividing surface
+        "i_div"       => i_div,                         # its node index in x_grid
         "fisher_rate" => fisher_rate,                   # length nphi-2, indexed by phi-index
         "phi_local"             => phi_local_vals,      # length nphi
         "dphi_local_dphi_inf"   => dphi_local_vals,

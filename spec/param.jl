@@ -33,12 +33,12 @@ Base.@kwdef struct BVPParams
     # ends with the reference, is silently dropped.  target! warns and the interp
     # stage errors out if the reference is missing, but it is cheaper to get right.
     d_min_factor::Float64 = 0.0      # near-contact end of the d-sweep
-    d_max_factor::Float64 = 1.0
-    n_d::Int              = 15       # = ncpus - 1 for a 32-cpu run
+    d_max_factor::Float64 = 0.5
+    n_d::Int              = 63       # = ncpus - 1 for a 32-cpu run
     d_ref_factor::Float64 = 8.0      # reference gap (spheres far apart): U = F(d) - F_ref
     # spatial discretisation of the (rho, z) half-plane
-    Nrho::Int             = 150
-    dz_target::Float64    = 0.06
+    Nrho::Int             = 300
+    dz_target::Float64    = 0.03
     rho_max::Float64      = 15.0
     z_buf::Float64        = 3.0
     # Newton / fixed-point solve
@@ -51,7 +51,7 @@ Base.@kwdef struct BVPParams
     # (the thin film and the bridge sit at very different phi_s), so at bc_reg =
     # 5e-2 it inverts the ordering of the two stable branches and destroys the
     # first-order crossing.  See test/test_bvp_arclength.jl.
-    bc_reg::Float64       = 0
+    bc_reg::Float64       = 0.04
     # Pseudo-arclength continuation in phi_inf (src/bvp_arclength.jl).
     arc_dlambda0::Float64 = 0.0      # phi_inf progress on the first step; 0 => range/50
     arc_max_steps::Int    = 400      # continuation-step budget per gap
@@ -90,9 +90,9 @@ end
 Base.@kwdef struct SweepParams
     phi_inf_values::Vector{Float64} = [] # collect(range(0.006, stop=0.012, length=64))
     phi_frac_min::Float64           = 0.1
-    phi_frac_max::Float64           = 0.7
-    n_phi::Int                      = 256
-    omega_b_values::Vector{Float64} = [-1.3]
+    phi_frac_max::Float64           = 0.9
+    n_phi::Int                      = 32
+    omega_b_values::Vector{Float64} = [-0.4]
 end
 
 # --- Run metadata ------------------------------------------------------------
@@ -107,7 +107,7 @@ end
 # process (sweep.jl overwrites it in-process on a forward run; ncpus likewise).
 Base.@kwdef mutable struct SimulationParams
     spec_path::Union{Nothing, String}   = ""
-    output_dir::Union{Nothing, String}  = "data/20260807/run1"
+    output_dir::Union{Nothing, String}  = "data/20260807/R_5_h0_-0.4_chi_3.0_bcr_0.04"
     ncpus::Int          = 0    # placeholder; set to sweep.jl's ncpus (ARGS[3])
     # Output filenames for the downstream stages (written into output_dir).
     interp_file::String = "bvp_potential_interp.json"
@@ -119,9 +119,9 @@ end
 # The kwdef defaults ARE this job's configuration; edit them (or construct a
 # modified FisherParams) to reconfigure the whole pipeline from one place.
 Base.@kwdef struct FisherParams
-    surface::Parameters       = Parameters(nb = 3, chi_b = 2.0, omega_b = -0.9,
-                                           kappa = 1.0, phi_inf = 0.09, L = 20.0,
-                                           R = 10.0, eps = 1e-8,
+    surface::Parameters       = Parameters(nb = 1.0, chi_b = 3.0, omega_b = -0.4,
+                                           kappa = 1.0, phi_inf = 0.09, L = 5.0,
+                                           R = 5.0, eps = 1e-8,
                                            conserve_volume = false,
                                            parallel_plates = false)
     bvp::BVPParams            = BVPParams()
@@ -202,3 +202,4 @@ end
 
 # The configured source of truth for this job.
 const PARAMS = FisherParams()
+

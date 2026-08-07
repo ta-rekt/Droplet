@@ -17,7 +17,7 @@ With d_o = 8 (separation threshold) and d_x = 2 (contact threshold).
 import numpy as np
 
 
-def compute_hysteresis_times(pattern_distances, d_o=8.0, d_x=2.0):
+def compute_hysteresis_times(pattern_distances, d_o=8.0, d_x=2.0, nruns=16, nparams=16):
     """
     Compute bound and unbound times using hysteresis thresholds.
 
@@ -31,11 +31,11 @@ def compute_hysteresis_times(pattern_distances, d_o=8.0, d_x=2.0):
             bound_times[i][j]   = list of T^i_x durations (time to unbind from contact)
             unbound_times[i][j] = list of T^i_o durations (time to rebind after separation)
     """
-    bound_times = [[[] for _ in range(16)] for _ in range(16)]
-    unbound_times = [[[] for _ in range(16)] for _ in range(16)]
+    bound_times = [[[] for _ in range(nruns)] for _ in range(nparams)]
+    unbound_times = [[[] for _ in range(nruns)] for _ in range(nparams)]
 
-    for i in range(16):
-        for j in range(16):
+    for i in range(nparams):
+        for j in range(nruns):
             traj = np.asarray(pattern_distances[i][j])
             if len(traj) == 0:
                 continue
