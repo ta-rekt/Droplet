@@ -36,6 +36,10 @@ module Droplet
     # reference solver.  Independent of the Metropolis core.
     include("bvp_solver.jl")
     include("bvp_two_spheres.jl")
+    # Pseudo-arclength continuation of the two-sphere BVP in phi_inf: tracks the
+    # solution branch THROUGH the capillary-bridging limit points, which the
+    # prescribed-parameter solves in bvp_two_spheres.jl cannot.
+    include("bvp_arclength.jl")
 
     # General 1D backward Fokker–Planck first-passage-time solver.  Independent
     # of the Metropolis core and of how the potential is built.
@@ -48,11 +52,12 @@ module Droplet
            excess_free_energy, plates_pair_potential,
            Geometry, build_geometry, decay_length,
            scatter, scatter!, laplacian, laplacian!,
-           make_residual, make_residual_inplace,
+           make_residual, make_residual_inplace, build_linear_operator,
            initial_guess, solve_two_spheres,
            interp_phi, cell_fluid_fraction,
            phi_on_sphere, excess_free_energy_two_spheres,
            quadratic_ghost_coefficients, find_clean_stencil,
+           ArcTrace, arclength_phi_inf, polish_at_phi_inf, gap_center_phi,
            FPTProblem, solve_fpt, boltzmann_ic, fpt_mfpt_quadrature
 
 end # module Droplet

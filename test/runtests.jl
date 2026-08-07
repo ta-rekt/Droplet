@@ -41,6 +41,8 @@ using Random
     include("test_kmc_phase5.jl")
     # 2D axisymmetric two-sphere BVP
     include("test_bvp_two_spheres.jl")
+    # Pseudo-arclength continuation of that BVP in phi_inf (through the folds)
+    include("test_bvp_arclength.jl")
     # 1D planar slab BVP (parallel plates)
     include("test_bvp_parallel_plates.jl")
     # 1D isolated-sphere BVP vs. the prewetting graphical construction

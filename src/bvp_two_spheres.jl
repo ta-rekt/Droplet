@@ -940,9 +940,14 @@ function _simpson(y::AbstractVector, x::AbstractVector)
     return s * h / 3.0
 end
 
+# `frac` optionally supplies a precomputed cell_fluid_fraction(geom): it depends
+# only on the geometry, not on phi or phi_inf, so a caller evaluating F many
+# times on one mesh (an arclength sweep) should hoist it out of the loop --
+# nsub^2 = 64 in-sphere tests per cell is otherwise the dominant cost here.
 function excess_free_energy_two_spheres(result::AbstractDict;
                                         nsub::Int = 8,
-                                        n_theta::Int = 1001)
+                                        n_theta::Int = 1001,
+                                        frac::Union{Nothing, AbstractMatrix} = nothing)
     geom = result[:geom]
     phi  = result[:phi]
     p    = geom.p
@@ -964,7 +969,7 @@ function excess_free_energy_two_spheres(result::AbstractDict;
         end
     end
 
-    frac = cell_fluid_fraction(geom; nsub = nsub)
+    frac === nothing && (frac = cell_fluid_fraction(geom; nsub = nsub))
     bulk_sum = 0.0
     @inbounds for j in 1:geom.Nz, i in 1:geom.Nrho
         bulk_sum += integrand[i, j] * (2.0 * pi * geom.rho_grid[i]) * frac[i, j]
