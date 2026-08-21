@@ -117,7 +117,7 @@ end
 # the return IC an exact delta at that node instead of a two-node blend that ripples
 # as the start point drifts between nodes.
 _ridges  = [all(isfinite, r) ? _find_ridge(xg_full, r, ridge_max) : -Inf for r in U_tot_rows]
-_max_ridge = maximum(_ridges)
+_max_ridge = maximum(_ridges) * 1.2
 isfinite(_max_ridge) ||
     error("no phi_inf row has a finite U_tot: cannot place the dividing surface")
 i_div = clamp(something(findfirst(>=(_max_ridge), xg_full), Ngrid), 3, Ngrid - 1)
@@ -199,8 +199,8 @@ _trapz(x, y) = sum(0.5 * (y[i] + y[i+1]) * (x[i+1] - x[i]) for i in 1:length(x)-
 
 function local_conc(phi, Urow, PsRow)
     all(isfinite, Urow) || return NaN
-    x_ridge = _find_ridge(xg_full, Urow, ridge_max)
-    xg = collect(range(R, x_ridge; length = Nlocal))
+    # x_ridge = _find_ridge(xg_full, Urow, ridge_max)
+    xg = collect(range(R, x_div; length = Nlocal))
     Ug = [_interp(xg_full, Urow, x) for x in xg]
     wt = exp.(-(Ug .- minimum(Ug)) ./ kBT)                # shift for overflow safety (cancels)
     if potential == :bvp
