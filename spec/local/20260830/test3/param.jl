@@ -33,13 +33,13 @@ Base.@kwdef struct BVPParams
     # ends with the reference, is silently dropped.  target! warns and the interp
     # stage errors out if the reference is missing, but it is cheaper to get right.
     d_min_factor::Float64 = 0.0      # near-contact end of the d-sweep
-    d_max_factor::Float64 = 0.4
+    d_max_factor::Float64 = 0.5
     n_d::Int              = 17       # = ncpus - 1
     d_ref_factor::Float64 = 2.0      # reference gap (spheres far apart): U = F(d) - F_ref
     # spatial discretisation of the (rho, z) half-plane
     Nrho::Int             = 200
     dz_target::Float64    = 0.03*20
-    rho_max::Float64      = 15.0*20
+    rho_max::Float64      = 18.0*20
     z_buf::Float64        = 3.0*20
     # Newton / fixed-point solve
     f_tol::Float64        = 1e-6
@@ -55,8 +55,13 @@ Base.@kwdef struct BVPParams
     # Pseudo-arclength continuation in phi_inf (src/bvp_arclength.jl).
     arc_dlambda0::Float64 = 0.0      # phi_inf progress on the first step; 0 => range/50
     arc_max_steps::Int    = 400      # continuation-step budget per gap
-    # branch labelling: gap-centre phi above this => "bridged"
-    bridge_phi::Float64   = 0.5
+    # Branch labelling: a gap centre is "bridged" once its phi has risen this
+    # FRACTION of the way from the dilute to the dense binodal (see
+    # bridge_threshold).  It is a fraction, not an absolute phi, because the
+    # dense binodal is nowhere near 1 for an asymmetric fb: at nb = 4000 it is
+    # 0.0694, so the old absolute `bridge_phi = 0.5` could never be reached by
+    # any state the solver can produce and labelled every branch "thin".
+    bridge_frac::Float64  = 0.5
 end
 
 # --- Rouse chain + thermal environment ---------------------------------------
@@ -64,7 +69,7 @@ end
 # two-sphere P_eq uses 3(d+R)^2 / (2 s a^2).  D_eff = 2 kBT/friction is the
 # diffusion constant of the end-to-end coordinate (two independent end beads).
 Base.@kwdef struct RouseParams
-    s::Float64        = 150.0   # number of beads between the two probe monomers (beadSep)
+    s::Float64        = 300.0   # number of beads between the two probe monomers (beadSep)
     a::Float64        = 20     # Kuhn / bond length (lattice sites) 20 b = 6 nm, 100 b = 30 nm
     kBT::Float64      = 1.0
     friction::Float64 = 1.3477088948787062e-08   # s / sites^2
@@ -122,7 +127,7 @@ Base.@kwdef struct FisherParams
     surface::Parameters       = Parameters(nb = 4000.0, chi_b = 0.5280059665030825, 
                                            omega_b = -0.008,
                                            kappa = 5.19, phi_inf = 0.09, L = 100.0,
-                                           R = 150, eps = 1e-8,
+                                           R = 130, eps = 1e-8,
                                            conserve_volume = false,
                                            parallel_plates = false)
     bvp::BVPParams            = BVPParams()
@@ -159,6 +164,14 @@ end
 # rises, falls between the two spinodal points, then rises again, so each branch
 # holds exactly one root of dfb_dphi = mu; bisect on mu until the two branches
 # have equal grand potential fb - mu*phi.
+#
+# BOTH roots are returned, and callers that want the dense phase MUST use the
+# second one.  fb is only symmetric about phi = 1/2 at nb = 1, so `1 - phi_dilute`
+# is not the dense binodal for any realistic nb: at nb = 4000, chi_b = 0.528 the
+# pair is (3.23e-4, 0.0694), and 1 - 3.23e-4 = 0.99968 lands 14x past the dense
+# branch, outside the two-phase region entirely.  Seeding a capillary bridge
+# there gives Newton a slab of near-pure polymer to relax and it simply fails --
+# which is what silently disabled sweep B in fisher_two_spheres.jl for every gap.
 function binodal(chi::Real; nb::Real = 1.0)
     p = Parameters(nb = nb, chi_b = chi, omega_b = 0.0, kappa = 1.0,
                    phi_inf = 0.1, L = 1.0, R = Inf, eps = 1e-16)
@@ -169,14 +182,21 @@ function binodal(chi::Real; nb::Real = 1.0)
     gap(mu)    = (fb(dense(mu), p) - mu * dense(mu)) -
                  (fb(dilute(mu), p) - mu * dilute(mu))
     mu = _bisect(gap, dfb_dphi(hi_sp, p), dfb_dphi(lo_sp, p))
-    return dilute(mu) #, dense(mu)
+    return dilute(mu), dense(mu)
+end
+
+# Absolute gap-centre phi above which a branch counts as bridged, placed
+# `bvp.bridge_frac` of the way from the dilute to the dense binodal.
+function bridge_threshold(P::FisherParams)
+    lo, hi = binodal(P.surface.chi_b; nb = P.surface.nb)
+    return lo + P.bvp.bridge_frac * (hi - lo)
 end
 
 # The phi_inf sweep grid: explicit list if given, else a binodal-fraction range.
 function phi_inf_grid(P::FisherParams)
     s = P.sweep
     isempty(s.phi_inf_values) || return copy(s.phi_inf_values)
-    b = binodal(P.surface.chi_b; nb = P.surface.nb)
+    b, _ = binodal(P.surface.chi_b; nb = P.surface.nb)
     return b .* collect(range(s.phi_frac_min, s.phi_frac_max; length = s.n_phi))
 end
 

@@ -335,7 +335,7 @@ phi_surf_rows = phi_surf_rows[sel]
 # --- 3. common x-grid; Rouse end-to-end scale, as in the FPT return domain ---
 x_max     = 4 * a * sqrt(s)
 xg        = collect(range(R, x_max; length = Ngrid))
-jac(x)    = -2 * log(x)                 # radial Jacobian (build_U_tot)
+jac(x)    = -2 * log(x / (a * s^(1/2)))                 # radial Jacobian (build_U_tot)
 spring(x) = 3 * x^2 / (2 * s * a^2)     # Rouse spring    (build_U_tot)
 
 U_full_interp   = Vector{Vector{Float64}}()
