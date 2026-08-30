@@ -37,9 +37,13 @@ include(joinpath(@__DIR__, "param.jl"))
 slist = []
 checkpoint_path = ""
 
-# Dilute binodal for the configured (chi_b, nb): bridging needs phi_inf just
-# below it, and the dense coexistence value 1 - BINODAL seeds the bridged branch.
-const BINODAL = binodal(PARAMS.surface.chi_b; nb = PARAMS.surface.nb)
+# Coexistence pair for the configured (chi_b, nb): bridging needs phi_inf just
+# below the dilute binodal, and the DENSE binodal seeds the bridged branch.  Both
+# come from the common-tangent solve -- do not reconstruct the dense value as
+# 1 - BINODAL, which is only correct for a symmetric fb (nb = 1); see the note on
+# `binodal` in param.jl.
+const BINODAL, PHI_DENSE = binodal(PARAMS.surface.chi_b; nb = PARAMS.surface.nb)
+const BRIDGE_PHI = bridge_threshold(PARAMS)
 
 # Fixed, anchored grid (R and dz are constant across the sweep).  (1) build_geometry
 # spans z over length 4R + d + 2*z_buf; (2) pin dz EXACTLY to bvp.dz_target and place
@@ -77,6 +81,12 @@ blurb = "Two-sphere BVP by pseudo-arclength continuation in phi_inf at fixed " *
 # Bridged seed: dense phase within `reach` of either sphere surface (fills the
 # neck), bulk phi_inf elsewhere.  Bootstraps a bridged branch that is not
 # connected to the thin one along the phi_inf curve at this gap.
+#
+# `reach` must span the HALF-GAP or the two shells never meet and the seed is a
+# pair of coated spheres with a void between them -- not a bridge.  A fixed
+# reach = 2.0 was fine at R = 5 with sub-unit gaps; at R = 150 with d up to 60 it
+# leaves ~30 sites of bulk down the middle of the neck.  The caller passes
+# max(2.0, 0.6 * d).
 function _dense_seed(geom, phi_dense; reach = 2.0)
     R = geom.p.R
     x = Float64[]
@@ -138,7 +148,7 @@ function target!(res, args...)
                         phi_inf = first(PHI_TARGETS), omega_b = omega_b)
     R = p_lo.R
     phi_lo, phi_hi = extrema(PHI_TARGETS)
-    phi_dense = 1.0 - BINODAL
+    phi_dense = PHI_DENSE
 
     # One geometry for the whole record: phi_inf does not move the mesh.
     geom = build_geometry(p_lo, d; rho_max = bp.rho_max, z_buf = Z_BUF_GRID,
@@ -219,7 +229,8 @@ function target!(res, args...)
     seed_hi = solve_two_spheres(p_hi, d; rho_max = bp.rho_max, z_buf = Z_BUF_GRID,
                                 Nrho = bp.Nrho, Nz = _nz_for(d),
                                 f_tol = bp.f_tol, maxiter = bp.maxiter,
-                                x0_init = _dense_seed(geom, phi_dense),
+                                x0_init = _dense_seed(geom, phi_dense;
+                                                      reach = max(2.0, 0.6 * d)),
                                 omega_continuation = false, bc_reg = bp.bc_reg)
     trace_b = ArcTrace()
     if seed_hi[:success]
@@ -229,6 +240,14 @@ function target!(res, args...)
                                     max_steps = bp.arc_max_steps,
                                     dlambda0 = bp.arc_dlambda0 > 0 ? bp.arc_dlambda0 :
                                                (phi_hi - phi_lo) / 50)
+    else
+        # A dead sweep B is invisible in the output -- it just leaves arc_status
+        # "empty" and lets sweep A's coverage stand -- so say so.  This backstop
+        # silently never fired for a whole study while `1 - BINODAL` put the seed
+        # outside the two-phase region; when sweep A's fold later left the swept
+        # phi window, the bridged branch vanished from U(d) with no diagnostic.
+        @warn "sweep B seed failed: bridged branches not reachable from sweep A \
+               will be MISSING from this record" d omega_b phi_hi phi_dense
     end
 
     # --- Equilibrium: lowest F among the STABLE branches at each phi_inf ---
@@ -236,11 +255,17 @@ function target!(res, args...)
     F_eq       = fill(NaN, nphi)
     phi_surf   = fill(NaN, nphi)
     branch_eq  = zeros(Int, nphi)
+    bridged_eq = falses(nphi)
     n_branch   = zeros(Int, nphi)
     F_all      = [Float64[] for _ in 1:nphi]
     stable_all = [Bool[]    for _ in 1:nphi]
     gapc_all   = [Float64[] for _ in 1:nphi]
     surf_all   = [Float64[] for _ in 1:nphi]
+    # Physical bridged/thin label, from the gap-centre phi against BRIDGE_PHI.
+    # `branch_eq` is the arclength SEGMENT index, which tracks how many folds the
+    # curve had turned, not what the state is -- it happens to correlate with
+    # bridging but says nothing when sweep A never folds.
+    bridged_all = [Bool[]   for _ in 1:nphi]
 
     for i in 1:nphi
         hits = sort(found[i]; by = h -> h.gap_center)
@@ -248,13 +273,15 @@ function target!(res, args...)
         for h in hits
             push!(F_all[i], h.F); push!(stable_all[i], h.stable)
             push!(gapc_all[i], h.gap_center); push!(surf_all[i], h.phi_surf)
+            push!(bridged_all[i], h.gap_center > BRIDGE_PHI)
         end
         st = findall(h -> h.stable, hits)
         isempty(st) && continue
         k = st[argmin([hits[j].F for j in st])]
-        F_eq[i]      = hits[k].F
-        phi_surf[i]  = hits[k].phi_surf
-        branch_eq[i] = hits[k].segment + 1        # 1-based, 0 = none
+        F_eq[i]        = hits[k].F
+        phi_surf[i]    = hits[k].phi_surf
+        branch_eq[i]   = hits[k].segment + 1      # 1-based, 0 = none
+        bridged_eq[i]  = hits[k].gap_center > BRIDGE_PHI
     end
 
     # Subsample the curve trace to keep the JSON manageable.
@@ -271,6 +298,8 @@ function target!(res, args...)
     res["R"]               = R
     res["chi_b"]           = p_lo.chi_b
     res["binodal"]         = BINODAL
+    res["binodal_dense"]   = PHI_DENSE
+    res["bridge_phi"]      = BRIDGE_PHI
     res["s"]               = PARAMS.rouse.s
     res["a"]               = PARAMS.rouse.a
     res["d_grid"]          = D_GRID
@@ -280,10 +309,12 @@ function target!(res, args...)
     res["stable"]          = stable_all
     res["gap_center"]      = gapc_all
     res["phi_surf_branch"] = surf_all
+    res["bridged"]         = bridged_all
     # per phi_inf, on the equilibrium branch
     res["F_eq"]            = F_eq
     res["phi_surf"]        = phi_surf
     res["branch_eq"]       = branch_eq
+    res["bridged_eq"]      = bridged_eq
     res["n_branch"]        = n_branch
     # per d: the spinodal map
     res["folds"]           = vcat(trace_a.folds, trace_b.folds)
