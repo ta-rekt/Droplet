@@ -132,8 +132,8 @@ const B_UNBOUND   = X_DIV
 # records: the well deepens monotonically with phi_inf, so the ends bracket a
 # shallow and a deep attractive well.  beta = omega_b, carried for the record (the
 # potentials were solved at PARAMS.sweep.omega_b_values).
-const PHI_SEL = unique(round.(Int, range(1, length(REC_PHI); length = n_phi_run)))
-alphas  = REC_PHI[PHI_SEL]
+# const PHI_SEL = unique(round.(Int, range(1, length(REC_PHI); length = n_phi_run)))
+alphas  = REC_PHI[16:30]
 betas   = PARAMS.sweep.omega_b_values
 nparams = length(alphas)
 
