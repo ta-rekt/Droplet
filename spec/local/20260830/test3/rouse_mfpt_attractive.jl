@@ -133,7 +133,7 @@ const B_UNBOUND   = X_DIV
 # shallow and a deep attractive well.  beta = omega_b, carried for the record (the
 # potentials were solved at PARAMS.sweep.omega_b_values).
 # const PHI_SEL = unique(round.(Int, range(1, length(REC_PHI); length = n_phi_run)))
-alphas  = REC_PHI[16:30]
+alphas  = REC_PHI[[21,22,23]]
 betas   = PARAMS.sweep.omega_b_values
 nparams = length(alphas)
 
@@ -275,12 +275,6 @@ function target!(res, args...)
     res["bead_relax_time"]  = r.timeScale
     res["bead_relax_scale"] = r.posScale
     res["runtime_min"]      = (time() - t0) / 60.0
-
-    # @printf("phi=%.5g  barrier=%.2f kBT  t_sim=%.4g s | MFPT esc %.4g / %.4g (Rouse/solver, x%.3g, n=%d)  ret %.4g / %.4g (x%.3g, n=%d)  [%.1f min]\n",
-    #         alpha, REC_BARR[krec], nsteps * DT,
-    #         _mean(esc_times), REC_ESC[krec], _mean(esc_times) / REC_ESC[krec], length(esc_times),
-    #         _mean(ret_times), REC_RET[krec], _mean(ret_times) / REC_RET[krec], length(ret_times),
-    #         res["runtime_min"])
 
     return res
 end

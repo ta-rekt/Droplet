@@ -69,7 +69,7 @@ end
 # two-sphere P_eq uses 3(d+R)^2 / (2 s a^2).  D_eff = 2 kBT/friction is the
 # diffusion constant of the end-to-end coordinate (two independent end beads).
 Base.@kwdef struct RouseParams
-    s::Float64        = 150.0   # number of beads between the two probe monomers (beadSep)
+    s::Float64        = 15.0   # number of beads between the two probe monomers (beadSep)
     a::Float64        = 50     # Kuhn / bond length (lattice sites) 20 b = 6 nm, 100 b = 30 nm
     kBT::Float64      = 1.0
     friction::Float64 = 1.3477088948787062e-08   # s / sites^2
