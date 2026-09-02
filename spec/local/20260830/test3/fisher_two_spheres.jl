@@ -100,6 +100,145 @@ function _dense_seed(geom, phi_dense; reach = 2.0)
     return clamp.(x, geom.p.eps, 1.0 - geom.p.eps)
 end
 
+# --- Bridged-branch warm start from a previous solution ----------------------
+# `_dense_seed` is a cold guess, and it stops converging once the gap is a
+# sizeable fraction of R: at R = 130 sweep B failed at EVERY gap of
+# data/20260830/test3, so the only bridged branches in that run were the ones
+# sweep A's folds happened to reach, and past d ~ 33 (10 nm) the records show no
+# bridged branch at all.  The branch is still there -- a bridged solution
+# remapped from a shorter gap converges in ~2 s at every d out to 0.5 R -- so
+# `bvp.seed_path` may name a bridged_seed_*.json from an earlier run (or the
+# directory holding them) to warm-start sweep B from.  Empty seed_path (the
+# default) => none of this runs and the record is byte-for-byte what it was.
+
+# scatter! leaves the fill value phi_inf inside the spheres, and the bilinear
+# stencil of a fluid point one cell off a surface reaches in there.  Grow the
+# fluid field a few cells into the solid first, so the adsorption film -- the
+# delicate part of the seed -- is not diluted by that fill value.
+function _fill_solid!(phi::Matrix{Float64}, fluid::AbstractMatrix{Bool};
+                      passes::Int = 3)
+    m = collect(fluid)
+    Nrho, Nz = size(phi)
+    for _ in 1:passes
+        newly = falses(Nrho, Nz)
+        @inbounds for j in 1:Nz, i in 1:Nrho
+            m[i, j] && continue
+            acc = 0.0; n = 0
+            for (di, dj) in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                ii = i + di; jj = j + dj
+                (1 <= ii <= Nrho && 1 <= jj <= Nz && m[ii, jj]) || continue
+                acc += phi[ii, jj]; n += 1
+            end
+            n == 0 && continue
+            phi[i, j] = acc / n; newly[i, j] = true
+        end
+        m .|= newly
+    end
+    return phi
+end
+
+# Bilinear sample of a (rho_grid, z_grid) field, clamped at the box edges.
+function _bilin(phi, rho_grid, z_grid, rho, z)
+    Nrho, Nz = size(phi)
+    i  = clamp(searchsortedlast(rho_grid, rho), 1, Nrho - 1)
+    j  = clamp(searchsortedlast(z_grid,   z),   1, Nz - 1)
+    tr = clamp((rho - rho_grid[i]) / (rho_grid[i+1] - rho_grid[i]), 0.0, 1.0)
+    tz = clamp((z   - z_grid[j])   / (z_grid[j+1]   - z_grid[j]),   0.0, 1.0)
+    return (1 - tr) * (1 - tz) * phi[i, j]   + tr * (1 - tz) * phi[i+1, j] +
+           (1 - tr) * tz       * phi[i, j+1] + tr * tz       * phi[i+1, j+1]
+end
+
+# Remap a stored solution from its gap `sd.d` onto the unknowns of `geom`.  rho is
+# untouched (rho_max and Nrho do not depend on d); z is anchored to sphere 1 below
+# the gap and to sphere 2 above it, with the gap band R < z < R + d linearly
+# stretched between the two.  So both spheres land on themselves -- the adsorption
+# films carry over unchanged -- and only the neck is rescaled.  The band is fluid
+# at every gap, so every fluid point of the target maps into fluid of the source
+# and the sampling is well posed; d_new == d_old is the identity.
+function _remap_seed(sd, geom)
+    R = geom.p.R
+    d_new = geom.d
+    shift   = d_new - sd.d
+    stretch = d_new > 0 ? sd.d / d_new : 1.0
+    zmap(z) = z <= R ? z : z >= R + d_new ? z - shift : R + (z - R) * stretch
+    x = Vector{Float64}(undef, count(geom.unk_mask))
+    k = 0
+    @inbounds for j in 1:geom.Nz, i in 1:geom.Nrho
+        geom.unk_mask[i, j] || continue
+        k += 1
+        x[k] = _bilin(sd.phi, sd.rho_grid, sd.z_grid,
+                      geom.rho_grid[i], zmap(geom.z_grid[j]))
+    end
+    return clamp.(x, geom.p.eps, 1.0 - geom.p.eps)
+end
+
+# d is zero-padded into the name so a lexical readdir sorts numerically and the
+# loader can pick a seed by gap without opening every candidate (they are MBs).
+_seed_name(d, keyb) =
+    "bridged_seed_d" * lpad(string(round(Float64(d); digits = 4)), 9, '0') *
+    "_b$(keyb).json"
+
+function _save_seed(dir, geom, phi, lam, omega_b, keyb, gap_center, F)
+    mkpath(dir)
+    path = joinpath(dir, _seed_name(geom.d, keyb))
+    open(path, "w") do io
+        JSON.print(io, Dict("kind"       => "two_sphere_bvp_seed",
+                            "d"          => geom.d,
+                            "R"          => geom.p.R,
+                            "omega_b"    => omega_b,
+                            "phi_inf"    => lam,
+                            "gap_center" => gap_center,
+                            "F"          => F,
+                            "Nrho"       => geom.Nrho,
+                            "Nz"         => geom.Nz,
+                            "rho_grid"   => collect(geom.rho_grid),
+                            "z_grid"     => collect(geom.z_grid),
+                            # 8 significant digits: a Newton seed does not need
+                            # round-tripping, and it halves a ~6 MB file.
+                            "phi"        => vec(round.(_fill_solid!(copy(phi),
+                                                                    geom.fluid_mask);
+                                                       sigdigits = 8))))
+    end
+    return path
+end
+
+# `path` is either a seed file or a directory of them; from a directory take the
+# largest gap not exceeding `d_new` (the bridge only ever has to be stretched,
+# never compressed), else the nearest one.  Returns nothing when seeding is off.
+function _load_seed(path::AbstractString, d_new::Real, keyb::Int)
+    isempty(path) && return nothing
+    file = path
+    if isdir(path)
+        rx = r"^bridged_seed_d([0-9.]+)_b(\d+)\.json$"
+        cands = [(parse(Float64, m.captures[1]), parse(Int, m.captures[2]), f)
+                 for f in readdir(path; join = true)
+                 for m in (match(rx, basename(f)),) if m !== nothing]
+        if isempty(cands)
+            @warn "seed_path holds no bridged_seed_*.json; sweep B falls back to \
+                   the analytic dense seed" path
+            return nothing
+        end
+        same  = filter(c -> c[2] == keyb, cands)
+        pool  = isempty(same) ? cands : same
+        below = filter(c -> c[1] <= d_new + 1e-9, pool)
+        file  = isempty(below) ? pool[argmin([abs(c[1] - d_new) for c in pool])][3] :
+                                 below[argmax([c[1] for c in below])][3]
+    end
+    if !isfile(file)
+        @warn "seed file not found; sweep B falls back to the analytic dense \
+               seed" file
+        return nothing
+    end
+    j = JSON.parsefile(file)
+    return (d        = Float64(j["d"]),
+            R        = Float64(j["R"]),
+            phi_inf  = Float64(j["phi_inf"]),
+            rho_grid = Float64.(j["rho_grid"]),
+            z_grid   = Float64.(j["z_grid"]),
+            phi      = reshape(Float64.(j["phi"]), Int(j["Nrho"]), Int(j["Nz"])),
+            path     = file)
+end
+
 # Gap-facing pole of sphere 1: theta = 0 => z = z_c1 + R, the point pointing
 # inward toward sphere 2 (the enriched adsorption film).  The far-side pole
 # (theta = pi, z = z_c1 - R) sits in open bulk and reads ~phi_inf.
@@ -130,6 +269,7 @@ function target!(res, args...)
     omega_b = beta
     d       = alpha
     is_ref  = keya == length(alphas)
+    keyb    = something(findfirst(==(beta), betas), 1)   # names the seed file
 
     # sim/sweep.jl runs keya = 1 : ncpus * div(nparams, ncpus), so a remainder is
     # silently dropped -- including the reference gap, which sits last.  Warn
@@ -168,6 +308,9 @@ function target!(res, args...)
     found = [NamedTuple[] for _ in eachindex(PHI_TARGETS)]
     tgt_index = Dict(t => i for (i, t) in enumerate(PHI_TARGETS))
     n_polish_failed = Ref(0)
+    # Most saturated bridged state seen anywhere in this record; written out at
+    # the end as the warm start a later, wider-gap run can pick up.
+    seed_out = Ref{Union{Nothing, NamedTuple}}(nothing)
 
     function record!(x, lam, segment, stable)
         i = get(tgt_index, lam, 0)
@@ -183,6 +326,15 @@ function target!(res, args...)
                phi_surf = _phi_surf(geom, phi), stable = stable, segment = segment)
         any(h -> _same_branch(h, hit), found[i]) && return
         push!(found[i], hit)
+        # Keep the most saturated bridged state: highest phi_inf, and at a tie the
+        # fullest gap, which picks the capillary bridge over the saddle branch
+        # (both clear BRIDGE_PHI where the S-curve is wide).
+        if bp.seed_save && hit.gap_center > BRIDGE_PHI &&
+           (seed_out[] === nothing || lam > seed_out[].phi_inf ||
+            (lam == seed_out[].phi_inf && hit.gap_center > seed_out[].gap_center))
+            seed_out[] = (phi_inf = Float64(lam), phi = phi,
+                          gap_center = hit.gap_center, F = hit.F)
+        end
         return
     end
 
@@ -224,22 +376,62 @@ function target!(res, args...)
     # never reaches (the two are connected at most gaps, but not guaranteed).
     # No on_point here: the curve trace from sweep A is enough for diagnostics,
     # and evaluating F at every point twice is the expensive half of the record.
-    p_hi = Droplet.with(PARAMS.surface; phi_inf = phi_hi, omega_b = omega_b)
-    geom.p = p_hi
-    seed_hi = solve_two_spheres(p_hi, d; rho_max = bp.rho_max, z_buf = Z_BUF_GRID,
-                                Nrho = bp.Nrho, Nz = _nz_for(d),
-                                f_tol = bp.f_tol, maxiter = bp.maxiter,
-                                x0_init = _dense_seed(geom, phi_dense;
-                                                      reach = max(2.0, 0.6 * d)),
-                                omega_continuation = false, bc_reg = bp.bc_reg)
+    #
+    # `seed` is nothing unless bvp.seed_path is set.  When it is, sweep B starts
+    # from that solution remapped onto this mesh, at the phi_inf it was stored at,
+    # rather than from the analytic seed at the top of the grid; a remapped solve
+    # that fails falls straight back to the analytic seed, so seeding can only add
+    # branches, never lose them.
+    seed      = _load_seed(bp.seed_path, d, keyb)
+    seed_from = seed === nothing ? "" : seed.path
+    lam_b     = seed === nothing ? phi_hi : seed.phi_inf
+    p_hi      = Droplet.with(PARAMS.surface; phi_inf = lam_b, omega_b = omega_b)
+    geom.p    = p_hi
+    _cold_seed() = _dense_seed(geom, phi_dense; reach = max(2.0, 0.6 * d))
+    _solve_b(x0) = solve_two_spheres(p_hi, d; rho_max = bp.rho_max,
+                                     z_buf = Z_BUF_GRID, Nrho = bp.Nrho,
+                                     Nz = _nz_for(d), f_tol = bp.f_tol,
+                                     maxiter = bp.maxiter, x0_init = x0,
+                                     omega_continuation = false, bc_reg = bp.bc_reg)
+    seed_hi = _solve_b(seed === nothing ? _cold_seed() : _remap_seed(seed, geom))
+    if seed !== nothing && !seed_hi[:success]
+        @warn "remapped seed did not converge; sweep B falls back to the \
+               analytic dense seed" d seed_d=seed.d file=seed.path
+        seed   = nothing
+        lam_b  = phi_hi
+        p_hi   = Droplet.with(PARAMS.surface; phi_inf = lam_b, omega_b = omega_b)
+        geom.p = p_hi
+        seed_hi = _solve_b(_cold_seed())
+    end
     trace_b = ArcTrace()
+    trace_c = ArcTrace()
+    ran_c   = false
     if seed_hi[:success]
-        trace_b = arclength_phi_inf(geom, seed_hi[:x], phi_hi*1.30, phi_lo;
-                                    targets = PHI_TARGETS, on_hit = record!,
-                                    f_tol = bp.f_tol, maxiter = bp.maxiter,
-                                    max_steps = bp.arc_max_steps,
-                                    dlambda0 = bp.arc_dlambda0 > 0 ? bp.arc_dlambda0 :
-                                               (phi_hi - phi_lo) / 50)
+        # arclength_phi_inf refuses a zero-length span, which a seed stored at
+        # the very bottom of the grid would ask for; unseeded lam_start is
+        # 1.3 * phi_hi, so the guard never bites there.
+        lam_start = seed === nothing ? phi_hi * 1.30 : lam_b
+        if lam_start > phi_lo
+            trace_b = arclength_phi_inf(geom, seed_hi[:x], lam_start, phi_lo;
+                                        targets = PHI_TARGETS, on_hit = record!,
+                                        f_tol = bp.f_tol, maxiter = bp.maxiter,
+                                        max_steps = bp.arc_max_steps,
+                                        dlambda0 = bp.arc_dlambda0 > 0 ? bp.arc_dlambda0 :
+                                                   (phi_hi - phi_lo) / 50)
+        end
+        # A seed stored below the top of the phi_inf grid leaves the targets above
+        # it uncovered, so walk the same branch upward as well.  Never fires
+        # unseeded (lam_start is then above phi_hi), which keeps the unseeded
+        # record identical to what it was.
+        if lam_start < phi_hi
+            ran_c = true
+            trace_c = arclength_phi_inf(geom, seed_hi[:x], lam_start, phi_hi * 1.30;
+                                        targets = PHI_TARGETS, on_hit = record!,
+                                        f_tol = bp.f_tol, maxiter = bp.maxiter,
+                                        max_steps = bp.arc_max_steps,
+                                        dlambda0 = bp.arc_dlambda0 > 0 ? bp.arc_dlambda0 :
+                                                   (phi_hi - phi_lo) / 50)
+        end
     else
         # A dead sweep B is invisible in the output -- it just leaves arc_status
         # "empty" and lets sweep A's coverage stand -- so say so.  This backstop
@@ -317,20 +509,34 @@ function target!(res, args...)
     res["bridged_eq"]      = bridged_eq
     res["n_branch"]        = n_branch
     # per d: the spinodal map
-    res["folds"]           = vcat(trace_a.folds, trace_b.folds)
-    res["fold_sweep"]      = vcat(fill(1, length(trace_a.folds)),
-                                  fill(2, length(trace_b.folds)))
+    # One entry per sweep that ran: A, B, and -- only when the seed sat below the
+    # top of the grid -- the upward continuation C.
+    traces = ran_c ? (trace_a, trace_b, trace_c) : (trace_a, trace_b)
+    res["folds"]           = vcat((t.folds for t in traces)...)
+    res["fold_sweep"]      = vcat((fill(i, length(t.folds))
+                                   for (i, t) in enumerate(traces))...)
     res["trace"]           = Dict("s"          => tr_s[idx],
                                   "phi_inf"    => tr_lam[idx],
                                   "F"          => tr_F[idx],
                                   "gap_center" => tr_gc[idx],
                                   "segment"    => tr_seg[idx])
-    res["arc_status"]      = [String(trace_a.status), String(trace_b.status)]
-    res["n_arc_steps"]     = [length(trace_a.lambda), length(trace_b.lambda)]
-    res["n_newton"]        = trace_a.n_newton + trace_b.n_newton
+    res["arc_status"]      = [String(t.status) for t in traces]
+    res["n_arc_steps"]     = [length(t.lambda) for t in traces]
+    res["n_newton"]        = sum(t.n_newton for t in traces)
     res["n_polish_failed"] = n_polish_failed[]
     res["n_phi_failed"]    = nphi - count(ok)
     res["success"]         = all(ok)
+    # Seed bookkeeping: what this record warm-started from, and the bridged
+    # solution it leaves behind for the next run to pick up.
+    outdir = PARAMS.sim.output_dir
+    seed_file = ""
+    if bp.seed_save && seed_out[] !== nothing && outdir !== nothing && !isempty(outdir)
+        so = seed_out[]
+        seed_file = _save_seed(outdir, geom, so.phi, so.phi_inf, omega_b, keyb,
+                               so.gap_center, so.F)
+    end
+    res["seed_from"]       = seed_from
+    res["seed_file"]       = seed_file
     res["runtime_min"]     = (time() - t0) / 60.0
     res["params"]          = to_dict(PARAMS)   # full parameter set, for provenance
     return res

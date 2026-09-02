@@ -62,6 +62,26 @@ Base.@kwdef struct BVPParams
     # 0.0694, so the old absolute `bridge_phi = 0.5` could never be reached by
     # any state the solver can produce and labelled every branch "thin".
     bridge_frac::Float64  = 0.5
+    # --- optional warm start for the bridged branch (sweep B) ----------------
+    # Empty (the default) => nothing below runs and the sweep behaves exactly as
+    # it always has: sweep B cold-starts from the analytic dense seed.  Set it to
+    # a `bridged_seed_*.json` written by an earlier run -- or to the directory
+    # holding them, in which case each record picks the largest seeded gap that
+    # does not exceed its own -- and fisher_two_spheres.jl remaps that solution
+    # onto this record's mesh and hands it to Newton instead, keeping the
+    # analytic seed as the fallback.  The analytic seed is a cold guess and stops
+    # converging once the gap is a sizeable fraction of R: at R = 130 it failed at
+    # EVERY gap of data/20260830/test3, so the only bridged branches in that run
+    # were the ones sweep A's folds happened to reach, and past d ~ 33 (10 nm) the
+    # records show no bridged branch at all.  The branch is there -- a bridged
+    # solution remapped from a shorter gap converges in ~2 s at every d out to
+    # 0.5 R.  See the seed block in fisher_two_spheres.jl.
+    seed_path::String     = ""
+    # Write this record's bridged solution to
+    # output_dir/bridged_seed_d<d>_b<keyb>.json so a later run can seed from it.
+    # ~3 MB per gap that has a bridged branch; nothing reads these but the seed
+    # loader, and the downstream stages match output_cpu<n>.json exactly.
+    seed_save::Bool       = true
 end
 
 # --- Rouse chain + thermal environment ---------------------------------------
@@ -69,8 +89,8 @@ end
 # two-sphere P_eq uses 3(d+R)^2 / (2 s a^2).  D_eff = 2 kBT/friction is the
 # diffusion constant of the end-to-end coordinate (two independent end beads).
 Base.@kwdef struct RouseParams
-    s::Float64        = 15.0   # number of beads between the two probe monomers (beadSep)
-    a::Float64        = 50     # Kuhn / bond length (lattice sites) 20 b = 6 nm, 100 b = 30 nm
+    s::Float64        = 300.0   # number of beads between the two probe monomers (beadSep)
+    a::Float64        = 20     # Kuhn / bond length (lattice sites) 20 b = 6 nm, 100 b = 30 nm
     kBT::Float64      = 1.0
     friction::Float64 = 1.3477088948787062e-08   # s / sites^2
 end
