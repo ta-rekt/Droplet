@@ -229,9 +229,9 @@ end
 # ── Sweep ────────────────────────────────────────────────────────────────────
 nphi        = length(phi_infs)
 records     = Vector{Dict{String,Any}}()
-fisher_rate = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
-fisher_rate_esc = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
-fisher_rate_ret = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
+fisher = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
+fisher_esc = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
+fisher_ret = fill(NaN, max(nphi - 2, 0))               # indexed by k = index of phi
 
 # local concentration + its 1st/2nd derivatives wrt phi_inf across the whole sweep
 phi_local_vals = [local_conc(phi_infs[k], U_tot_rows[k], phi_surf_rows[k]) for k in 1:nphi]
@@ -268,11 +268,11 @@ for k in 1:max(nphi - 2, 0)
     sc2_ret = avg_dlogp2(t_ret_grid, base.res_ret.pdf, nb.res_ret.pdf, nnb.res_ret.pdf, dφ)
 
     # 6. summed averaged squared scores per unit (MFPT_esc + MFPT_ret); I(phi) ≥ 0 (no −)
-    fisher_rate_esc[k] = φ^2 * sc2_esc / (base.res_esc.mfpt + base.res_ret.mfpt)
-    fisher_rate_ret[k] = φ^2 * sc2_ret / (base.res_esc.mfpt + base.res_ret.mfpt)
+    fisher_esc[k] = φ^2 * sc2_esc # / (base.res_esc.mfpt + base.res_ret.mfpt)
+    fisher_ret[k] = φ^2 * sc2_ret # / (base.res_esc.mfpt + base.res_ret.mfpt)
     # elementwise, NOT `fisher_rate = fisher_rate_esc .+ fisher_rate_ret`: a whole-array
     # rebind inside this soft scope makes a LOCAL and leaves the dumped global all-NaN.
-    fisher_rate[k] = fisher_rate_esc[k] + fisher_rate_ret[k]
+    fisher[k] = fisher_esc[k] + fisher_ret[k]
 
     push!(records, Dict(
         "phi_inf"     => φ,
@@ -296,13 +296,13 @@ for k in 1:max(nphi - 2, 0)
         "phi_local"   => phi_local_vals[k],
         "dphi_local"  => dphi_local_vals[k],
         "d2phi_local" => d2phi_local_vals[k],
-        "fisher_rate_esc" => fisher_rate_esc[k],
-        "fisher_rate_ret" => fisher_rate_ret[k],
-        "fisher_rate" => fisher_rate[k]))
+        "fisher_esc" => fisher_esc[k],
+        "fisher_ret" => fisher_ret[k],
+        "fisher" => fisher[k]))
 
     @printf("phi=%.4f  lam=%5.2f  ridge=%.3f  barrier=%.2f kBT  phi_loc=%.4g  MFPT_esc=%.4g  MFPT_ret=%.4g  I_rate=%.4g\n",
             φ, base.lam, base.x_ridge, base.barrier, phi_local_vals[k],
-            base.res_esc.mfpt, base.res_ret.mfpt, fisher_rate[k])
+            base.res_esc.mfpt, base.res_ret.mfpt, fisher[k])
 end
 
 # ── Dump everything beside the input data ────────────────────────────────────
@@ -323,7 +323,7 @@ open(outpath, "w") do io
                               "for every phi.  Freezing it (instead of absorbing at each phi's " *
                               "own ridge) keeps the phi-derivative of logP from differencing a " *
                               "phi-dependent discretisation, which is what rippled the rate.",
-            "fisher_rate_def" => "phi^2 (A_esc+A_ret)/(MFPT_esc+MFPT_ret), " *
+            "fisher_def" => "phi^2 (A_esc+A_ret), " *
                                  "A=∫P(t|phi) (∂logP/∂phi)² dt (squared central 1st deriv in phi)",
             "phi_local_def" => "Boltzmann-weighted (w=exp(-U_tot/kBT)) avg over the well " *
                                "[R,x_ridge] of the profile from the SELECTED model: :bvp uses " *
@@ -333,7 +333,7 @@ open(outpath, "w") do io
         "phi_infs"    => phi_infs,
         "x_div"       => x_div,                         # the sweep-wide dividing surface
         "i_div"       => i_div,                         # its node index in x_grid
-        "fisher_rate" => fisher_rate,                   # length nphi-2, indexed by phi-index
+        "fisher" => fisher,                   # length nphi-2, indexed by phi-index
         "phi_local"             => phi_local_vals,      # length nphi
         "dphi_local_dphi_inf"   => dphi_local_vals,
         "d2phi_local_dphi_inf2" => d2phi_local_vals,

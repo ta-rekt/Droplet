@@ -10,7 +10,7 @@
 # PARAMS.fpt.Ngrid-point x-grid, and writes them to PARAMS.sim.output_dir /
 # PARAMS.sim.interp_file. No paths or filenames are baked into this code -- they
 # all come from param.jl (found next to this file).
-#
+#   
 # STANDALONE :linear MODE: When PARAMS.fpt.potential == :linear the whole pipeline
 # is closed-form, so this stage never touches fisher_two_spheres' output: the BVP
 # aggregation is skipped, phi_inf comes straight from phi_inf_grid(PARAMS), and every
