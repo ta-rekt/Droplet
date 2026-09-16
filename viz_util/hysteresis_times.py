@@ -33,7 +33,7 @@ def compute_hysteresis_times(pattern_distances, d_o=8.0, d_x=2.0, nruns=16, npar
     """
     bound_times = [[[] for _ in range(nruns)] for _ in range(nparams)]
     unbound_times = [[[] for _ in range(nruns)] for _ in range(nparams)]
-
+    
     for i in range(nparams):
         for j in range(nruns):
             traj = np.asarray(pattern_distances[i][j])
