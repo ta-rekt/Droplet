@@ -2,18 +2,13 @@
 export init!, simulate!
 
 # Rouse connectivity matrix A: tridiagonal with diag (1,2,2,...,2,1), off-diag -1.
+# Stored as SymTridiagonal so mul!(drift, A, pos) is O(N): the dense N×N product
+# dominated the step (24x slower at N = 301).
 function _build_adjacency_matrix(N::Integer)
-    A = zeros(Float64, N, N)
-    A[1, 1] = 1.0
-    A[N, N] = 1.0
-    for i in 2:(N - 1)
-        A[i, i] = 2.0
-    end
-    for i in 1:(N - 1)
-        A[i, i + 1] = -1.0
-        A[i + 1, i] = -1.0
-    end
-    return A
+    dv = fill(2.0, N)
+    dv[1] = 1.0
+    dv[N] = 1.0
+    return SymTridiagonal(dv, fill(-1.0, N - 1))
 end
 
 # Characteristic scales: timeScale = γ/κ, posScale = √(2 kBT/κ); κ = 3 kBT/b².

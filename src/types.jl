@@ -453,7 +453,7 @@ Base.@kwdef mutable struct RousePolymer
     dtDimless::Union{Nothing, Float64} = nothing
 
     # working buffers (dimensionless, N×3)
-    adjacency::Union{Nothing, Matrix{Float64}} = nothing
+    adjacency::Union{Nothing, SymTridiagonal{Float64, Vector{Float64}}} = nothing
     pos::Union{Nothing, Matrix{Float64}} = nothing
     drift::Union{Nothing, Matrix{Float64}} = nothing
     noise::Union{Nothing, Matrix{Float64}} = nothing

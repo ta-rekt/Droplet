@@ -17,6 +17,18 @@ import Droplet: _build_adjacency_matrix
         @test diag(A, 1) == fill(-1.0, 9)
         @test diag(A, -1) == fill(-1.0, 9)
         @test all(abs.(sum(A; dims = 2)) .< 1e-12)   # zero-mode: row sums vanish
+        @test A isa SymTridiagonal                    # O(N) mul! in the hot loop
+    end
+
+    @testset "tridiagonal drift matches the dense product" begin
+        # Dense BLAS sums the three nonzero terms of a row in a kernel-dependent
+        # order, so the agreement is to rounding, not bitwise.
+        rng = MersenneTwister(3)
+        for N in (2, 3, 4, 11, 111, 301)
+            A = _build_adjacency_matrix(N)
+            x = randn(rng, N, 3)
+            @test isapprox(mul!(similar(x), A, x), Matrix(A) * x; rtol = 1e-14)
+        end
     end
 
     @testset "scaling parameters" begin
