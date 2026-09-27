@@ -53,7 +53,7 @@ let
         try
             checkpoint!(checkpoint_at_param, slist)
         catch e
-            @warn "checkpoint! skipped for this slist type: $(typeof(slist))"
+            # @warn "checkpoint! skipped for this slist type: $(typeof(slist))"
         end
 
     end
