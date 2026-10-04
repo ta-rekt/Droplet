@@ -49,6 +49,7 @@
 using Test
 using Random
 using Printf
+using LinearAlgebra
 using Droplet
 
 # ---------------------------------------------------------------------------
@@ -113,6 +114,65 @@ function surface_root(p::Parameters, E)
 end
 
 # ---------------------------------------------------------------------------
+# Both branches of the construction, and their free energies (bc_reg = 0)
+# ---------------------------------------------------------------------------
+# Inside the prewetting window the h0^2/(2 kappa) line cuts Delta_f once on each
+# monotone segment: THIN (rising to the barrier), MIDDLE (falling into the
+# well), THICK (rising out of the well).  The window is therefore
+#
+#     Delta_f(well) < h0^2/(2 kappa) < Delta_f(barrier),
+#
+# whose two edges are the folds where the thick resp. thin branch ends.  Only
+# meaningful where Delta_f has its two turning points (phi_inf close enough to
+# the binodal); every case below is chosen so.
+function planar_roots(p::Parameters)
+    barrier, well = turning_points(p)
+    g(x) = deltaf(x, p) - p.omega_b^2 / (2 * p.kappa)
+    root(a, b) = g(a) * g(b) <= 0 ? _bisect(g, a, b) : NaN
+    return root(p.phi_inf * (1 + 1e-12), barrier), root(barrier, well),
+           root(well, 1 - 1e-16)
+end
+
+function planar_window(p::Parameters)
+    barrier, well = turning_points(p)
+    return -sqrt(2 * p.kappa * deltaf(well, p)), -sqrt(2 * p.kappa * deltaf(barrier, p))
+end
+
+# Cahn's excess free energy per unit area of the planar film with surface
+# composition phi_s.  On the profile (kappa/2) phi'^2 = Delta_f, so the bulk and
+# gradient terms are equal and Int (Delta_f + kappa/2 phi'^2) dz becomes an
+# integral over phi:
+#
+#     gamma(phi_s) = Int_{phi_inf}^{phi_s} [ sqrt(2 kappa Delta_f(phi)) + h0 ] dphi.
+#
+# d gamma/d phi_s vanishes exactly on (*); the thin and thick roots are minima,
+# the middle one a maximum, and gamma_thick - gamma_thin is Cahn's equal-area
+# integral between the curve sqrt(2 kappa Delta_f) and the line |h0|.  Composite
+# Simpson on the closed interval: the integrand is smooth there (sqrt(Delta_f) is
+# linear in phi - phi_inf at the lower end, and Delta_f > 0 in the well below
+# the binodal).  This is the planar limit of excess_free_energy / (4 pi R^2).
+function planar_gamma(p::Parameters, phi_s::Real; n::Int = 20000)
+    f(x) = sqrt(2 * p.kappa * max(deltaf(x, p), 0.0)) + p.omega_b
+    h = (phi_s - p.phi_inf) / n
+    s = f(p.phi_inf) + f(phi_s)
+    for i in 1:n - 1
+        s += (isodd(i) ? 4 : 2) * f(p.phi_inf + i * h)
+    end
+    return s * h / 3
+end
+
+# Planar prewetting field: the h0 in the window where gamma_thin = gamma_thick.
+function prewetting_field(p::Parameters)
+    lo, hi = planar_window(p)
+    function dgamma(h0)
+        q = with(p; omega_b = h0)
+        thin, _, thick = planar_roots(q)
+        return planar_gamma(q, thick) - planar_gamma(q, thin)
+    end
+    return _bisect(dgamma, lo + 1e-6 * (hi - lo), hi - 1e-6 * (hi - lo); n = 60)
+end
+
+# ---------------------------------------------------------------------------
 # Solver domain
 # ---------------------------------------------------------------------------
 # The truncation z in [0, L] must be long enough that the Dirichlet wall at z = L
@@ -138,6 +198,37 @@ end
 solver_domain(p::Parameters, phi_s::Real) =
     2 * _film_width(p, isnan(phi_s) ? 1 - 1e-6 : phi_s) +
     12 * sqrt(p.kappa / d2fb_dphi2(p.phi_inf, p))
+
+# ---------------------------------------------------------------------------
+# Branch tracking (solve_isolated_sphere, track_branches = true), planar limit
+# ---------------------------------------------------------------------------
+# Prewetting cases as (nb, chi_b, phi_inf); phi_inf = 0 means 0.9 x the dilute
+# binodal.  Each has a planar bistable window (planar_window).
+const PREWETTING_CASES = ((1.0, 2.5, 0.13), (1.0, 2.5, 0.14), (1.0, 2.8, 0.08),
+                          (5.0, 1.5, 0.0))
+
+# Planar-limit sphere at field h0 (R = 1e8: curvature corrections ~1e-8, below
+# everything tested).
+function prewetting_case(nb, chi, phi_inf, h0)
+    phi_b, _ = binodal(chi, nb)
+    return Parameters(nb = nb, chi_b = chi, omega_b = h0, kappa = 1.0,
+                      phi_inf = phi_inf == 0 ? 0.9 * phi_b : phi_inf,
+                      L = 1.0, R = 1e8, eps = 1e-16)
+end
+
+# Branch-tracked solve, the box sized on the thickest film the construction
+# allows so both branches fit.  The box depends on p only, not on N, so solves
+# at N and 2N differ by dz alone (needed for the Richardson checks).  The thick
+# candidate is seeded by the solver itself (_dense_well) unless phi_dense is given.
+function solve_tracked(p::Parameters, N::Int; phi_dense = nothing)
+    thin, _, thick = planar_roots(p)
+    L = solver_domain(p, isnan(thick) ? thin : thick)
+    return solve_isolated_sphere(with(p; L = L); L_iso = L, N = N, bc_reg = 0.0,
+                                 track_branches = true, phi_dense = phi_dense)
+end
+
+# Surface composition of one branch of a bistable solve, whichever was returned.
+branch_phis(s, b::Symbol) = s.branch == b ? s.phi[1] : s.phi_other[1]
 
 # ---------------------------------------------------------------------------
 
@@ -294,5 +385,250 @@ solver_domain(p::Parameters, phi_s::Real) =
         # Newton is allowed to stall on the stiffest near-prewetting samples, but
         # must carry the overwhelming majority.
         @test n_stall <= 0.05 * (n_root + n_stall)
+    end
+
+    # -- 4. Both branches against the construction, to discretization order ---
+    # Inside the planar window (20/50/80 % of the way from the thick fold to the
+    # thin fold) the tracked solve must return BOTH films, each sitting on its
+    # own root of (*) with Cahn's free energy gamma.  Stringency comes from
+    # resolution: at fixed box, the error must fall as dz^2 between N = 1500 and
+    # 3000 (ratio ~4), and the Richardson extrapolation (4 e_2N - e_N)/3 must
+    # vanish to the 1e-8 level -- i.e. the solver converges to the graphical
+    # construction itself, not merely near it.
+    @testset "PlanarBranches" begin
+        A = 4 * pi * 1e8^2
+        raw_phi = Float64[]; raw_gam = Float64[]       # |error| at N = 3000
+        ratios  = Float64[]                            # e(1500) / e(3000)
+        ext_phi = Float64[]; ext_gam = Float64[]       # |Richardson error|
+        for (nb, chi, phi_inf) in PREWETTING_CASES, frac in (0.2, 0.5, 0.8)
+            p0 = prewetting_case(nb, chi, phi_inf, 0.0)
+            lo, hi    = planar_window(p0)
+            p         = with(p0; omega_b = lo + frac * (hi - lo))
+            thin, _, thick = planar_roots(p)
+            g_thin, g_thick = planar_gamma(p, thin), planar_gamma(p, thick)
+
+            s1 = solve_tracked(p, 1500)
+            s2 = solve_tracked(p, 3000)
+            @test s1.success && s2.success
+            @test s1.bistable && s2.bistable
+            (s1.bistable && s2.bistable) || continue
+
+            err(s) = (branch_phis(s, :thin) - thin, branch_phis(s, :thick) - thick,
+                      s.F_thin / A - g_thin, s.F_thick / A - g_thick)
+            e1, e2 = err(s1), err(s2)
+            append!(raw_phi, abs.(e2[1:2])); append!(raw_gam, abs.(e2[3:4]))
+            # The order test needs the error well clear of the ~1e-8 floor of the
+            # comparison itself (quadrature of gamma, 1/R): below 1e-7 the ratio
+            # measures that floor (e.g. 3.4 at nb = 5), not the dz^2 error.
+            append!(ratios, [e1[k] / e2[k] for k in 1:4 if abs(e2[k]) > 1e-7])
+            ext = (4 .* e2 .- e1) ./ 3
+            append!(ext_phi, abs.(ext[1:2])); append!(ext_gam, abs.(ext[3:4]))
+
+            # Selection is the equal-area rule: the lower-gamma film is returned,
+            # the other one is kept alongside it.
+            @test s2.branch == (g_thin < g_thick ? :thin : :thick)
+            @test s2.F == min(s2.F_thin, s2.F_thick)
+            @test s2.phi[1] == branch_phis(s2, s2.branch)
+            @test length(s2.phi_other) == length(s2.phi)
+        end
+        @printf("\n  PlanarBranches: |dphi_s| %.1e  |dgamma| %.1e at N=3000 | e(1500)/e(3000) in [%.2f, %.2f] | Richardson |dphi_s| %.1e |dgamma| %.1e\n",
+                maximum(raw_phi), maximum(raw_gam), minimum(ratios), maximum(ratios),
+                maximum(ext_phi), maximum(ext_gam))
+        @test maximum(raw_phi) <= 3e-5
+        @test maximum(raw_gam) <= 1e-5
+        @test all(3.5 .<= ratios .<= 4.5)              # second-order convergence
+        @test maximum(ext_phi) <= 1e-7
+        @test maximum(ext_gam) <= 5e-8
+    end
+
+    # -- 5. The prewetting point --------------------------------------------
+    # The planar prewetting field h_pw solves gamma_thin = gamma_thick (Cahn's
+    # equal area).  Just on either side of it the tracked solve must switch from
+    # the thin to the thick film, and linear interpolation of its own
+    # F_thick - F_thin across that +-1e-4 bracket must put the crossing on h_pw:
+    # second-order convergent, and to ~1e-7 after Richardson extrapolation.  (The
+    # bracket is that narrow because linear interpolation of the curved
+    # F_thick - F_thin is biased by O(bracket^2) independently of dz, which
+    # Richardson cannot remove: +-1e-3 leaves a 5e-7 floor.)
+    @testset "PlanarPrewettingPoint" begin
+        for (nb, chi, phi_inf) in PREWETTING_CASES
+            p0 = prewetting_case(nb, chi, phi_inf, 0.0)
+            h_pw  = prewetting_field(p0)
+            h_w, h_s = h_pw * (1 - 1e-4), h_pw * (1 + 1e-4)   # weaker / stronger
+            rel = map((1500, 3000)) do N
+                s_w = solve_tracked(with(p0; omega_b = h_w), N)
+                s_s = solve_tracked(with(p0; omega_b = h_s), N)
+                @test s_w.bistable && s_s.bistable
+                @test s_w.branch == :thin
+                @test s_s.branch == :thick
+                d_w, d_s = s_w.F_thick - s_w.F_thin, s_s.F_thick - s_s.F_thin
+                (h_w - d_w * (h_s - h_w) / (d_s - d_w)) / h_pw - 1
+            end
+            ext = (4 * rel[2] - rel[1]) / 3
+            @printf("  PlanarPrewettingPoint (nb=%g chi=%g phi_inf=%.4f): h_pw = %.6f | rel. error N=1500 %.1e  N=3000 %.1e  Richardson %.1e\n",
+                    nb, chi, p0.phi_inf, h_pw, rel[1], rel[2], ext)
+            @test abs(rel[2]) <= 2e-5
+            @test abs(rel[2]) < abs(rel[1]) / 3
+            @test abs(ext) <= 2e-7
+        end
+    end
+
+    # -- 6. The whole window, and just outside it -----------------------------
+    # Hysteresis must be detected across the ENTIRE planar window (39 interior
+    # fields, the outermost 1/40 of the window from each fold), F_thick - F_thin
+    # must change sign exactly once -- at h_pw -- and the returned phi_s must
+    # jump exactly there.  Just past each fold only one branch survives: no
+    # bistability, and the lone film sits on the surviving root.
+    @testset "PlanarWindowCoverage" begin
+        A = 4 * pi * 1e8^2
+        for (nb, chi, phi_inf) in PREWETTING_CASES
+            p0 = prewetting_case(nb, chi, phi_inf, 0.0)
+            lo, hi = planar_window(p0)
+            h_pw   = prewetting_field(p0)
+            hs     = collect(range(lo, hi; length = 41))[2:end - 1]   # weak -> strong
+            sols   = [solve_tracked(with(p0; omega_b = h), 1500) for h in hs]
+            @test all(s -> s.success && s.bistable, sols)
+
+            flips = findall(diff(sign.([s.F_thick - s.F_thin for s in sols])) .!= 0)
+            @test length(flips) == 1
+            @test hs[flips[1]] > h_pw > hs[flips[1] + 1]
+            @test findall(diff([s.phi[1] for s in sols]) .> 0.1) == flips
+
+            for (h, survivor) in ((lo - 0.05 * (hi - lo), 1), (hi + 0.05 * (hi - lo), 3))
+                p = with(p0; omega_b = h)
+                r = planar_roots(p)
+                isnan(r[survivor]) && continue      # past the thick fold: complete wetting
+                @test count(isnan, r) == 2          # the construction has one root
+                s = solve_tracked(p, 1500)
+                @test s.success && !s.bistable && s.branch == :unique
+                @test isapprox(s.phi[1], r[survivor]; atol = 1e-4)
+                @test isapprox(s.F / A, planar_gamma(p, r[survivor]); atol = 5e-5)
+            end
+        end
+    end
+
+    # -- 7. Envelope identity, per branch, with and without bc_reg ------------
+    # F is stationary in phi, so dF/d(omega_b) is the explicit derivative of the
+    # surface term: 4 pi R^2 (phi_s - phi_inf), on EACH branch separately.  It
+    # holds only if F carries the surface free energy the BC was derived from --
+    # at bc_reg > 0 that includes bc_reg*[h(phi_s) - h(phi_inf)], h(x) = x log x
+    # + (1-x) log(1-x).  The negative control drops that term and must fail.
+    # Finite R = 50, where the window is narrower but survives bc_reg = 0.05.
+    @testset "EnvelopeIdentity" begin
+        hs(x) = x * log(x) + (1 - x) * log(1 - x)
+        dev = Float64[]; dev_noent = Float64[]
+        for (bc_reg, h0s) in ((0.0, (-0.23, -0.27)), (0.05, (-0.28, -0.30)))
+            for h0 in h0s
+                p = Parameters(nb = 1.0, chi_b = 2.5, omega_b = h0, kappa = 1.0,
+                               phi_inf = 0.14, L = 20.0, R = 50.0, eps = 1e-16)
+                A = 4 * pi * p.R^2
+                δ = 1e-4
+                s, sp, sm = (solve_isolated_sphere(with(p; omega_b = h0 + d); L_iso = 20.0,
+                                                   N = 3000, bc_reg = bc_reg,
+                                                   track_branches = true)
+                             for d in (0.0, δ, -δ))
+                @test s.bistable && sp.bistable && sm.bistable
+                (s.bistable && sp.bistable && sm.bistable) || continue
+                for b in (:thin, :thick)
+                    F(x)  = b == :thin ? x.F_thin : x.F_thick
+                    phi_s = branch_phis(s, b)
+                    rhs   = A * (phi_s - p.phi_inf)
+                    push!(dev, (F(sp) - F(sm)) / (2δ) / rhs - 1)
+                    noent(x) = F(x) - A * bc_reg * (hs(branch_phis(x, b)) - hs(p.phi_inf))
+                    bc_reg > 0 && push!(dev_noent, (noent(sp) - noent(sm)) / (2δ) / rhs - 1)
+                end
+            end
+        end
+        @printf("  EnvelopeIdentity: max |ratio - 1| = %.1e (with surface entropy), %.2f without\n",
+                maximum(abs, dev), maximum(abs, dev_noent))
+        @test maximum(abs, dev) <= 2e-4
+        @test maximum(abs, dev_noent) >= 0.05
+    end
+
+    # -- 8. Default path (track_branches = false) ----------------------------
+    @testset "DefaultPath" begin
+        for bc_reg in (0.0, 0.05)
+            p = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.3, kappa = 1.0,
+                           phi_inf = 0.14, L = 10.0, R = 5.0, eps = 1e-10)
+            s = solve_isolated_sphere(p; L_iso = 10.0, N = 400, bc_reg = bc_reg)
+            @test s.success
+            @test !s.bistable && s.branch == :unique
+            @test isnan(s.F_thin) && isnan(s.F_thick) && isempty(s.phi_other)
+            @test s.F == excess_free_energy(s.phi, s.dphi, s.z, p; bc_reg = bc_reg)
+        end
+    end
+
+    # -- 8b. The thick-film seed --------------------------------------------
+    # The solver seeds the thick candidate itself with the well of Delta_f (the
+    # dense root of fb'(phi) = fb'(phi_inf)), which must coincide with the
+    # construction's well.  Where Delta_f has no well the construction has a
+    # single root, so tracking must reduce exactly to the default solve.  An
+    # explicit phi_dense (here the dense binodal) only changes the starting
+    # guess, never the branches found.
+    @testset "ThickSeed" begin
+        for (nb, chi, phi_inf) in PREWETTING_CASES
+            p = prewetting_case(nb, chi, phi_inf, -0.3)
+            @test isapprox(Droplet._dense_well(p), turning_points(p)[2]; atol = 1e-12)
+        end
+
+        # No well (phi_inf far below the binodal): one root, no thick candidate.
+        p = Parameters(nb = 1.0, chi_b = 2.5, omega_b = -0.3, kappa = 1.0,
+                       phi_inf = 0.05, L = 10.0, R = 5.0, eps = 1e-10)
+        @test Droplet._dense_well(p) === nothing
+        s_def = solve_isolated_sphere(p; L_iso = 10.0, N = 400)
+        s_trk = solve_isolated_sphere(p; L_iso = 10.0, N = 400, track_branches = true)
+        @test s_trk.phi == s_def.phi
+        @test !s_trk.bistable && s_trk.branch == :unique
+
+        # Explicit seed: the same two branches as the automatic one.
+        p0     = prewetting_case(1.0, 2.8, 0.08, 0.0)
+        lo, hi = planar_window(p0)
+        p      = with(p0; omega_b = 0.5 * (lo + hi))
+        s_auto = solve_tracked(p, 1500)
+        s_bin  = solve_tracked(p, 1500; phi_dense = binodal(2.8, 1.0)[2])
+        @test s_auto.bistable && s_bin.bistable
+        @test s_auto.branch == s_bin.branch
+        @test isapprox(s_auto.F_thin, s_bin.F_thin; rtol = 1e-8)
+        @test isapprox(s_auto.F_thick, s_bin.F_thick; rtol = 1e-8)
+        @test maximum(abs, s_auto.phi .- s_bin.phi) < 1e-6
+    end
+
+    # -- 9. Morse index = number of negative eigenvalues of -J ----------------
+    # _morse_index counts negative pivots of the unpivoted elimination of -J,
+    # relying on Sylvester's law of inertia (J is a row-weighted symmetric
+    # matrix).  Checked against a dense eigensolver on random tridiagonals with
+    # positive off-diagonal products (the structure of every Jacobian here), and
+    # on the actual isolated-sphere stencil with an f'' dip deep enough to make
+    # 0, 1, 2, ... directions unstable.
+    @testset "MorseIndex" begin
+        Random.seed!(20261004)
+        for _ in 1:300
+            n  = rand(2:60)
+            lo = rand(n - 1) .+ 0.05                 # J[i+1, i]
+            up = rand(n - 1) .+ 0.05                 # J[i, i+1]
+            dd = 3.0 .* randn(n)
+            λ  = eigvals(Matrix(Tridiagonal(-lo, -dd, -up)))
+            @test maximum(abs, imag.(λ)) < 1e-8
+            @test Droplet._morse_index(vcat(0.0, lo), dd, vcat(up, 0.0)) ==
+                  count(<(0), real.(λ))
+        end
+
+        # Sphere stencil of solve_isolated_sphere's jacobian! (bc_reg = 0).
+        R, kappa, n, dz = 5.0, 1.0, 400, 0.02
+        z  = (0:n - 1) .* dz
+        counts = Int[]
+        for depth in range(0.0, 60.0; length = 31)
+            f2 = 0.5 .- depth .* exp.(-((z .- 2.0) ./ 0.7) .^ 2)   # fb'' with a dip
+            dl = [i == 1 ? 0.0 : kappa * (1 / dz^2 - (1 / (R + z[i])) / dz) for i in 1:n]
+            du = [i == 1 ? 2kappa / dz^2 :
+                  i == n ? 0.0 : kappa * (1 / dz^2 + (1 / (R + z[i])) / dz) for i in 1:n]
+            dd = -2kappa / dz^2 .- f2
+            λ  = real.(eigvals(Matrix(Tridiagonal(-dl[2:n], -dd, -du[1:n - 1]))))
+            minimum(abs, λ) > 1e-6 || continue      # skip a dip sitting on a fold
+            k = Droplet._morse_index(dl, dd, du)
+            @test k == count(<(0), λ)
+            push!(counts, k)
+        end
+        @test maximum(counts) >= 3                   # the dip did reach unstable modes
     end
 end

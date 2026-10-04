@@ -130,6 +130,17 @@ struct IsolatedSphere1D
     dphi::Vector{Float64}
     p::Parameters
     success::Bool
+    # Branch bookkeeping (see solve_isolated_sphere).  F is the bc_reg-consistent
+    # excess free energy of the returned profile.  When two stable solutions
+    # coexist (bistable), branch says which one was returned (:thin / :thick),
+    # F_thin / F_thick hold both energies and phi_other the profile NOT returned.
+    # Otherwise branch = :unique, F_thin = F_thick = NaN and phi_other is empty.
+    branch::Symbol
+    bistable::Bool
+    F::Float64
+    F_thin::Float64
+    F_thick::Float64
+    phi_other::Vector{Float64}
 end
 
 @inline function _linterp(zg::AbstractVector, yg::AbstractVector,
@@ -158,7 +169,10 @@ end
 #     -kappa*phi'(0) + omega_b + bc_reg * log(phi_s / (1 - phi_s)) = 0.
 # As phi_s -> 1 the log term diverges and opposes the attractive omega_b,
 # pinning a unique *finite* adsorption branch near a surface phase transition
-# (where the bare BC is bistable: a thin film and a runaway phi_s -> 1).
+# (where the bare BC is bistable: a thin film and a runaway phi_s -> 1).  It
+# removes the runaway, not prewetting bistability: a finite thick film can
+# still coexist with the thin one at bc_reg > 0 (e.g. R = 50, chi_b = 2.5,
+# phi_inf = 0.14, bc_reg = 0.05; test_bvp_solver.jl "EnvelopeIdentity").
 @inline function _surf_slope(phi_s::Real, omega_b::Real, p::Parameters, bc_reg::Real)
     bc_reg == 0.0 && return omega_b / p.kappa
     ps = clip01(phi_s, p.eps)
@@ -173,13 +187,96 @@ end
     return bc_reg / (p.kappa * ps * (1.0 - ps))
 end
 
+# Morse index of a solution: the number of unstable directions of the free
+# energy there, read off the tridiagonal Jacobian J (sub dl[2:n], diag dd, super
+# du[1:n-1], as filled by jacobian! in solve_isolated_sphere).  0 = local minimum
+# (thin or thick film), 1 = the saddle (middle branch) between them.
+#
+# The residual is -dF/dphi per unit volume, so J is minus the Hessian with row i
+# divided by its volume weight -- w_1 = R(R+dz)/2 for the ghost row, (R+z_i)^2
+# otherwise; with r_{i+1} = r_i + dz, r_i^2 (1/dz^2 + 1/(r_i dz)) = r_{i+1}^2
+# (1/dz^2 - 1/(r_{i+1} dz)), so W*J is exactly symmetric.  By Sylvester's law of
+# inertia the negative pivots of the UNPIVOTED LDL' of -W*J count its negative
+# eigenvalues, and the positive row weights only rescale pivots, never flip them:
+# so count the negative pivots of -J itself.  Do not use the factors behind `\`
+# for this -- LAPACK's tridiagonal LU pivots rows, and those pivots carry no
+# inertia.
+function _morse_index(dl::AbstractVector, dd::AbstractVector, du::AbstractVector)
+    piv = -dd[1]
+    n   = piv < 0 ? 1 : 0
+    @inbounds for i in 2:length(dd)
+        piv = -dd[i] - dl[i] * du[i - 1] / piv
+        piv < 0 && (n += 1)
+    end
+    return n
+end
+
+# Interior composition of a thick film: the dense root of fb'(phi) = fb'(phi_inf),
+# i.e. the metastable liquid at the reservoir chemical potential -- the "well" of
+# Delta_f(phi) = fb(phi) - fb(phi_inf) - fb'(phi_inf)(phi - phi_inf) in the planar
+# graphical construction.  fb' rises to a max at the lower spinodal, falls to a
+# min at the upper one and rises to +infinity as phi -> 1, so for a dilute
+# reservoir (phi_inf below the lower spinodal) the root exists iff fb'(upper
+# spinodal) < fb'(phi_inf), and is then unique above the upper spinodal.  When it
+# does not exist, Delta_f has no turning points at all (the barrier needs the same
+# condition), the construction has exactly one root, and there is no thick branch
+# to find.  Returns nothing in that case.
+function _dense_well(p::Parameters)
+    lo_sp, hi_sp = compute_spinodal(p)
+    lo_sp === nothing && return nothing
+    target = dfb_dphi(p.phi_inf, p)
+    (p.phi_inf < lo_sp && dfb_dphi(hi_sp, p) < target) || return nothing
+    a, b = hi_sp, 1.0 - p.eps                 # fb' - target: < 0 at a, > 0 at b
+    for _ in 1:80
+        m = 0.5 * (a + b)
+        dfb_dphi(m, p) < target ? (a = m) : (b = m)
+    end
+    return 0.5 * (a + b)
+end
+
+# BRANCH TRACKING (track_branches = true).  Past the prewetting transition the
+# BVP has three solutions -- thin film, saddle, thick film -- and Newton returns
+# whichever one its initial guess falls toward.  With tracking on, two
+# candidates are built from separate anchors and the lower free energy wins:
+#
+#   thin  : the cold start below; on failure, OR if it is a saddle, OR if it
+#           coincides with the thick candidate, the omega_b continuation from
+#           the uniform omega_b = 0 state (unambiguously thin), which follows the
+#           thin branch by continuity until it either arrives or falls off its
+#           fold.  (The cold start is not reliably thin: when |omega_b|*ell/kappa
+#           exceeds 1 - phi_inf, clip01 turns it into a saturated layer.)
+#   thick : a film of the well composition (_dense_well) out to `reach` with a
+#           tanh edge, phi_inf beyond -- the 1D analogue of _dense_seed in
+#           spec/fisher_two_spheres.jl.  It is only a starting guess: Newton finds
+#           the film's actual composition, thickness and phi_s.  Film thickness
+#           is the soft mode and the saddle is the critical film, so a seed
+#           thicker than it relaxes onto the thick branch: if this lands on a
+#           saddle or on the thin solution, it is retried once at 2*reach.  With
+#           no well there is no thick candidate (exact in the planar limit; at
+#           finite R curvature only shrinks the window), so the solve is then the
+#           single-candidate one.  phi_dense overrides the well composition as the
+#           seed plateau (and turns tracking on by itself).
+#
+# Each converged candidate is classified by its Morse index (_morse_index;
+# saddles are never returned while a minimum exists), duplicates are merged by
+# profile distance, and two distinct minima are labelled by adsorption Gamma =
+# Int 4 pi (R+z)^2 (phi - phi_inf) dz (larger = thick), never by which seed
+# produced them.  F is excess_free_energy with the solve's bc_reg.  Missing a
+# branch near its own fold is benign for the selection: there it is the
+# metastable one.  track_branches = false (the default) skips all of this: one
+# candidate, as before.  Cost: ~ms when both films exist; when the well exists
+# but no thick film does (small R), Newton exhausts maxiter on the seed twice,
+# ~0.7 s at N = 1500.
 function solve_isolated_sphere(p::Parameters;
                                L_iso::Real = 10.0,
                                N::Int      = 400,
                                f_tol::Real = 1e-8,
                                maxiter::Int = 200,
                                bc_reg::Real = 0.0,
-                               omega_continuation::Bool = true)
+                               omega_continuation::Bool = true,
+                               track_branches::Bool = false,
+                               phi_dense::Union{Nothing,Real} = nothing,
+                               reach::Real = 2.0)
     @assert isfinite(p.R) "solve_isolated_sphere requires finite p.R"
     z  = collect(range(0.0, L_iso; length = N))
     dz = z[2] - z[1]
@@ -230,6 +327,10 @@ function solve_isolated_sphere(p::Parameters;
     # Jacobian.  Returns (u, |F|).  Robust on the stiff prewetting branch where
     # the bare dense Newton stalls.
     function newton(u0, ob)
+        # `local`: u, F and nrm are also locals of solve_isolated_sphere, and an
+        # assignment in a nested function would otherwise rebind THOSE -- every
+        # call would silently overwrite the caller's current candidate.
+        local u, F, nrm
         u  = copy(u0)
         F  = Vector{Float64}(undef, Nu)
         dl = Vector{Float64}(undef, Nu)
@@ -241,7 +342,14 @@ function solve_isolated_sphere(p::Parameters;
             nrm < f_tol && break
             jacobian!(dl, dd, du, u, ob)
             δ = Tridiagonal(dl[2:Nu], dd[1:Nu], du[1:Nu - 1]) \ F
-            λ = 1.0; accepted = false
+            # Backtrack from the fraction-to-boundary cap, as _solve_newton_sparse
+            # does: it is 1 whenever the full step stays inside (eps, 1-eps), and
+            # then every trial is feasible and the clamp below a no-op, so such
+            # solves are unchanged.  Starting at lambda = 1 and clamping instead
+            # lets one overshooting step pin the wall cell at 1 - eps (fb'' ~
+            # 1/eps there), where the line search stalls for good -- the failure
+            # mode of the dense (thick-film) seed.
+            λ = _max_feasible_step(u, δ, p.eps, 1.0 - p.eps); accepted = false
             for _ in 1:40
                 @inbounds @. ut = clamp(u - λ * δ, p.eps, 1.0 - p.eps)
                 residual!(F, ut, ob); newnrm = maximum(abs, F)
@@ -263,30 +371,90 @@ function solve_isolated_sphere(p::Parameters;
         u0[i] = clip01(p.phi_inf - p.omega_b * ell / p.kappa * exp(-z[i] / ell), p.eps)
     end
 
+    jl = Vector{Float64}(undef, Nu); jd = similar(jl); ju = similar(jl)
+    stable(v, r) = r < f_tol &&
+                   (jacobian!(jl, jd, ju, v, p.omega_b); _morse_index(jl, jd, ju) == 0)
+    # Distinct branches differ by O(0.1) near the wall; two converged copies of
+    # one solution by ~ |J^-1| * f_tol, well under this for f_tol <= 1e-5.
+    same(a, b) = maximum(abs(a[i] - b[i]) for i in 1:Nu) < 1e-3
+
+    # Thick-film seed plateau: the caller's phi_dense, else the well composition
+    # (nothing when there is no well -- and then no thick candidate at all).
+    phi_film  = phi_dense !== nothing ? phi_dense :
+                track_branches ? _dense_well(p) : nothing
+    has_thick = phi_film !== nothing
+    if has_thick
+        # A tanh interface of the dense-side width, not a sharp step: the step's
+        # interface residual dominates the max-norm line search, and even with the
+        # fraction-to-boundary cap a step seed misses the thick branch at up to
+        # ~1 in 5 points of the chi_b = 2.8 bistable window (some on the side
+        # where thick is the stable answer).  The tanh seed finds it at all of
+        # them (test_bvp_solver.jl, "PlanarWindowCoverage").
+        xi_d = sqrt(p.kappa / max(d2fb_dphi2(phi_film, p), 0.05))
+        dense_seed = r -> [clip01(p.phi_inf + (phi_film - p.phi_inf) *
+                                  0.5 * (1.0 - tanh((z[i] - r) / (2.0 * xi_d))), p.eps)
+                           for i in 1:Nu]
+        u_b, nrm_b = newton(dense_seed(reach), p.omega_b)
+    end
+
     u, nrm = newton(u0, p.omega_b)
     # omega_b continuation from the uniform (omega_b = 0) state, tracing the
     # branch continuously when the cold start fails (same strategy as
-    # solve_two_spheres, and the branch the 2D solver follows).
-    if nrm >= f_tol && omega_continuation && p.omega_b != 0.0
+    # solve_two_spheres, and the branch the 2D solver follows) -- or, when
+    # tracking branches, when the cold start did not land on a distinct thin
+    # minimum.
+    redo = nrm >= f_tol ||
+           (has_thick && (!stable(u, nrm) || (nrm_b < f_tol && same(u, u_b))))
+    if redo && omega_continuation && p.omega_b != 0.0
         u_cur = fill(clip01(p.phi_inf, p.eps), Nu)
+        nrm_cur = Inf
         n_steps = 8
         for k in 1:n_steps
-            u_cur, nrm = newton(u_cur, (k / n_steps) * p.omega_b)
-            nrm >= f_tol && break
+            u_cur, nrm_cur = newton(u_cur, (k / n_steps) * p.omega_b)
+            nrm_cur >= f_tol && break
         end
-        nrm < f_tol && (u = u_cur)
+        nrm_cur < f_tol && ((u, nrm) = (u_cur, nrm_cur))
     end
-    success = nrm < f_tol
-
-    phi      = vcat(u, phi_far)
-    dphi     = similar(phi)
-    dphi[1]  = _surf_slope(phi[1], p.omega_b, p, bc_reg)
-    @inbounds for i in 2:N - 1
-        dphi[i] = (phi[i + 1] - phi[i - 1]) / (2 * dz)
+    if has_thick && (!stable(u_b, nrm_b) || (nrm < f_tol && same(u, u_b)))
+        u_b, nrm_b = newton(dense_seed(2 * reach), p.omega_b)
     end
-    dphi[N] = (phi[N] - phi[N - 1]) / dz
 
-    return IsolatedSphere1D(z, phi, dphi, p, success)
+    stable_a = stable(u, nrm)
+    stable_b = has_thick && stable(u_b, nrm_b)
+    stable_b && !stable_a && ((u, nrm) = (u_b, nrm_b))   # the only minimum found
+    bistable = stable_a && stable_b && !same(u, u_b)
+    success  = nrm < f_tol
+
+    function profile(v)
+        ph      = vcat(v, phi_far)
+        dph     = similar(ph)
+        dph[1]  = _surf_slope(ph[1], p.omega_b, p, bc_reg)
+        @inbounds for i in 2:N - 1
+            dph[i] = (ph[i + 1] - ph[i - 1]) / (2 * dz)
+        end
+        dph[N] = (ph[N] - ph[N - 1]) / dz
+        return ph, dph
+    end
+    phi, dphi = profile(u)
+    F = excess_free_energy(phi, dphi, z, p; bc_reg = bc_reg)
+
+    branch, F_thin, F_thick, phi_other = :unique, NaN, NaN, Float64[]
+    if bistable
+        phi_b, dphi_b = profile(u_b)
+        F_b    = excess_free_energy(phi_b, dphi_b, z, p; bc_reg = bc_reg)
+        gamma(ph) = _trapz([4.0 * pi * (p.R + z[i])^2 * (ph[i] - p.phi_inf) for i in 1:N], z)
+        a_thick = gamma(phi) > gamma(phi_b)
+        F_thin, F_thick = a_thick ? (F_b, F) : (F, F_b)
+        if F_b < F
+            phi, dphi, phi_b, F = phi_b, dphi_b, phi, F_b
+            a_thick = !a_thick
+        end
+        branch    = a_thick ? :thick : :thin
+        phi_other = phi_b
+    end
+
+    return IsolatedSphere1D(z, phi, dphi, p, success,
+                            branch, bistable, F, F_thin, F_thick, phi_other)
 end
 
 # ------------------------------------------------------------------
@@ -523,9 +691,23 @@ _trapz(y::AbstractVector, x::AbstractVector) =
 #   parallel plates : per unit area, one surface term per plate,
 #   spherical       : 4*pi*(R+z)^2 volume weight, 4*pi*R^2 surface term,
 #   single plate    : per unit area, one surface term at z = 0.
+#
+# SURFACE TERM AND bc_reg.  The Robin BC the solvers impose, kappa*phi'(0) =
+# omega_b + bc_reg*log(phi_s/(1-phi_s)), is the natural BC of the surface free
+# energy
+#
+#     fs(phi) = omega_b*phi + bc_reg*[phi log phi + (1-phi) log(1-phi)],
+#
+# charged here per surface as fs(phi_s) - fs(phi_inf) (referenced to a surface
+# bathed in bulk, as in excess_free_energy_two_spheres).  Pass the bc_reg the
+# profile was solved with: the entropy piece is branch-dependent (a thin and a
+# thick film sit at very different phi_s), so dropping it at bc_reg > 0 can
+# invert the ordering of coexisting branches.  bc_reg = 0 recovers the bare
+# omega_b*(phi_s - phi_inf).
 function excess_free_energy(phi::AbstractVector, dphi::AbstractVector,
                             z::AbstractVector, p::Parameters;
-                            mu_ref::Union{Nothing,Real} = nothing)
+                            mu_ref::Union{Nothing,Real} = nothing,
+                            bc_reg::Real = 0.0)
     mu    = mu_ref === nothing ? p.nb * dfb_dphi(p.phi_inf, p) : mu_ref
     f_inf = fb(p.phi_inf, p)
     n     = length(z)
@@ -534,16 +716,17 @@ function excess_free_energy(phi::AbstractVector, dphi::AbstractVector,
         df   = fb(phi[k], p) - f_inf - (mu / p.nb) * (phi[k] - p.phi_inf)
         g[k] = df + 0.5 * p.kappa * dphi[k]^2
     end
+    hs(v) = (c = clip01(v, p.eps); c * log(c) + (1.0 - c) * log(1.0 - c))
+    fs(v) = p.omega_b * (v - p.phi_inf) + bc_reg * (hs(v) - hs(p.phi_inf))
     if p.parallel_plates
-        return _trapz(g, z) +
-               p.omega_b * ((phi[1] - p.phi_inf) + (phi[n] - p.phi_inf))
+        return _trapz(g, z) + fs(phi[1]) + fs(phi[n])
     elseif is_spherical(p)
         @inbounds for k in 1:n
             g[k] *= 4.0 * pi * (p.R + z[k])^2
         end
-        return _trapz(g, z) + 4.0 * pi * p.R^2 * p.omega_b * (phi[1] - p.phi_inf)
+        return _trapz(g, z) + 4.0 * pi * p.R^2 * fs(phi[1])
     else
-        return _trapz(g, z) + p.omega_b * (phi[1] - p.phi_inf)
+        return _trapz(g, z) + fs(phi[1])
     end
 end
 
