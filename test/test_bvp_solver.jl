@@ -591,6 +591,23 @@ branch_phis(s, b::Symbol) = s.branch == b ? s.phi[1] : s.phi_other[1]
         @test isapprox(s_auto.F_thin, s_bin.F_thin; rtol = 1e-8)
         @test isapprox(s_auto.F_thick, s_bin.F_thick; rtol = 1e-8)
         @test maximum(abs, s_auto.phi .- s_bin.phi) < 1e-6
+
+        # Scale-free seed: the production regime of spec/local/20261004/large_R
+        # (kappa = 10, nb = 2230, R = 1e4), whose thick film is ~15 wide with an
+        # interface ~25 wide.  The default reach = 2 alone found bistability at 1
+        # of these 5 consecutive phi_inf (the finite-R window, shifted from the
+        # planar one by curvature); the doubling reach ladder finds all 5, and
+        # none just outside.
+        q = Parameters(nb = 2230.0, chi_b = 0.544821635760637,
+                       omega_b = -0.03576257306287501, kappa = 10.12228759025409,
+                       phi_inf = 2e-5, L = 200.0, R = 1e4, eps = 1e-8)
+        window = (2.0568646565168776e-5, 2.0726246194131617e-5, 2.0883845823094452e-5,
+                  2.104144545205729e-5, 2.1199045081020126e-5)
+        outside = (2.041104693620594e-5, 2.1356644709982964e-5)
+        bi(x) = solve_isolated_sphere(with(q; phi_inf = x); L_iso = 200.0, N = 400,
+                                      f_tol = 1e-6, track_branches = true).bistable
+        @test all(bi, window)
+        @test !any(bi, outside)
     end
 
     # -- 9. Morse index = number of negative eigenvalues of -J ----------------

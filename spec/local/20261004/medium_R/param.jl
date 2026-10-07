@@ -107,7 +107,7 @@ end
 # process (sweep.jl overwrites it in-process on a forward run; ncpus likewise).
 Base.@kwdef mutable struct SimulationParams
     spec_path::Union{Nothing, String}   = ""
-    output_dir::Union{Nothing, String}  = "data/20260825/medium_R"
+    output_dir::Union{Nothing, String}  = "data/20261004/medium_R"
     ncpus::Int          = 0    # placeholder; set to sweep.jl's ncpus (ARGS[3])
     # Output filenames for the downstream stages (written into output_dir).
     interp_file::String = "bvp_potential_interp.json"
@@ -120,7 +120,7 @@ end
 # modified FisherParams) to reconfigure the whole pipeline from one place.
 Base.@kwdef struct FisherParams
     surface::Parameters       = Parameters(nb = 2230.0, chi_b = 0.544821635760637, 
-                                           omega_b = -0.03576257306287501,
+                                           omega_b = -0.034,
                                            kappa = 10.12228759025409, phi_inf = 0.09, 
                                            L = 200.0,
                                            R = 166.66, eps = 1e-8,

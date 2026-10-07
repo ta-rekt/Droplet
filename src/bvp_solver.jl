@@ -251,7 +251,11 @@ end
 #           the film's actual composition, thickness and phi_s.  Film thickness
 #           is the soft mode and the saddle is the critical film, so a seed
 #           thicker than it relaxes onto the thick branch: if this lands on a
-#           saddle or on the thin solution, it is retried once at 2*reach.  With
+#           saddle or on the thin solution, it is retried at doubling reach until
+#           it finds a distinct minimum or exceeds L_iso/2.  The ladder is what
+#           makes the seed scale-free: the working reach is ~2 at kappa = 1,
+#           nb = 1 but 5-20 at kappa = 10, nb = 2230 (interface width ~25), and
+#           no fixed multiple of any one length covers both.  With
 #           no well there is no thick candidate (exact in the planar limit; at
 #           finite R curvature only shrinks the window), so the solve is then the
 #           single-candidate one.  phi_dense overrides the well composition as the
@@ -415,8 +419,11 @@ function solve_isolated_sphere(p::Parameters;
         end
         nrm_cur < f_tol && ((u, nrm) = (u_cur, nrm_cur))
     end
-    if has_thick && (!stable(u_b, nrm_b) || (nrm < f_tol && same(u, u_b)))
-        u_b, nrm_b = newton(dense_seed(2 * reach), p.omega_b)
+    r_seed = reach
+    while has_thick && (!stable(u_b, nrm_b) || (nrm < f_tol && same(u, u_b))) &&
+          2 * r_seed <= L_iso / 2
+        r_seed *= 2
+        u_b, nrm_b = newton(dense_seed(r_seed), p.omega_b)
     end
 
     stable_a = stable(u, nrm)
