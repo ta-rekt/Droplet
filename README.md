@@ -9,6 +9,22 @@ under `spec/`, and figures are made in the three `viz*.ipynb` notebooks. `CLAUDE
 
 ## Setup
 
+`Manifest.toml` was resolved with **Julia 1.11.1**, so use exactly that version. Install
+it with [juliaup](https://github.com/JuliaLang/juliaup):
+
+```bash
+curl -fsSL https://install.julialang.org | sh    # installs juliaup; open a new shell afterwards
+juliaup add 1.11.1
+juliaup default 1.11.1                           # runJL calls plain `julia`, so the default must be 1.11.1
+julia --version                                  # -> julia version 1.11.1
+```
+
+Pin `1.11.1` rather than relying on the `release` channel, because `juliaup update` moves
+`release` to the newest version. To run a single command on 1.11.1 without changing the
+default, use `julia +1.11.1 ...`.
+
+Then install the Julia and Python dependencies:
+
 ```bash
 julia --project=@. -e 'using Pkg; Pkg.instantiate()'
 pip install -r requirements.txt jupyter        # numpy 2.2.6, scipy, matplotlib, numdifftools, pillow
