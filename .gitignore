@@ -1,3 +1,4 @@
 data/
 jobs/
-spec/jobs/__pycache__/
+spec/jobs/
+__pycache__/
