@@ -1,0 +1,22 @@
+{
+  "theta": 4266.666666666665,
+  "theta_units": "uM per unit volume fraction",
+  "mean_toff_rnap": 175.7742692143392,
+  "K_D_bands": 0.0023,
+  "K_D_curves": 0.00233,
+  "K_D_note": "cell 128 uses 2.3e-3 for the bootstrap bands and cell 132 recomputes kb/ku with 2.33e-3 for the central curves",
+  "phi_R": 0.02,
+  "threshold_closed": 6.5,
+  "epsilon": 0.32,
+  "K": 0.75377180237638,
+  "delta_c_over_c": 0.1,
+  "sprt_note": "lattice.tex: R(t)=log P(O(t)|c)/P(O(t)|c+dc) is a drift-diffusion process with drift V and EQUAL diffusion constant V; V=(1/2)(dc/c)^2*Fdot(c) and <T_dec>=(K/V)tanh(K/2) with K=log((1-eps)/eps). eps=0.32 and dc/c=0.1 are the values quoted in the text.",
+  "n_conc": 16,
+  "n_runs": 16,
+  "source_data": "/sessions/rcw-01uurdv6g3nayj1pyvnybegf/mnt/droplet_data/20260423",
+  "source_date_folder": "20260423",
+  "repo_commit": "60c48daabed8a23ea5e61f4c8f38ddc7acdffd15",
+  "generated_by": "prepare_fig3_data.py",
+  "generated_at": "2026-10-08T09:11:58+00:00",
+  "source_cells": "viz.ipynb cells 110, 123, 126, 128"
+}
