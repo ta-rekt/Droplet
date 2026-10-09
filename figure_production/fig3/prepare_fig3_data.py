@@ -84,7 +84,7 @@ def parse_args(argv=None):
     p.add_argument("--repo", default=os.path.dirname(os.path.abspath(__file__)))
     p.add_argument("--date", default="20260423")
     p.add_argument("--out", default=None,
-                   help="output directory (default: ./processed_data)")
+                   help="output directory (default: figure_production/processed_data)")
     return p.parse_args(argv)
 
 
@@ -96,7 +96,7 @@ def resolve_repo(repo):
     """Locate the Droplet checkout (the directory holding viz_util/).
 
     Accepts the checkout itself, a directory containing it, or any ancestor of
-    this script -- these scripts live in figure_production/ inside the repo."""
+    this script -- it lives in figure_production/fig3/ inside the repo."""
     root = os.path.abspath(os.path.expanduser(repo))
     cands = [root, os.path.join(root, "Droplet")]
     p = root
@@ -194,9 +194,11 @@ def reduce_runs(R):
 def main(argv=None):
     args = parse_args(argv)
     repo = resolve_repo(args.repo)
-    # processed_data/ sits next to this script, in figure_production/
+    # processed_data/ is shared by the figures, one level up from this
+    # script: figure_production/processed_data/
     out_dir = args.out or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "processed_data")
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "processed_data")
     os.makedirs(out_dir, exist_ok=True)
 
     R = load_runs(repo, args.data_root, args.date)

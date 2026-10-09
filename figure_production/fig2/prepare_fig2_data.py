@@ -101,7 +101,7 @@ def parse_args(argv=None):
     p.add_argument("--date", default="20260423",
                    help="run-date folder under --data-root")
     p.add_argument("--out", default=None,
-                   help="output directory (default: ./processed_data)")
+                   help="output directory (default: figure_production/processed_data)")
     p.add_argument("--seed", type=int, default=0,
                    help="seed for the run-level bootstrap, which is unseeded "
                         "in the notebook; -1 leaves the global RNG untouched")
@@ -116,7 +116,7 @@ def resolve_repo(repo):
     """Locate the Droplet checkout (the directory holding viz_util/).
 
     Accepts the checkout itself, a directory containing it, or any ancestor of
-    this script -- these scripts live in figure_production/ inside the repo."""
+    this script -- it lives in figure_production/fig2/ inside the repo."""
     root = os.path.abspath(os.path.expanduser(repo))
     cands = [root, os.path.join(root, "Droplet")]
     p = root
@@ -398,9 +398,11 @@ def write_outputs(D, out_dir, args, repo, src):
 def main(argv=None):
     args = parse_args(argv)
     repo = resolve_repo(args.repo)
-    # processed_data/ sits next to this script, in figure_production/
+    # processed_data/ is shared by the figures, one level up from this
+    # script: figure_production/processed_data/
     out_dir = args.out or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "processed_data")
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "processed_data")
     log("repo {}".format(repo))
 
     R = load_runs(repo, args.data_root, args.date)
