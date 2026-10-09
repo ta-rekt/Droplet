@@ -3,7 +3,7 @@
 # Regenerate the BVP solver output behind Fig. 4 (panels B-G).
 #
 # Run from the repo root:
-#     bash figure_production/run_fig4_solver.sh
+#     bash figure_production/fig4/run_fig4_solver.sh
 #
 # Writes eight files, one per run, each into the data/ directory its own
 # param.jl names:
@@ -25,7 +25,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 if [[ ! -f Project.toml || ! -d spec/local ]]; then
     echo "ERROR: run this from the repo root (the directory holding Project.toml)." >&2
-    echo "       cd ~/NextCloudCNRS/Code/droplet/Droplet && bash figure_production/$(basename "$0")" >&2
+    echo "       cd ~/NextCloudCNRS/Code/droplet/Droplet && bash figure_production/fig4/$(basename "$0")" >&2
     exit 1
 fi
 
@@ -133,4 +133,4 @@ print("  All eight runs present and in the expected order (no folder rotation ne
 PY
 
 echo
-echo "Done. Now run figure_production/fig4.ipynb."
+echo "Done. Now run figure_production/fig4/fig4.ipynb."

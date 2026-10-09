@@ -131,7 +131,7 @@ After building, check the page size and the embedded sizes:
 
 ```python
 import pdfplumber, collections
-p = pdfplumber.open("figures/fig2/fig2.pdf").pages[0]
+p = pdfplumber.open("fig2/fig2.pdf").pages[0]
 scale = 481.9 / p.width                       # the factor LaTeX will apply
 for s, n in sorted(collections.Counter(round(c["size"], 2) for c in p.chars).items()):
     print(f"{s:6.2f} pt in file -> {s*scale:5.2f} pt printed  (n={n})")
