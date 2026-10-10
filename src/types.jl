@@ -443,7 +443,7 @@ Base.@kwdef mutable struct RousePolymer
     kuhnLength::Float64 = 1.0
     stiffness::Float64 = 3.0           # κ = 3 kBT/b² (recomputed in init!)
     dt::Float64 = 1e-5                 # physical timestep
-    nsteps::Int32 = 1000
+    nsteps::Int64 = 1000
     nbeads::Int32 = 100
     r_min::Union{Nothing, Float64} = nothing   # hard repulsion distance
 
