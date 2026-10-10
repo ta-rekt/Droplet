@@ -1,0 +1,13 @@
+{
+ "data_root_layout": "20260423/proximal_promoter_transc_d_50_c_{:.3f}/output_cpu{}.json",
+ "trace": {
+  "c": 0.006,
+  "run": 3,
+  "start": 0,
+  "width": 40000,
+  "mc_samples_per_frame": 8.069034788513825,
+  "smoothing_window_frames": 4000,
+  "smoothing_window_mc_samples": 32276.1391540553
+ },
+ "sketch_source": "Tarek_Droplets/fig_sources/fig1.svg (path data of panel F)"
+}

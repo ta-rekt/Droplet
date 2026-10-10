@@ -1,0 +1,2737 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 350.94 340.33"><defs>
+    <style>
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7, .st8, .st9, .st10, .st11, .st12, .st13, .st14, .st15, .st16, .st17, .st18, .st19, .st20, .st21, .st22, .st23, .st24, .st25, .st26, .st27, .st28, .st29, .st30, .st31, .st32, .st33, .st34, .st35, .st36, .st37, .st38, .st39, .st40, .st41, .st42, .st43, .st44, .st45 {
+        fill: none;
+      }
+
+      .st46, .st47, .st48 {
+        stroke-miterlimit: 4.17;
+      }
+
+      .st46, .st49 {
+        stroke: #fac35d;
+      }
+
+      .st46, .st48 {
+        stroke-width: 1.14px;
+      }
+
+      .st1, .st2, .st5, .st8, .st9, .st10, .st11, .st12, .st13, .st14, .st15, .st16, .st17, .st18, .st19, .st20, .st21, .st22, .st23, .st24, .st25, .st27, .st32, .st33, .st34, .st35, .st36, .st37, .st38, .st39, .st40, .st41, .st42, .st50, .st43 {
+        stroke: #000;
+      }
+
+      .st1, .st2, .st8, .st35 {
+        stroke-linecap: round;
+      }
+
+      .st1, .st2, .st40, .st42 {
+        stroke-miterlimit: 11.34;
+      }
+
+      .st1, .st20 {
+        stroke-width: .47px;
+      }
+
+      .st2, .st19 {
+        stroke-width: .46px;
+      }
+
+      .st3, .st4, .st6, .st7, .st8, .st9, .st10, .st13, .st16, .st17, .st18, .st19, .st20, .st21, .st22, .st26, .st28, .st29, .st30, .st31, .st35, .st36, .st37, .st38, .st39, .st50, .st43, .st44, .st45 {
+        stroke-linejoin: round;
+      }
+
+      .st3, .st4, .st26 {
+        stroke: orange;
+      }
+
+      .st3, .st6, .st10, .st31, .st44 {
+        stroke-width: .74px;
+      }
+
+      .st4, .st7, .st9, .st30, .st45 {
+        stroke-width: .74px;
+      }
+
+      .st51, .st52, .st53, .st54, .st5, .st55, .st56, .st57, .st58, .st59, .st60, .st61, .st62, .st63, .st64, .st65 {
+        isolation: isolate;
+      }
+
+      .st51, .st62 {
+        opacity: .46;
+      }
+
+      .st52, .st53, .st54, .st5, .st55, .st56, .st57 {
+        opacity: .99;
+      }
+
+      .st52, .st53, .st66 {
+        fill: #fac35d;
+      }
+
+      .st67 {
+        fill: url(#radial-gradient);
+      }
+
+      .st67, .st68, .st69, .st70, .st71, .st72, .st73 {
+        fill-rule: evenodd;
+      }
+
+      .st53, .st56 {
+        fill-opacity: 1;
+      }
+
+      .st74 {
+        stroke-miterlimit: 4.31;
+        stroke-width: .77px;
+      }
+
+      .st74, .st47, .st75 {
+        stroke: #1f751f;
+        stroke-opacity: .88;
+      }
+
+      .st54, .st56, .st76 {
+        fill: #ff5252;
+      }
+
+      .st5 {
+        stroke-miterlimit: 10.97;
+        stroke-width: .79px;
+      }
+
+      .st55 {
+        fill: #006900;
+        fill-opacity: .33;
+      }
+
+      .st77, .st78 {
+        fill: #e6e6e6;
+        stroke: #e6e6e6;
+      }
+
+      .st77, .st78, .st26, .st79, .st80, .st81, .st82 {
+        stroke-opacity: .5;
+      }
+
+      .st77, .st78, .st79, .st80, .st81, .st82 {
+        fill-opacity: .5;
+      }
+
+      .st77, .st80, .st81 {
+        stroke-miterlimit: 3.71;
+        stroke-width: .37px;
+      }
+
+      .st6, .st7 {
+        stroke: gray;
+      }
+
+      .st57, .st83 {
+        fill: #9d9df3;
+      }
+
+      .st58, .st60 {
+        opacity: .18;
+      }
+
+      .st58, .st84 {
+        fill: red;
+      }
+
+      .st8 {
+        stroke-width: .39px;
+      }
+
+      .st78, .st79, .st82 {
+        stroke-miterlimit: 3.69;
+        stroke-width: .37px;
+      }
+
+      .st60 {
+        fill: #1c9900;
+      }
+
+      .st11 {
+        stroke-miterlimit: 3.51;
+      }
+
+      .st11, .st26, .st36, .st37, .st38, .st39, .st43 {
+        stroke-linecap: square;
+      }
+
+      .st11, .st50 {
+        stroke-width: .28px;
+      }
+
+      .st61 {
+        font-size: 7.4px;
+      }
+
+      .st61, .st65 {
+        font-family: ArialMT, Arial;
+      }
+
+      .st12 {
+        stroke-width: .32px;
+      }
+
+      .st12, .st14, .st15, .st23, .st24, .st25, .st27, .st32, .st33, .st34 {
+        stroke-linejoin: bevel;
+      }
+
+      .st13 {
+        stroke-width: .35px;
+      }
+
+      .st14 {
+        stroke-width: .38px;
+      }
+
+      .st15 {
+        stroke-width: .37px;
+      }
+
+      .st16 {
+        stroke-width: .38px;
+      }
+
+      .st17 {
+        stroke-width: .38px;
+      }
+
+      .st18 {
+        stroke-width: .41px;
+      }
+
+      .st21 {
+        stroke-width: .38px;
+      }
+
+      .st22 {
+        stroke-width: .38px;
+      }
+
+      .st62, .st63, .st64 {
+        fill: #006800;
+        fill-opacity: .73;
+      }
+
+      .st63 {
+        opacity: .46;
+      }
+
+      .st64 {
+        opacity: .46;
+      }
+
+      .st23 {
+        stroke-width: .18px;
+      }
+
+      .st24 {
+        stroke-width: .18px;
+      }
+
+      .st25 {
+        stroke-width: .18px;
+      }
+
+      .st26 {
+        stroke-width: .53px;
+      }
+
+      .st27 {
+        stroke-width: .18px;
+      }
+
+      .st28, .st29 {
+        stroke: #b0b0b0;
+      }
+
+      .st28, .st36 {
+        stroke-width: .29px;
+      }
+
+      .st85 {
+        clip-path: url(#clippath-1);
+      }
+
+      .st86 {
+        fill: orange;
+      }
+
+      .st29, .st37 {
+        stroke-width: .3px;
+      }
+
+      .st87, .st49 {
+        stroke-width: 1.18px;
+      }
+
+      .st87, .st49, .st75 {
+        stroke-miterlimit: 11.43;
+      }
+
+      .st87, .st48 {
+        stroke: #ff5252;
+      }
+
+      .st30, .st31 {
+        stroke: red;
+      }
+
+      .st88 {
+        fill: #fff;
+      }
+
+      .st65 {
+        font-size: 7.07px;
+      }
+
+      .st69 {
+        fill: url(#radial-gradient1);
+      }
+
+      .st70 {
+        fill: url(#radial-gradient4);
+      }
+
+      .st71 {
+        fill: url(#radial-gradient2);
+      }
+
+      .st72 {
+        fill: url(#radial-gradient5);
+      }
+
+      .st73 {
+        fill: url(#radial-gradient3);
+      }
+
+      .st79, .st80 {
+        fill: #ececec;
+        stroke: #ececec;
+      }
+
+      .st47 {
+        stroke-width: .74px;
+      }
+
+      .st32 {
+        stroke-width: .19px;
+      }
+
+      .st32, .st33, .st34 {
+        stroke-opacity: .3;
+      }
+
+      .st33 {
+        stroke-width: .19px;
+      }
+
+      .st34 {
+        stroke-width: .19px;
+      }
+
+      .st81, .st82 {
+        fill: #f2f2f2;
+        stroke: #f2f2f2;
+      }
+
+      .st35 {
+        stroke-width: .36px;
+      }
+
+      .st38 {
+        stroke-width: .52px;
+      }
+
+      .st39 {
+        stroke-width: .53px;
+      }
+
+      .st40 {
+        stroke-width: .56px;
+      }
+
+      .st41 {
+        stroke-miterlimit: 11.71;
+        stroke-width: .46px;
+      }
+
+      .st42 {
+        stroke-width: .46px;
+      }
+
+      .st43 {
+        stroke-opacity: .7;
+        stroke-width: .35px;
+      }
+
+      .st89 {
+        fill-opacity: .25;
+      }
+
+      .st89, .st90, .st91, .st92, .st93, .st94, .st95, .st96, .st97, .st98, .st99, .st100, .st101, .st102, .st103, .st104, .st105, .st106, .st107, .st108, .st109, .st110, .st111, .st112, .st113, .st114, .st115, .st116, .st117, .st118, .st119, .st120, .st121, .st122, .st123, .st124, .st125, .st126, .st127, .st128, .st129, .st130, .st131, .st132, .st133, .st134, .st135, .st136, .st137, .st138, .st139, .st140, .st141, .st142, .st143, .st144, .st145, .st146, .st147, .st148, .st149, .st150, .st151, .st152, .st153, .st154, .st155, .st156, .st157, .st158, .st159, .st160, .st161, .st162, .st163, .st164, .st165, .st166, .st167, .st168, .st169, .st170, .st171, .st172, .st173, .st174, .st175, .st176, .st177, .st178, .st179, .st180, .st181, .st182, .st183, .st184, .st185, .st186, .st187, .st188, .st189, .st190, .st191, .st192, .st193, .st194, .st195, .st196, .st197, .st198, .st199, .st200, .st201, .st202, .st203, .st204, .st205, .st206, .st207, .st208, .st209, .st210, .st211, .st212, .st213, .st214, .st215, .st216, .st217, .st218, .st219, .st220, .st221, .st222, .st223, .st224, .st225, .st226, .st227, .st228, .st229, .st230, .st231, .st232, .st233, .st234, .st235, .st236, .st237, .st238, .st239, .st240, .st241, .st242, .st243, .st244, .st245, .st246, .st247, .st248, .st249, .st250, .st251, .st252, .st253, .st254, .st255, .st256, .st257, .st258, .st259, .st260, .st261, .st262, .st263, .st264, .st265, .st266, .st267, .st268, .st269, .st270, .st271, .st272, .st273, .st274, .st275, .st276, .st277, .st278, .st279, .st280, .st281, .st282, .st283, .st284, .st285, .st286, .st287, .st288, .st289, .st290, .st291, .st292, .st293, .st294, .st295, .st296, .st297, .st298, .st299, .st300, .st301, .st302, .st303, .st304, .st305, .st306, .st307, .st308, .st309, .st310, .st311, .st312, .st313, .st314, .st315, .st316, .st317, .st318, .st319, .st320, .st321, .st322, .st323, .st324, .st325, .st326, .st327, .st328, .st329, .st330, .st331, .st332, .st333, .st334, .st335, .st336, .st337, .st338, .st339, .st340, .st341, .st342, .st343, .st344, .st345, .st346, .st347, .st348, .st349, .st350, .st351, .st352, .st353, .st354, .st355, .st356, .st357, .st358, .st359, .st360, .st361, .st362, .st363, .st364, .st365, .st366, .st367, .st368, .st369, .st370, .st371, .st372, .st373, .st374, .st375, .st376, .st377, .st378, .st379, .st380, .st381, .st382, .st383, .st384, .st385, .st386, .st387, .st388, .st389, .st390, .st391, .st392, .st393, .st394, .st395, .st396, .st397, .st398, .st399, .st400, .st401, .st402, .st403, .st404, .st405, .st406, .st407, .st408, .st409, .st410, .st411, .st412, .st413, .st414, .st415, .st416, .st417, .st418, .st419, .st420, .st421, .st422, .st423, .st424, .st425, .st426, .st427, .st428, .st429, .st430, .st431, .st432, .st433, .st434, .st435, .st436, .st437, .st438, .st439, .st440, .st441, .st442, .st443, .st444, .st445, .st446, .st447, .st448, .st449, .st450, .st451, .st452, .st453, .st454, .st455, .st456, .st457, .st458, .st459, .st460, .st461, .st462, .st463, .st464, .st465, .st466, .st467, .st468, .st469, .st470, .st471, .st472, .st473, .st474, .st475, .st476, .st477, .st478, .st479, .st480, .st481, .st482, .st483, .st484, .st485, .st486, .st487, .st488, .st489, .st490, .st491, .st492, .st493, .st494, .st495, .st496, .st497, .st498, .st499, .st500, .st501, .st502, .st503, .st504, .st505, .st506, .st507, .st508, .st509, .st510, .st511, .st512, .st513, .st514, .st515, .st516, .st517, .st518, .st519, .st520, .st521, .st522, .st523, .st524, .st525, .st526, .st527, .st528, .st529, .st530, .st531, .st532, .st533, .st534, .st535, .st536, .st537, .st538, .st539, .st540, .st541, .st542, .st543, .st544, .st545, .st546, .st547, .st548, .st549, .st550, .st551, .st552, .st553, .st554, .st555, .st556, .st557, .st558, .st559, .st560, .st561, .st562, .st563, .st564, .st565, .st566, .st567, .st568, .st569, .st570, .st571, .st572, .st573, .st574, .st575, .st576, .st577, .st578, .st579, .st580, .st581, .st582, .st583, .st584, .st585, .st586, .st587, .st588, .st589, .st590, .st591, .st592, .st593, .st594, .st595, .st596, .st597, .st598, .st599, .st600, .st601, .st602, .st603, .st604, .st605, .st606, .st607, .st608, .st609, .st610, .st611, .st612, .st613, .st614, .st615, .st616, .st617, .st618, .st619, .st620, .st621, .st622, .st623, .st624, .st625, .st626, .st627, .st628, .st629, .st630, .st631, .st632, .st633, .st634, .st635, .st636, .st637, .st638, .st639, .st640, .st641, .st642, .st643, .st644, .st645, .st646, .st647, .st648, .st649, .st650, .st651, .st652, .st653, .st654, .st655, .st656, .st657, .st658, .st659, .st660, .st661, .st662 {
+        fill: blue;
+      }
+
+      .st90 {
+        fill-opacity: .25;
+      }
+
+      .st91 {
+        fill-opacity: .25;
+      }
+
+      .st92 {
+        fill-opacity: .26;
+      }
+
+      .st93 {
+        fill-opacity: .26;
+      }
+
+      .st94 {
+        fill-opacity: .26;
+      }
+
+      .st95 {
+        fill-opacity: .26;
+      }
+
+      .st96 {
+        fill-opacity: .25;
+      }
+
+      .st97 {
+        fill-opacity: .26;
+      }
+
+      .st98 {
+        fill-opacity: .26;
+      }
+
+      .st99 {
+        fill-opacity: .26;
+      }
+
+      .st100 {
+        fill-opacity: .26;
+      }
+
+      .st101 {
+        fill-opacity: .26;
+      }
+
+      .st102 {
+        fill-opacity: .26;
+      }
+
+      .st103 {
+        fill-opacity: .26;
+      }
+
+      .st104 {
+        fill-opacity: .26;
+      }
+
+      .st105 {
+        fill-opacity: .26;
+      }
+
+      .st106 {
+        fill-opacity: .26;
+      }
+
+      .st107 {
+        fill-opacity: .26;
+      }
+
+      .st108 {
+        fill-opacity: .26;
+      }
+
+      .st109 {
+        fill-opacity: .26;
+      }
+
+      .st110 {
+        fill-opacity: .26;
+      }
+
+      .st111 {
+        fill-opacity: .26;
+      }
+
+      .st112 {
+        fill-opacity: .26;
+      }
+
+      .st113 {
+        fill-opacity: .26;
+      }
+
+      .st114 {
+        fill-opacity: .26;
+      }
+
+      .st115 {
+        fill-opacity: .26;
+      }
+
+      .st116 {
+        fill-opacity: .26;
+      }
+
+      .st117 {
+        fill-opacity: .26;
+      }
+
+      .st118 {
+        fill-opacity: .26;
+      }
+
+      .st119 {
+        fill-opacity: .26;
+      }
+
+      .st120 {
+        fill-opacity: .26;
+      }
+
+      .st121 {
+        fill-opacity: .26;
+      }
+
+      .st122 {
+        fill-opacity: .26;
+      }
+
+      .st123 {
+        fill-opacity: .26;
+      }
+
+      .st124 {
+        fill-opacity: .26;
+      }
+
+      .st125 {
+        fill-opacity: .26;
+      }
+
+      .st126 {
+        fill-opacity: .26;
+      }
+
+      .st127 {
+        fill-opacity: .26;
+      }
+
+      .st128 {
+        fill-opacity: .26;
+      }
+
+      .st129 {
+        fill-opacity: .26;
+      }
+
+      .st130 {
+        fill-opacity: .26;
+      }
+
+      .st131 {
+        fill-opacity: .26;
+      }
+
+      .st132 {
+        fill-opacity: .27;
+      }
+
+      .st133 {
+        fill-opacity: .26;
+      }
+
+      .st134 {
+        fill-opacity: .26;
+      }
+
+      .st135 {
+        fill-opacity: .27;
+      }
+
+      .st136 {
+        fill-opacity: .27;
+      }
+
+      .st137 {
+        fill-opacity: .27;
+      }
+
+      .st138 {
+        fill-opacity: .27;
+      }
+
+      .st139 {
+        fill-opacity: .27;
+      }
+
+      .st140 {
+        fill-opacity: .27;
+      }
+
+      .st141 {
+        fill-opacity: .27;
+      }
+
+      .st142 {
+        fill-opacity: .27;
+      }
+
+      .st143 {
+        fill-opacity: .27;
+      }
+
+      .st144 {
+        fill-opacity: .26;
+      }
+
+      .st145 {
+        fill-opacity: .26;
+      }
+
+      .st146 {
+        fill-opacity: .27;
+      }
+
+      .st147 {
+        fill-opacity: .27;
+      }
+
+      .st148 {
+        fill-opacity: .27;
+      }
+
+      .st149 {
+        fill-opacity: .26;
+      }
+
+      .st150 {
+        fill-opacity: .26;
+      }
+
+      .st151 {
+        fill-opacity: .26;
+      }
+
+      .st152 {
+        fill-opacity: .26;
+      }
+
+      .st153 {
+        fill-opacity: .26;
+      }
+
+      .st154 {
+        fill-opacity: .26;
+      }
+
+      .st155 {
+        fill-opacity: .26;
+      }
+
+      .st156 {
+        fill-opacity: .26;
+      }
+
+      .st157 {
+        fill-opacity: .27;
+      }
+
+      .st158 {
+        fill-opacity: .3;
+      }
+
+      .st159 {
+        fill-opacity: .3;
+      }
+
+      .st160 {
+        fill-opacity: .31;
+      }
+
+      .st161 {
+        fill-opacity: .3;
+      }
+
+      .st162 {
+        fill-opacity: .3;
+      }
+
+      .st163 {
+        fill-opacity: .31;
+      }
+
+      .st164 {
+        fill-opacity: .31;
+      }
+
+      .st165 {
+        fill-opacity: .31;
+      }
+
+      .st166 {
+        fill-opacity: .31;
+      }
+
+      .st167 {
+        fill-opacity: .31;
+      }
+
+      .st168 {
+        fill-opacity: .31;
+      }
+
+      .st169 {
+        fill-opacity: .31;
+      }
+
+      .st170 {
+        fill-opacity: .3;
+      }
+
+      .st171 {
+        fill-opacity: .31;
+      }
+
+      .st172 {
+        fill-opacity: .31;
+      }
+
+      .st173 {
+        fill-opacity: .3;
+      }
+
+      .st174 {
+        fill-opacity: .3;
+      }
+
+      .st175 {
+        fill-opacity: .3;
+      }
+
+      .st176 {
+        fill-opacity: .3;
+      }
+
+      .st177 {
+        fill-opacity: .3;
+      }
+
+      .st178 {
+        fill-opacity: .3;
+      }
+
+      .st179 {
+        fill-opacity: .3;
+      }
+
+      .st180 {
+        fill-opacity: .31;
+      }
+
+      .st181 {
+        fill-opacity: .25;
+      }
+
+      .st182 {
+        fill-opacity: .31;
+      }
+
+      .st183 {
+        fill-opacity: .25;
+      }
+
+      .st184 {
+        fill-opacity: .25;
+      }
+
+      .st185 {
+        fill-opacity: .25;
+      }
+
+      .st186 {
+        fill-opacity: .25;
+      }
+
+      .st187 {
+        fill-opacity: .25;
+      }
+
+      .st188 {
+        fill-opacity: .25;
+      }
+
+      .st189 {
+        fill-opacity: .25;
+      }
+
+      .st190 {
+        fill-opacity: .25;
+      }
+
+      .st191 {
+        fill-opacity: .25;
+      }
+
+      .st192 {
+        fill-opacity: .25;
+      }
+
+      .st193 {
+        fill-opacity: .25;
+      }
+
+      .st194 {
+        fill-opacity: .25;
+      }
+
+      .st195 {
+        fill-opacity: .25;
+      }
+
+      .st196 {
+        fill-opacity: .25;
+      }
+
+      .st197 {
+        fill-opacity: .25;
+      }
+
+      .st198 {
+        fill-opacity: .25;
+      }
+
+      .st199 {
+        fill-opacity: .25;
+      }
+
+      .st200 {
+        fill-opacity: .25;
+      }
+
+      .st201 {
+        fill-opacity: .25;
+      }
+
+      .st202 {
+        fill-opacity: .25;
+      }
+
+      .st203 {
+        fill-opacity: .25;
+      }
+
+      .st204 {
+        fill-opacity: .25;
+      }
+
+      .st205 {
+        fill-opacity: .25;
+      }
+
+      .st206 {
+        fill-opacity: .25;
+      }
+
+      .st207 {
+        fill-opacity: .25;
+      }
+
+      .st208 {
+        fill-opacity: .28;
+      }
+
+      .st209 {
+        fill-opacity: .28;
+      }
+
+      .st210 {
+        fill-opacity: .29;
+      }
+
+      .st211 {
+        fill-opacity: .29;
+      }
+
+      .st212 {
+        fill-opacity: .29;
+      }
+
+      .st213 {
+        fill-opacity: .29;
+      }
+
+      .st214 {
+        fill-opacity: .29;
+      }
+
+      .st215 {
+        fill-opacity: .29;
+      }
+
+      .st216 {
+        fill-opacity: .29;
+      }
+
+      .st217 {
+        fill-opacity: .29;
+      }
+
+      .st218 {
+        fill-opacity: .29;
+      }
+
+      .st219 {
+        fill-opacity: .29;
+      }
+
+      .st220 {
+        fill-opacity: .29;
+      }
+
+      .st221 {
+        fill-opacity: .29;
+      }
+
+      .st222 {
+        fill-opacity: .29;
+      }
+
+      .st223 {
+        fill-opacity: .29;
+      }
+
+      .st224 {
+        fill-opacity: .29;
+      }
+
+      .st225 {
+        fill-opacity: .29;
+      }
+
+      .st226 {
+        fill-opacity: .29;
+      }
+
+      .st227 {
+        fill-opacity: .29;
+      }
+
+      .st228 {
+        fill-opacity: .29;
+      }
+
+      .st229 {
+        fill-opacity: .29;
+      }
+
+      .st230 {
+        fill-opacity: .29;
+      }
+
+      .st231 {
+        fill-opacity: .29;
+      }
+
+      .st232 {
+        fill-opacity: .29;
+      }
+
+      .st233 {
+        fill-opacity: .3;
+      }
+
+      .st234 {
+        fill-opacity: .29;
+      }
+
+      .st235 {
+        fill-opacity: .3;
+      }
+
+      .st236 {
+        fill-opacity: .3;
+      }
+
+      .st237 {
+        fill-opacity: .3;
+      }
+
+      .st238 {
+        fill-opacity: .3;
+      }
+
+      .st239 {
+        fill-opacity: .3;
+      }
+
+      .st240 {
+        fill-opacity: .3;
+      }
+
+      .st241 {
+        fill-opacity: .3;
+      }
+
+      .st242 {
+        fill-opacity: .3;
+      }
+
+      .st243 {
+        fill-opacity: .3;
+      }
+
+      .st244 {
+        fill-opacity: .3;
+      }
+
+      .st245 {
+        fill-opacity: .3;
+      }
+
+      .st246 {
+        fill-opacity: .3;
+      }
+
+      .st247 {
+        fill-opacity: .3;
+      }
+
+      .st248 {
+        fill-opacity: .3;
+      }
+
+      .st249 {
+        fill-opacity: .3;
+      }
+
+      .st250 {
+        fill-opacity: .23;
+      }
+
+      .st251 {
+        fill-opacity: .23;
+      }
+
+      .st252 {
+        fill-opacity: .23;
+      }
+
+      .st253 {
+        fill-opacity: .23;
+      }
+
+      .st254 {
+        fill-opacity: .23;
+      }
+
+      .st255 {
+        fill-opacity: .23;
+      }
+
+      .st256 {
+        fill-opacity: .23;
+      }
+
+      .st257 {
+        fill-opacity: .23;
+      }
+
+      .st258 {
+        fill-opacity: .23;
+      }
+
+      .st259 {
+        fill-opacity: .23;
+      }
+
+      .st260 {
+        fill-opacity: .23;
+      }
+
+      .st261 {
+        fill-opacity: .23;
+      }
+
+      .st262 {
+        fill-opacity: .23;
+      }
+
+      .st263 {
+        fill-opacity: .23;
+      }
+
+      .st264 {
+        fill-opacity: .23;
+      }
+
+      .st265 {
+        fill-opacity: .23;
+      }
+
+      .st266 {
+        fill-opacity: .28;
+      }
+
+      .st267 {
+        fill-opacity: .28;
+      }
+
+      .st268 {
+        fill-opacity: .28;
+      }
+
+      .st269 {
+        fill-opacity: .28;
+      }
+
+      .st270 {
+        fill-opacity: .29;
+      }
+
+      .st271 {
+        fill-opacity: .29;
+      }
+
+      .st272 {
+        fill-opacity: .29;
+      }
+
+      .st273 {
+        fill-opacity: .29;
+      }
+
+      .st274 {
+        fill-opacity: .28;
+      }
+
+      .st275 {
+        fill-opacity: .28;
+      }
+
+      .st276 {
+        fill-opacity: .29;
+      }
+
+      .st277 {
+        fill-opacity: .28;
+      }
+
+      .st278 {
+        fill-opacity: .28;
+      }
+
+      .st279 {
+        fill-opacity: .28;
+      }
+
+      .st280 {
+        fill-opacity: .28;
+      }
+
+      .st281 {
+        fill-opacity: .28;
+      }
+
+      .st282 {
+        fill-opacity: .22;
+      }
+
+      .st283 {
+        fill-opacity: .22;
+      }
+
+      .st284 {
+        fill-opacity: .23;
+      }
+
+      .st285 {
+        fill-opacity: .22;
+      }
+
+      .st286 {
+        fill-opacity: .22;
+      }
+
+      .st287 {
+        fill-opacity: .22;
+      }
+
+      .st288 {
+        fill-opacity: .22;
+      }
+
+      .st289 {
+        fill-opacity: .22;
+      }
+
+      .st290 {
+        fill-opacity: .22;
+      }
+
+      .st291 {
+        fill-opacity: .22;
+      }
+
+      .st292 {
+        fill-opacity: .22;
+      }
+
+      .st293 {
+        fill-opacity: .22;
+      }
+
+      .st294 {
+        fill-opacity: .23;
+      }
+
+      .st295 {
+        fill-opacity: .23;
+      }
+
+      .st296 {
+        fill-opacity: .22;
+      }
+
+      .st297 {
+        fill-opacity: .23;
+      }
+
+      .st298 {
+        fill-opacity: .23;
+      }
+
+      .st299 {
+        fill-opacity: .23;
+      }
+
+      .st300 {
+        fill-opacity: .23;
+      }
+
+      .st301 {
+        fill-opacity: .23;
+      }
+
+      .st302 {
+        fill-opacity: .23;
+      }
+
+      .st303 {
+        fill-opacity: .23;
+      }
+
+      .st304 {
+        fill-opacity: .23;
+      }
+
+      .st305 {
+        fill-opacity: .23;
+      }
+
+      .st306 {
+        fill-opacity: .23;
+      }
+
+      .st307 {
+        fill-opacity: .23;
+      }
+
+      .st308 {
+        fill-opacity: .23;
+      }
+
+      .st309 {
+        fill-opacity: .23;
+      }
+
+      .st310 {
+        fill-opacity: .23;
+      }
+
+      .st311 {
+        fill-opacity: .23;
+      }
+
+      .st312 {
+        fill-opacity: .23;
+      }
+
+      .st313 {
+        fill-opacity: .24;
+      }
+
+      .st314 {
+        fill-opacity: .24;
+      }
+
+      .st315 {
+        fill-opacity: .25;
+      }
+
+      .st316 {
+        fill-opacity: .25;
+      }
+
+      .st317 {
+        fill-opacity: .25;
+      }
+
+      .st318 {
+        fill-opacity: .25;
+      }
+
+      .st319 {
+        fill-opacity: .25;
+      }
+
+      .st320 {
+        fill-opacity: .25;
+      }
+
+      .st321 {
+        fill-opacity: .25;
+      }
+
+      .st322 {
+        fill-opacity: .25;
+      }
+
+      .st323 {
+        fill-opacity: .25;
+      }
+
+      .st324 {
+        fill-opacity: .25;
+      }
+
+      .st325 {
+        fill-opacity: .24;
+      }
+
+      .st326 {
+        fill-opacity: .25;
+      }
+
+      .st327 {
+        fill-opacity: .25;
+      }
+
+      .st328 {
+        fill-opacity: .25;
+      }
+
+      .st329 {
+        fill-opacity: .25;
+      }
+
+      .st330 {
+        fill-opacity: .25;
+      }
+
+      .st331 {
+        fill-opacity: .25;
+      }
+
+      .st332 {
+        fill-opacity: .22;
+      }
+
+      .st333 {
+        fill-opacity: .25;
+      }
+
+      .st334 {
+        fill-opacity: .22;
+      }
+
+      .st335 {
+        fill-opacity: .22;
+      }
+
+      .st336 {
+        fill-opacity: .22;
+      }
+
+      .st337 {
+        fill-opacity: .22;
+      }
+
+      .st338 {
+        fill-opacity: .22;
+      }
+
+      .st339 {
+        fill-opacity: .22;
+      }
+
+      .st340 {
+        fill-opacity: .22;
+      }
+
+      .st341 {
+        fill-opacity: .22;
+      }
+
+      .st342 {
+        fill-opacity: .22;
+      }
+
+      .st343 {
+        fill-opacity: .22;
+      }
+
+      .st344 {
+        fill-opacity: .22;
+      }
+
+      .st345 {
+        fill-opacity: .22;
+      }
+
+      .st346 {
+        fill-opacity: .22;
+      }
+
+      .st347 {
+        fill-opacity: .22;
+      }
+
+      .st348 {
+        fill-opacity: .22;
+      }
+
+      .st349 {
+        fill-opacity: .22;
+      }
+
+      .st350 {
+        fill-opacity: .24;
+      }
+
+      .st351 {
+        fill-opacity: .24;
+      }
+
+      .st352 {
+        fill-opacity: .23;
+      }
+
+      .st353 {
+        fill-opacity: .23;
+      }
+
+      .st354 {
+        fill-opacity: .23;
+      }
+
+      .st355 {
+        fill-opacity: .24;
+      }
+
+      .st356 {
+        fill-opacity: .24;
+      }
+
+      .st357 {
+        fill-opacity: .24;
+      }
+
+      .st358 {
+        fill-opacity: .24;
+      }
+
+      .st359 {
+        fill-opacity: .24;
+      }
+
+      .st360 {
+        fill-opacity: .24;
+      }
+
+      .st361 {
+        fill-opacity: .24;
+      }
+
+      .st362 {
+        fill-opacity: .24;
+      }
+
+      .st363 {
+        fill-opacity: .24;
+      }
+
+      .st364 {
+        fill-opacity: .24;
+      }
+
+      .st365 {
+        fill-opacity: .24;
+      }
+
+      .st366 {
+        fill-opacity: .24;
+      }
+
+      .st367 {
+        fill-opacity: .24;
+      }
+
+      .st368 {
+        fill-opacity: .24;
+      }
+
+      .st369 {
+        fill-opacity: .24;
+      }
+
+      .st370 {
+        fill-opacity: .24;
+      }
+
+      .st371 {
+        fill-opacity: .24;
+      }
+
+      .st372 {
+        fill-opacity: .24;
+      }
+
+      .st373 {
+        fill-opacity: .24;
+      }
+
+      .st374 {
+        fill-opacity: .24;
+      }
+
+      .st375 {
+        fill-opacity: .24;
+      }
+
+      .st376 {
+        fill-opacity: .24;
+      }
+
+      .st377 {
+        fill-opacity: .24;
+      }
+
+      .st378 {
+        fill-opacity: .24;
+      }
+
+      .st379 {
+        fill-opacity: .24;
+      }
+
+      .st380 {
+        fill-opacity: .24;
+      }
+
+      .st381 {
+        fill-opacity: .24;
+      }
+
+      .st382 {
+        fill-opacity: .24;
+      }
+
+      .st383 {
+        fill-opacity: .24;
+      }
+
+      .st384 {
+        fill-opacity: .24;
+      }
+
+      .st385 {
+        fill-opacity: .24;
+      }
+
+      .st386 {
+        fill-opacity: .24;
+      }
+
+      .st387 {
+        fill-opacity: .24;
+      }
+
+      .st388 {
+        fill-opacity: .24;
+      }
+
+      .st389 {
+        fill-opacity: .24;
+      }
+
+      .st390 {
+        fill-opacity: .2;
+      }
+
+      .st391 {
+        fill-opacity: .2;
+      }
+
+      .st392 {
+        fill-opacity: .2;
+      }
+
+      .st393 {
+        fill-opacity: .2;
+      }
+
+      .st394 {
+        fill-opacity: .2;
+      }
+
+      .st395 {
+        fill-opacity: .2;
+      }
+
+      .st396 {
+        fill-opacity: .2;
+      }
+
+      .st397 {
+        fill-opacity: .2;
+      }
+
+      .st398 {
+        fill-opacity: .2;
+      }
+
+      .st399 {
+        fill-opacity: .2;
+      }
+
+      .st400 {
+        fill-opacity: .2;
+      }
+
+      .st401 {
+        fill-opacity: .2;
+      }
+
+      .st402 {
+        fill-opacity: .2;
+      }
+
+      .st403 {
+        fill-opacity: .2;
+      }
+
+      .st404 {
+        fill-opacity: .2;
+      }
+
+      .st405 {
+        fill-opacity: .2;
+      }
+
+      .st406 {
+        fill-opacity: .2;
+      }
+
+      .st407 {
+        fill-opacity: .2;
+      }
+
+      .st408 {
+        fill-opacity: .2;
+      }
+
+      .st409 {
+        fill-opacity: .2;
+      }
+
+      .st410 {
+        fill-opacity: .24;
+      }
+
+      .st411 {
+        fill-opacity: .24;
+      }
+
+      .st412 {
+        fill-opacity: .24;
+      }
+
+      .st413 {
+        fill-opacity: .2;
+      }
+
+      .st414 {
+        fill-opacity: .24;
+      }
+
+      .st415 {
+        fill-opacity: .23;
+      }
+
+      .st416 {
+        fill-opacity: .24;
+      }
+
+      .st417 {
+        fill-opacity: .24;
+      }
+
+      .st418 {
+        fill-opacity: .24;
+      }
+
+      .st419 {
+        fill-opacity: .24;
+      }
+
+      .st420 {
+        fill-opacity: .24;
+      }
+
+      .st421 {
+        fill-opacity: .23;
+      }
+
+      .st422 {
+        fill-opacity: .23;
+      }
+
+      .st423 {
+        fill-opacity: .23;
+      }
+
+      .st424 {
+        fill-opacity: .23;
+      }
+
+      .st425 {
+        fill-opacity: .23;
+      }
+
+      .st426 {
+        fill-opacity: .23;
+      }
+
+      .st427 {
+        fill-opacity: .23;
+      }
+
+      .st428 {
+        fill-opacity: .27;
+      }
+
+      .st429 {
+        fill-opacity: .27;
+      }
+
+      .st430 {
+        fill-opacity: .27;
+      }
+
+      .st431 {
+        fill-opacity: .27;
+      }
+
+      .st432 {
+        fill-opacity: .27;
+      }
+
+      .st433 {
+        fill-opacity: .26;
+      }
+
+      .st434 {
+        fill-opacity: .27;
+      }
+
+      .st435 {
+        fill-opacity: .28;
+      }
+
+      .st436 {
+        fill-opacity: .28;
+      }
+
+      .st437 {
+        fill-opacity: .28;
+      }
+
+      .st438 {
+        fill-opacity: .27;
+      }
+
+      .st439 {
+        fill-opacity: .27;
+      }
+
+      .st440 {
+        fill-opacity: .27;
+      }
+
+      .st441 {
+        fill-opacity: .28;
+      }
+
+      .st442 {
+        fill-opacity: .28;
+      }
+
+      .st443 {
+        fill-opacity: .27;
+      }
+
+      .st444 {
+        fill-opacity: .28;
+      }
+
+      .st445 {
+        fill-opacity: .28;
+      }
+
+      .st446 {
+        fill-opacity: .28;
+      }
+
+      .st447 {
+        fill-opacity: .28;
+      }
+
+      .st448 {
+        fill-opacity: .28;
+      }
+
+      .st449 {
+        fill-opacity: .28;
+      }
+
+      .st450 {
+        fill-opacity: .28;
+      }
+
+      .st451 {
+        fill-opacity: .27;
+      }
+
+      .st452 {
+        fill-opacity: .27;
+      }
+
+      .st453 {
+        fill-opacity: .28;
+      }
+
+      .st454 {
+        fill-opacity: .27;
+      }
+
+      .st455 {
+        fill-opacity: .27;
+      }
+
+      .st456 {
+        fill-opacity: .27;
+      }
+
+      .st457 {
+        fill-opacity: .27;
+      }
+
+      .st458 {
+        fill-opacity: .27;
+      }
+
+      .st459 {
+        fill-opacity: .27;
+      }
+
+      .st460 {
+        fill-opacity: .27;
+      }
+
+      .st461 {
+        fill-opacity: .27;
+      }
+
+      .st462 {
+        fill-opacity: .27;
+      }
+
+      .st463 {
+        fill-opacity: .27;
+      }
+
+      .st464 {
+        fill-opacity: .27;
+      }
+
+      .st465 {
+        fill-opacity: .27;
+      }
+
+      .st466 {
+        fill-opacity: .27;
+      }
+
+      .st467 {
+        fill-opacity: .14;
+      }
+
+      .st468 {
+        fill-opacity: .15;
+      }
+
+      .st469 {
+        fill-opacity: .14;
+      }
+
+      .st470 {
+        fill-opacity: .14;
+      }
+
+      .st471 {
+        fill-opacity: .14;
+      }
+
+      .st472 {
+        fill-opacity: .14;
+      }
+
+      .st473 {
+        fill-opacity: .19;
+      }
+
+      .st474 {
+        fill-opacity: .19;
+      }
+
+      .st475 {
+        fill-opacity: .19;
+      }
+
+      .st476 {
+        fill-opacity: .19;
+      }
+
+      .st477 {
+        fill-opacity: .19;
+      }
+
+      .st478 {
+        fill-opacity: .19;
+      }
+
+      .st479 {
+        fill-opacity: .19;
+      }
+
+      .st480 {
+        fill-opacity: .19;
+      }
+
+      .st481 {
+        fill-opacity: .19;
+      }
+
+      .st482 {
+        fill-opacity: .19;
+      }
+
+      .st483 {
+        fill-opacity: .19;
+      }
+
+      .st484 {
+        fill-opacity: .19;
+      }
+
+      .st485 {
+        fill-opacity: .19;
+      }
+
+      .st486 {
+        fill-opacity: .19;
+      }
+
+      .st487 {
+        fill-opacity: .19;
+      }
+
+      .st488 {
+        fill-opacity: .19;
+      }
+
+      .st489 {
+        fill-opacity: .19;
+      }
+
+      .st490 {
+        fill-opacity: .19;
+      }
+
+      .st491 {
+        fill-opacity: .2;
+      }
+
+      .st492 {
+        fill-opacity: .2;
+      }
+
+      .st493 {
+        fill-opacity: .2;
+      }
+
+      .st494 {
+        fill-opacity: .2;
+      }
+
+      .st495 {
+        fill-opacity: .19;
+      }
+
+      .st496 {
+        fill-opacity: .2;
+      }
+
+      .st497 {
+        fill-opacity: .2;
+      }
+
+      .st498 {
+        fill-opacity: .2;
+      }
+
+      .st499 {
+        fill-opacity: .2;
+      }
+
+      .st500 {
+        fill-opacity: .19;
+      }
+
+      .st501 {
+        fill-opacity: .19;
+      }
+
+      .st502 {
+        fill-opacity: .21;
+      }
+
+      .st503 {
+        fill-opacity: .21;
+      }
+
+      .st504 {
+        fill-opacity: .22;
+      }
+
+      .st505 {
+        fill-opacity: .22;
+      }
+
+      .st506 {
+        fill-opacity: .21;
+      }
+
+      .st507 {
+        fill-opacity: .21;
+      }
+
+      .st508 {
+        fill-opacity: .22;
+      }
+
+      .st509 {
+        fill-opacity: .22;
+      }
+
+      .st510 {
+        fill-opacity: .22;
+      }
+
+      .st511 {
+        fill-opacity: .22;
+      }
+
+      .st512 {
+        fill-opacity: .22;
+      }
+
+      .st513 {
+        fill-opacity: .22;
+      }
+
+      .st514 {
+        fill-opacity: .22;
+      }
+
+      .st515 {
+        fill-opacity: .22;
+      }
+
+      .st516 {
+        fill-opacity: .22;
+      }
+
+      .st517 {
+        fill-opacity: .21;
+      }
+
+      .st518 {
+        fill-opacity: .22;
+      }
+
+      .st519 {
+        fill-opacity: .21;
+      }
+
+      .st520 {
+        fill-opacity: .21;
+      }
+
+      .st521 {
+        fill-opacity: .21;
+      }
+
+      .st522 {
+        fill-opacity: .21;
+      }
+
+      .st523 {
+        fill-opacity: .22;
+      }
+
+      .st524 {
+        fill-opacity: .22;
+      }
+
+      .st525 {
+        fill-opacity: .19;
+      }
+
+      .st526 {
+        fill-opacity: .19;
+      }
+
+      .st527 {
+        fill-opacity: .19;
+      }
+
+      .st528 {
+        fill-opacity: .19;
+      }
+
+      .st529 {
+        fill-opacity: .19;
+      }
+
+      .st530 {
+        fill-opacity: .19;
+      }
+
+      .st531 {
+        fill-opacity: .19;
+      }
+
+      .st532 {
+        fill-opacity: .19;
+      }
+
+      .st533 {
+        fill-opacity: .19;
+      }
+
+      .st534 {
+        fill-opacity: .19;
+      }
+
+      .st535 {
+        fill-opacity: .2;
+      }
+
+      .st536 {
+        fill-opacity: .2;
+      }
+
+      .st537 {
+        fill-opacity: .21;
+      }
+
+      .st538 {
+        fill-opacity: .21;
+      }
+
+      .st539 {
+        fill-opacity: .21;
+      }
+
+      .st540 {
+        fill-opacity: .21;
+      }
+
+      .st541 {
+        fill-opacity: .21;
+      }
+
+      .st542 {
+        fill-opacity: .21;
+      }
+
+      .st543 {
+        fill-opacity: .21;
+      }
+
+      .st544 {
+        fill-opacity: .21;
+      }
+
+      .st545 {
+        fill-opacity: .21;
+      }
+
+      .st546 {
+        fill-opacity: .21;
+      }
+
+      .st547 {
+        fill-opacity: .21;
+      }
+
+      .st548 {
+        fill-opacity: .21;
+      }
+
+      .st549 {
+        fill-opacity: .21;
+      }
+
+      .st550 {
+        fill-opacity: .21;
+      }
+
+      .st551 {
+        fill-opacity: .21;
+      }
+
+      .st552 {
+        fill-opacity: .21;
+      }
+
+      .st553 {
+        fill-opacity: .21;
+      }
+
+      .st554 {
+        fill-opacity: .21;
+      }
+
+      .st555 {
+        fill-opacity: .21;
+      }
+
+      .st556 {
+        fill-opacity: .21;
+      }
+
+      .st557 {
+        fill-opacity: .21;
+      }
+
+      .st558 {
+        fill-opacity: .21;
+      }
+
+      .st559 {
+        fill-opacity: .21;
+      }
+
+      .st560 {
+        fill-opacity: .21;
+      }
+
+      .st561 {
+        fill-opacity: .21;
+      }
+
+      .st562 {
+        fill-opacity: .21;
+      }
+
+      .st563 {
+        fill-opacity: .21;
+      }
+
+      .st564 {
+        fill-opacity: .21;
+      }
+
+      .st565 {
+        fill-opacity: .21;
+      }
+
+      .st566 {
+        fill-opacity: .17;
+      }
+
+      .st567 {
+        fill-opacity: .17;
+      }
+
+      .st568 {
+        fill-opacity: .17;
+      }
+
+      .st569 {
+        fill-opacity: .17;
+      }
+
+      .st570 {
+        fill-opacity: .17;
+      }
+
+      .st571 {
+        fill-opacity: .2;
+      }
+
+      .st572 {
+        fill-opacity: .2;
+      }
+
+      .st573 {
+        fill-opacity: .21;
+      }
+
+      .st574 {
+        fill-opacity: .21;
+      }
+
+      .st575 {
+        fill-opacity: .21;
+      }
+
+      .st576 {
+        fill-opacity: .21;
+      }
+
+      .st577 {
+        fill-opacity: .2;
+      }
+
+      .st578 {
+        fill-opacity: .16;
+      }
+
+      .st579 {
+        fill-opacity: .16;
+      }
+
+      .st580 {
+        fill-opacity: .16;
+      }
+
+      .st581 {
+        fill-opacity: .17;
+      }
+
+      .st582 {
+        fill-opacity: .16;
+      }
+
+      .st583 {
+        fill-opacity: .18;
+      }
+
+      .st584 {
+        fill-opacity: .18;
+      }
+
+      .st585 {
+        fill-opacity: .18;
+      }
+
+      .st586 {
+        fill-opacity: .18;
+      }
+
+      .st587 {
+        fill-opacity: .19;
+      }
+
+      .st588 {
+        fill-opacity: .18;
+      }
+
+      .st589 {
+        fill-opacity: .18;
+      }
+
+      .st590 {
+        fill-opacity: .18;
+      }
+
+      .st591 {
+        fill-opacity: .18;
+      }
+
+      .st592 {
+        fill-opacity: .18;
+      }
+
+      .st593 {
+        fill-opacity: .18;
+      }
+
+      .st594 {
+        fill-opacity: .16;
+      }
+
+      .st595 {
+        fill-opacity: .18;
+      }
+
+      .st596 {
+        fill-opacity: .18;
+      }
+
+      .st597 {
+        fill-opacity: .18;
+      }
+
+      .st598 {
+        fill-opacity: .18;
+      }
+
+      .st599 {
+        fill-opacity: .17;
+      }
+
+      .st600 {
+        fill-opacity: .17;
+      }
+
+      .st601 {
+        fill-opacity: .18;
+      }
+
+      .st602 {
+        fill-opacity: .17;
+      }
+
+      .st603 {
+        fill-opacity: .18;
+      }
+
+      .st604 {
+        fill-opacity: .18;
+      }
+
+      .st605 {
+        fill-opacity: .18;
+      }
+
+      .st606 {
+        fill-opacity: .18;
+      }
+
+      .st607 {
+        fill-opacity: .18;
+      }
+
+      .st608 {
+        fill-opacity: .18;
+      }
+
+      .st609 {
+        fill-opacity: .18;
+      }
+
+      .st610 {
+        fill-opacity: .18;
+      }
+
+      .st611 {
+        fill-opacity: .18;
+      }
+
+      .st612 {
+        fill-opacity: .18;
+      }
+
+      .st613 {
+        fill-opacity: .18;
+      }
+
+      .st614 {
+        fill-opacity: .18;
+      }
+
+      .st615 {
+        fill-opacity: .17;
+      }
+
+      .st616 {
+        fill-opacity: .17;
+      }
+
+      .st617 {
+        fill-opacity: .17;
+      }
+
+      .st618 {
+        fill-opacity: .17;
+      }
+
+      .st619 {
+        fill-opacity: .17;
+      }
+
+      .st620 {
+        fill-opacity: .17;
+      }
+
+      .st621 {
+        fill-opacity: .17;
+      }
+
+      .st622 {
+        fill-opacity: .33;
+      }
+
+      .st623 {
+        fill-opacity: .34;
+      }
+
+      .st624 {
+        fill-opacity: .34;
+      }
+
+      .st625 {
+        fill-opacity: .34;
+      }
+
+      .st626 {
+        fill-opacity: .34;
+      }
+
+      .st627 {
+        fill-opacity: .33;
+      }
+
+      .st628 {
+        fill-opacity: .33;
+      }
+
+      .st629 {
+        fill-opacity: .34;
+      }
+
+      .st630 {
+        fill-opacity: .31;
+      }
+
+      .st631 {
+        fill-opacity: .32;
+      }
+
+      .st632 {
+        fill-opacity: .32;
+      }
+
+      .st633 {
+        fill-opacity: .33;
+      }
+
+      .st634 {
+        fill-opacity: .32;
+      }
+
+      .st635 {
+        fill-opacity: .32;
+      }
+
+      .st636 {
+        fill-opacity: .32;
+      }
+
+      .st637 {
+        fill-opacity: .32;
+      }
+
+      .st638 {
+        fill-opacity: .32;
+      }
+
+      .st639 {
+        fill-opacity: .32;
+      }
+
+      .st640 {
+        fill-opacity: .32;
+      }
+
+      .st641 {
+        fill-opacity: .32;
+      }
+
+      .st642 {
+        fill-opacity: .32;
+      }
+
+      .st643 {
+        fill-opacity: .33;
+      }
+
+      .st644 {
+        fill-opacity: .33;
+      }
+
+      .st645 {
+        fill-opacity: .33;
+      }
+
+      .st646 {
+        fill-opacity: .36;
+      }
+
+      .st647 {
+        fill-opacity: .32;
+      }
+
+      .st648 {
+        fill-opacity: .31;
+      }
+
+      .st649 {
+        fill-opacity: .32;
+      }
+
+      .st650 {
+        fill-opacity: .32;
+      }
+
+      .st651 {
+        fill-opacity: .32;
+      }
+
+      .st652 {
+        fill-opacity: .31;
+      }
+
+      .st653 {
+        fill-opacity: .31;
+      }
+
+      .st654 {
+        fill-opacity: .31;
+      }
+
+      .st655 {
+        fill-opacity: .31;
+      }
+
+      .st656 {
+        fill-opacity: .31;
+      }
+
+      .st657 {
+        fill-opacity: .35;
+      }
+
+      .st658 {
+        fill-opacity: .35;
+      }
+
+      .st659 {
+        fill-opacity: .36;
+      }
+
+      .st660 {
+        fill-opacity: .34;
+      }
+
+      .st661 {
+        fill-opacity: .34;
+      }
+
+      .st662 {
+        fill-opacity: .34;
+      }
+
+      .st663 {
+        clip-path: url(#clippath);
+      }
+
+      .st44, .st45 {
+        stroke: #006400;
+      }
+
+      .st664 {
+        fill: #1c8e00;
+      }
+
+      .st75 {
+        stroke-width: .76px;
+      }
+    </style>
+    <radialGradient id="radial-gradient" cx="-94" cy="374" fx="-94" fy="374" r="6.25" gradientTransform="translate(725.65 1844.46) scale(4.85 -4.85)" gradientUnits="userSpaceOnUse">
+      <stop offset="0.000" stop-color="#e8e8fc" /><stop offset="0.050" stop-color="#e8e8fc" /><stop offset="0.100" stop-color="#e8e8fc" /><stop offset="0.150" stop-color="#e8e8fc" /><stop offset="0.200" stop-color="#e8e8fc" /><stop offset="0.250" stop-color="#e8e8fc" /><stop offset="0.300" stop-color="#e8e8fc" /><stop offset="0.350" stop-color="#e8e8fc" /><stop offset="0.400" stop-color="#e8e8fc" /><stop offset="0.450" stop-color="#e8e8fc" /><stop offset="0.500" stop-color="#e8e8fc" /><stop offset="0.550" stop-color="#e8e8fc" /><stop offset="0.600" stop-color="#e8e8fc" /><stop offset="0.650" stop-color="#e8e8fc" /><stop offset="0.700" stop-color="#e8e8fc" /><stop offset="0.750" stop-color="#e8e8fc" /><stop offset="0.800" stop-color="#e8e8fc" /><stop offset="0.850" stop-color="#eeeefd" /><stop offset="0.900" stop-color="#f4f4fe" /><stop offset="0.950" stop-color="#f9f9fe" /><stop offset="1.000" stop-color="#ffffff" /></radialGradient>
+    <radialGradient id="radial-gradient1" cx="-92.53" cy="370.46" fx="-92.53" fy="370.46" r="6.25" gradientTransform="translate(356.03 548.62) scale(1.26 -1.26)" gradientUnits="userSpaceOnUse">
+      <stop offset="0.000" stop-color="#6060eb" /><stop offset="0.050" stop-color="#6060eb" /><stop offset="0.100" stop-color="#6060eb" /><stop offset="0.150" stop-color="#6060eb" /><stop offset="0.200" stop-color="#6060eb" /><stop offset="0.250" stop-color="#6060eb" /><stop offset="0.300" stop-color="#6060eb" /><stop offset="0.350" stop-color="#6e6eed" /><stop offset="0.400" stop-color="#7b7bef" /><stop offset="0.450" stop-color="#8888f0" /><stop offset="0.500" stop-color="#9494f2" /><stop offset="0.550" stop-color="#9f9ff3" /><stop offset="0.600" stop-color="#a9a9f4" /><stop offset="0.650" stop-color="#b4b4f6" /><stop offset="0.700" stop-color="#bdbdf7" /><stop offset="0.750" stop-color="#c6c6f8" /><stop offset="0.800" stop-color="#cecef9" /><stop offset="0.850" stop-color="#d5d5fa" /><stop offset="0.900" stop-color="#dcdcfb" /><stop offset="0.950" stop-color="#e3e3fc" /><stop offset="1.000" stop-color="#e8e8fc" /></radialGradient>
+    <radialGradient id="radial-gradient2" cx="-94" cy="373.98" fx="-94" fy="373.98" r="6.25" gradientTransform="translate(691.9 1875.33) scale(4.8 -4.8)" gradientUnits="userSpaceOnUse">
+      <stop offset="0.000" stop-color="#e8e8fc" /><stop offset="0.050" stop-color="#e8e8fc" /><stop offset="0.100" stop-color="#e8e8fc" /><stop offset="0.150" stop-color="#e8e8fc" /><stop offset="0.200" stop-color="#e8e8fc" /><stop offset="0.250" stop-color="#e8e8fc" /><stop offset="0.300" stop-color="#e8e8fc" /><stop offset="0.350" stop-color="#e8e8fc" /><stop offset="0.400" stop-color="#e8e8fc" /><stop offset="0.450" stop-color="#e8e8fc" /><stop offset="0.500" stop-color="#e8e8fc" /><stop offset="0.550" stop-color="#e8e8fc" /><stop offset="0.600" stop-color="#e8e8fc" /><stop offset="0.650" stop-color="#e8e8fc" /><stop offset="0.700" stop-color="#e8e8fc" /><stop offset="0.750" stop-color="#e8e8fc" /><stop offset="0.800" stop-color="#e8e8fc" /><stop offset="0.850" stop-color="#eeeefd" /><stop offset="0.900" stop-color="#f4f4fe" /><stop offset="0.950" stop-color="#f9f9fe" /><stop offset="1.000" stop-color="#ffffff" /></radialGradient>
+    <radialGradient id="radial-gradient3" cx="-94" cy="373.98" fx="-94" fy="373.98" r="6.25" gradientTransform="translate(749.66 1875.34) scale(4.8 -4.8)" gradientUnits="userSpaceOnUse">
+      <stop offset="0.000" stop-color="#e8e8fc" /><stop offset="0.050" stop-color="#e8e8fc" /><stop offset="0.100" stop-color="#e8e8fc" /><stop offset="0.150" stop-color="#e8e8fc" /><stop offset="0.200" stop-color="#e8e8fc" /><stop offset="0.250" stop-color="#e8e8fc" /><stop offset="0.300" stop-color="#e8e8fc" /><stop offset="0.350" stop-color="#e8e8fc" /><stop offset="0.400" stop-color="#e8e8fc" /><stop offset="0.450" stop-color="#e8e8fc" /><stop offset="0.500" stop-color="#e8e8fc" /><stop offset="0.550" stop-color="#e8e8fc" /><stop offset="0.600" stop-color="#e8e8fc" /><stop offset="0.650" stop-color="#e8e8fc" /><stop offset="0.700" stop-color="#e8e8fc" /><stop offset="0.750" stop-color="#e8e8fc" /><stop offset="0.800" stop-color="#e8e8fc" /><stop offset="0.850" stop-color="#eeeefd" /><stop offset="0.900" stop-color="#f4f4fe" /><stop offset="0.950" stop-color="#f9f9fe" /><stop offset="1.000" stop-color="#ffffff" /></radialGradient>
+    <radialGradient id="radial-gradient4" cx="-87.35" cy="369.88" fx="-87.35" fy="369.88" r="6.25" gradientTransform="translate(218.68 268.22) rotate(43.14) scale(.83 -.5)" gradientUnits="userSpaceOnUse">
+      <stop offset="0.000" stop-color="#3d3de7" /><stop offset="0.050" stop-color="#3d3de7" /><stop offset="0.100" stop-color="#3d3de7" /><stop offset="0.150" stop-color="#3d3de7" /><stop offset="0.200" stop-color="#3d3de7" /><stop offset="0.250" stop-color="#4d4de9" /><stop offset="0.300" stop-color="#5d5deb" /><stop offset="0.350" stop-color="#6c6ced" /><stop offset="0.400" stop-color="#7a7aef" /><stop offset="0.450" stop-color="#8787f0" /><stop offset="0.500" stop-color="#9494f2" /><stop offset="0.550" stop-color="#a0a0f3" /><stop offset="0.600" stop-color="#ababf5" /><stop offset="0.650" stop-color="#b5b5f6" /><stop offset="0.700" stop-color="#bfbff7" /><stop offset="0.750" stop-color="#c8c8f8" /><stop offset="0.800" stop-color="#d0d0f9" /><stop offset="0.850" stop-color="#d7d7fa" /><stop offset="0.900" stop-color="#dedefb" /><stop offset="0.950" stop-color="#e3e3fc" /><stop offset="1.000" stop-color="#e8e8fc" /></radialGradient>
+    <radialGradient id="radial-gradient5" cx="-90.3" cy="362.45" fx="-90.3" fy="362.45" r="6.25" gradientTransform="translate(359.83 249.81) rotate(6.09) scale(.74 -.45)" gradientUnits="userSpaceOnUse">
+      <stop offset="0.000" stop-color="#4040e9" /><stop offset="0.050" stop-color="#4040e9" /><stop offset="0.100" stop-color="#4040e9" /><stop offset="0.150" stop-color="#4040e9" /><stop offset="0.200" stop-color="#4040e9" /><stop offset="0.250" stop-color="#5050eb" /><stop offset="0.300" stop-color="#5f5fec" /><stop offset="0.350" stop-color="#6e6eee" /><stop offset="0.400" stop-color="#7c7cf0" /><stop offset="0.450" stop-color="#8989f1" /><stop offset="0.500" stop-color="#9595f3" /><stop offset="0.550" stop-color="#a1a1f4" /><stop offset="0.600" stop-color="#ababf5" /><stop offset="0.650" stop-color="#b6b6f6" /><stop offset="0.700" stop-color="#bfbff7" /><stop offset="0.750" stop-color="#c8c8f8" /><stop offset="0.800" stop-color="#d0d0f9" /><stop offset="0.850" stop-color="#d7d7fa" /><stop offset="0.900" stop-color="#dedefb" /><stop offset="0.950" stop-color="#e3e3fc" /><stop offset="1.000" stop-color="#e8e8fc" /></radialGradient>
+    <clipPath id="clippath">
+      <path class="st0" d="M31.55,14.82c.62,1.62-.16,3.45-1.77,4.08-1.6.63-3.4-.17-4.02-1.79-.63-1.62.17-3.46,1.76-4.09,1.6-.64,3.4.17,4.03,1.79Z" />
+    </clipPath>
+    <clipPath id="clippath-1">
+      <path class="st0" d="M37.95,14.95c.62,1.62-.16,3.45-1.77,4.08-1.6.63-3.4-.17-4.02-1.79-.63-1.62.17-3.46,1.76-4.09,1.6-.64,3.4.17,4.03,1.79Z" />
+    </clipPath>
+  </defs>
+  <g id="art"><g id="g33">
+      <g id="g1689">
+        <g id="g1799">
+          <g id="g1811">
+            <path id="path1782-6-8-3-8" class="st67" d="M241.23,40.81c-5.79-15.7,2.25-33.13,17.95-38.92,15.7-5.8,33.13,2.22,38.94,17.92,5.81,15.7-2.2,33.13-17.89,38.95-15.69,5.82-33.13-2.17-38.97-17.86" />
+            <path id="path38-8-7" class="st74" d="M252.03,40c-.44-1.59-.9-3.23-.94-4.89,0-.3.03-.59.04-.89.05-.28.08-.57.15-.85.21-.78.65-1.63,1.31-2.12.11-.08.23-.13.35-.2.65-.26,1.37-.24,2.03-.03.15.05.29.12.44.18.56.26,1.07.63,1.66.83.29.1.43.11.72.15.11,0,.22.02.32-.01.59-.16,1.43-1,1.91-1.39.63-.44,1.29-.96,2.05-1.15.4-.1.61-.04,1.01,0,.19.06.39.1.57.18.69.31,1.35.89,1.68,1.58.08.17.13.35.19.52.03.18.09.35.1.53.05.58-.16,1.27-.53,1.72-.11.14-.25.25-.38.38-1.37,1.09-3,1.78-4.43,2.78-.21.15-.4.31-.6.47-.12.16-.28.29-.35.47-.4.91.64,1.78,1.22,2.3.83.66,1.82,1.03,2.89,1.02.28,0,.56-.05.84-.07,1.41-.24,2.68-.89,3.85-1.67.51-.34,1-.72,1.5-1.07.42-.22.74-.45,1.23-.49,1.1-.11,2.11.6,2.98,1.16.25.19.51.37.76.57.86.67,1.64,1.51,2.6,2.03.21.11.43.19.65.28.24.03.48.09.72.08.9-.05,1.55-.61,2-1.36.43-.71.47-1.1.69-1.89.1-.62.29-1.61.26-2.23-.1-1.91-.76-3.84-1.75-5.46-.36-.59-.82-1.11-1.24-1.67-.53-.5-1.04-1.02-1.6-1.49-1.5-1.26-3.38-2.43-5.23-3.08-.29-.1-.58-.17-.88-.25-.47-.03-1.12-.3-1.58-.05-.37.2-.36.73-.39,1.08.02.63.07,1.3.35,1.88.14.3.24.42.42.68.25.34.58.6.98.72.13.1.26.19.42.24.5.4.94.54,1.57.68,1.33.28,2.66-.03,3.96-.35,1.95-.49,3.9-1.03,5.89-1.36,1.48-.2,2.07.17,3.21,1.08,1.06.99,1.99,2.1,3.06,3.08.21.15.48.55.79.46.05-.02.1-.05.15-.07.06-.03.11-.06.17-.08.05-.03.02-.1-.04-.07h0c-.06.03-.11.06-.17.08-.08.04-.13.09-.22.08-.25-.03-.42-.32-.62-.45-1.07-.98-2.01-2.09-3.07-3.08-1.16-.93-1.77-1.31-3.27-1.1-1.99.33-3.94.87-5.9,1.36-1.29.31-2.6.62-3.92.34-.64-.14-1.04-.27-1.56-.68-.16-.06-.29-.15-.43-.25-.38-.11-.7-.36-.93-.69-.18-.26-.28-.37-.41-.66-.27-.57-.32-1.23-.34-1.85.03-.29.01-.83.33-1,.45-.25,1.09.03,1.54.05.29.08.58.15.87.25,1.85.65,3.72,1.82,5.21,3.07.55.47,1.06.99,1.59,1.48.41.55.87,1.07,1.23,1.66.98,1.61,1.64,3.53,1.74,5.42.03.62-.16,1.6-.26,2.21-.09.33-.15.66-.26.98-.39,1.06-1.1,2.13-2.34,2.21-.23.02-.47-.05-.7-.07-.21-.09-.43-.16-.64-.27-.95-.51-1.75-1.37-2.6-2.03-.25-.19-.51-.38-.76-.57-.89-.58-1.92-1.29-3.05-1.17-.5.05-.82.28-1.25.51-.5.35-.99.73-1.5,1.07-1.17.78-2.43,1.42-3.82,1.66-.28.02-.55.07-.83.07-1.05,0-2.02-.35-2.84-1-.54-.48-1.58-1.34-1.21-2.19.07-.17.23-.3.34-.45.2-.15.39-.32.6-.46,1.43-1,3.07-1.69,4.45-2.79.13-.13.28-.25.39-.39.38-.47.59-1.18.54-1.78-.01-.18-.07-.36-.1-.55-.06-.18-.11-.36-.2-.53-.34-.7-1.01-1.3-1.73-1.61-.19-.08-.39-.12-.58-.19-.43-.04-.63-.1-1.05,0-.77.19-1.44.72-2.07,1.16-.43.36-1.33,1.23-1.86,1.37-.1.03-.2,0-.3.01-.29-.04-.42-.05-.71-.15-.59-.2-1.1-.57-1.66-.83-.15-.06-.29-.14-.45-.19-.68-.22-1.42-.23-2.09.03-.12.07-.25.12-.36.21-.68.51-1.13,1.37-1.34,2.17-.07.28-.1.57-.15.86-.01.3-.05.6-.04.9.04,1.67.5,3.31.94,4.9.01.06.09.04.08-.02h0Z" />
+            <path id="path1786-4-7" class="st68" d="M261.7,29.95c-.19-.51.07-1.07.58-1.25s1.07.07,1.25.58-.07,1.07-.58,1.26-1.07-.07-1.26-.58" />
+            </g>
+        </g>
+        <g id="g1810">
+          <path id="path1782-6-9" class="st71" d="M212.88,91.74c-5.72-15.53,2.22-32.76,17.75-38.49,15.53-5.73,32.76,2.2,38.51,17.72s-2.17,32.76-17.69,38.52c-15.52,5.76-32.76-2.15-38.53-17.66" />
+          <path id="path1782-25" class="st69" d="M231.73,83.36c-1.51-4.09.59-8.63,4.67-10.14,4.09-1.51,8.63.58,10.14,4.67,1.51,4.09-.57,8.63-4.66,10.14-4.09,1.52-8.63-.57-10.15-4.65" transform="translate(-0.21 -1.36)" />
+          <path id="path1786-4" class="st68" d="M234.02,79.31c-.2-.56.08-1.17.64-1.38s1.17.08,1.38.63-.08,1.17-.63,1.38c-.56.21-1.17-.08-1.38-.63" style="fill:#5555a4" />
+        <path id="path1657" class="st75" d="M222.69,87.91c.36-.77.67-1.57,1.05-2.33.12-.24.25-.48.37-.72.49-.85,1.07-1.65,1.74-2.37.33-.36.43-.44.78-.76.39-.32.83-.59,1.34-.69.25-.05.39-.04.64-.05.46,0,.86.19,1.23.43.42.29.79.38,1.29.42.5.02.93-.19,1.37-.39.46-.21.89-.47,1.36-.65.33-.13.46-.16.8-.25.36-.09.73-.14,1.11-.09.44.06.86.25,1.28.41.65.29,1.29.62,1.78,1.16.27.3.28.36.46.69.1.25.17.51.1.77-.07.27-.25.47-.42.67-.53.54-1.17.97-1.77,1.43-.15.12-.3.24-.45.36-.47.4-.98.82-1.26,1.39-.13.26-.13.36-.18.63-.02.6.14,1.26.68,1.6.11.07.25.11.37.16.15.03.3.08.46.09.18.01.37,0,.55,0,.71-.05,1.39-.24,2.03-.57.27-.14.52-.3.79-.46,1.21-.82,2.3-1.82,3.59-2.51.72-.38.98-.45,1.74-.71,1.54-.43,3.15-.46,4.72-.19.29.05.57.12.85.19.23.08.47.14.7.24.49.21.99.53,1.21,1.03.15.34.1.46.08.81-.05.14-.09.29-.16.43-.2.39-.47.69-.79,1.01-.44.43-.87.78-1.38,1.12-.28.19-.58.35-.87.53-.38.17-.74.36-1.13.52-.99.41-1.86.66-2.88.99-1.03.34-2.37.78-3.39,1.15-.59.21-1.18.44-1.77.66-1.55.61-3.1,1.23-4.51,2.12-.55.35-1.1.74-1.5,1.27-.12.16-.19.35-.28.53,0,.16-.05.33-.02.49.07.4.33.69.61.97.38.38.8.67,1.26.94.23.13.47.24.71.36.59.2.87.34,1.5.36,1.18.04,2.33-.44,3.32-1.04.52-.31.99-.68,1.49-1.03,1.69-1.36,3.26-2.86,4.85-4.34.67-.62,1.55-1.45,2.29-2.04.29-.23.59-.43.89-.65.26-.14.5-.3.77-.42.66-.28,1.37-.35,2.07-.23.49.09.63.17,1.07.36.61.32,1.19.82,1.9.91.14.01.27,0,.41,0,.72-.1,1.37-.44,1.93-.9.1-.08.18-.17.28-.26.07-.1.16-.18.22-.29.27-.43.4-.97.41-1.48,0-.12-.01-.23-.02-.35-.02-.11-.03-.23-.06-.34-.02-.1-.17-.62-.19-.71-.12-.43-.25-.86-.38-1.29-.43-1.33-1.13-2.57-2.01-3.65-.21-.26-.45-.5-.67-.75-1.2-1.2-2.6-2.19-4.09-3-.29-.16-.6-.3-.89-.46-.92-.42-1.91-.76-2.94-.78-.47,0-.62.04-1.08.13-.86.18-1.58.68-2.33,1.08-.58.3-1.19.53-1.82.7-.67.18-1.36.24-2.06.27-.43-.02-.88-.04-1.29-.18-.08-.03-.15-.06-.23-.1-.54-.32-.83-.8-1.15-1.31-.43-.82-.88-1.63-1.4-2.41-.51-.73-1.24-1.26-2.05-1.64-.18-.08-.36-.15-.54-.23-.63-.26-1.28-.47-1.96-.58-.33-.05-.45-.05-.77-.06-.12,0-.23,0-.35.01-.17.01-.51.06-.68.08-.35.04-.69.07-1.04.08-.12,0-.25,0-.37-.02-.5-.06-1.02-.22-1.45-.48-.08-.05-.16-.11-.24-.17-.39-.31-.42-.44-.4-.91.03-.33.02-.67.11-1,.09-.26.2-.35.39-.52.19-.19.38-.37.57-.55.09-.09.18-.19.23-.3.02-.05-.05-.08-.07-.03h0c-.04.11-.13.19-.21.28-.19.18-.39.36-.57.55-.06.06-.13.11-.19.17-.11.11-.16.25-.22.39-.09.33-.09.67-.11,1.01,0,.17-.03.36.04.53.08.19.24.32.39.45.08.06.16.12.25.17.44.27.97.43,1.48.49.13.01.25.01.38.02.35-.02.7-.04,1.04-.09.16-.02.51-.07.67-.08.12,0,.23,0,.35-.01.32.01.44.01.76.06.67.1,1.32.31,1.94.57.18.08.36.14.54.23.79.37,1.52.89,2.02,1.62.52.77.97,1.58,1.4,2.41.33.53.62,1.01,1.18,1.34.08.03.16.07.24.1.42.15.88.16,1.32.18.7-.03,1.4-.09,2.07-.27.63-.18,1.25-.4,1.83-.71.75-.4,1.46-.89,2.31-1.07.44-.08.59-.13,1.06-.13,1.02.01,2,.35,2.91.77.3.15.6.29.89.45,1.48.81,2.87,1.79,4.07,2.98.22.25.46.49.67.75.87,1.08,1.57,2.31,2,3.62.13.43.26.86.38,1.28.02.08.17.6.19.7.02.11.04.22.06.33,0,.11.02.22.02.34,0,.49-.13,1.02-.4,1.44-.06.1-.14.19-.22.28-.09.09-.17.18-.27.26-.54.46-1.18.78-1.88.89-.13,0-.26.01-.4,0-.7-.08-1.28-.59-1.89-.9-.45-.19-.6-.28-1.1-.37-.72-.12-1.45-.05-2.12.24-.27.12-.52.28-.78.43-.3.22-.6.42-.89.65-.73.59-1.61,1.41-2.29,2.04-1.59,1.47-3.15,2.97-4.84,4.33-.49.34-.97.71-1.48,1.02-.98.59-2.12,1.06-3.28,1.03-.62-.02-.9-.16-1.48-.36-.23-.12-.47-.22-.7-.35-.46-.27-.87-.55-1.25-.92-.26-.26-.52-.54-.59-.91-.03-.15.01-.3.01-.46.09-.17.15-.36.27-.51.39-.52.94-.91,1.48-1.25,1.41-.89,2.96-1.51,4.5-2.12.59-.22,1.18-.45,1.77-.66,1.02-.36,2.36-.81,3.39-1.15,1.03-.34,1.89-.59,2.89-.99.39-.16.76-.35,1.14-.53.29-.18.59-.34.87-.54.51-.34.95-.7,1.39-1.13.32-.32.6-.63.8-1.03.07-.14.11-.3.17-.45.02-.37.07-.5-.09-.85-.23-.52-.75-.85-1.25-1.07-.23-.1-.47-.16-.71-.24-.29-.06-.57-.14-.86-.19-1.59-.27-3.2-.23-4.75.2-.77.27-1.03.33-1.76.72-1.3.69-2.38,1.69-3.59,2.51-.26.15-.51.32-.78.45-.63.32-1.3.51-2,.56-.18.01-.36.02-.54,0-.15-.01-.3-.06-.44-.08-.3-.13-.41-.14-.63-.39-.31-.36-.39-.84-.38-1.3.05-.26.04-.36.17-.61.27-.56.78-.98,1.24-1.37.15-.12.3-.24.45-.36.6-.47,1.25-.89,1.78-1.44.18-.22.37-.43.44-.71.07-.28,0-.56-.11-.82-.19-.34-.2-.4-.47-.71-.49-.55-1.14-.88-1.8-1.18-.42-.16-.85-.35-1.3-.41-.38-.05-.76,0-1.13.09-.34.1-.47.13-.81.26-.47.18-.9.44-1.36.65-.43.19-.85.41-1.34.38-.49-.04-.85-.12-1.25-.41-.39-.24-.8-.44-1.28-.44-.25.01-.4,0-.66.06-.52.1-.97.37-1.37.7-.35.32-.45.4-.79.76-.67.73-1.26,1.53-1.75,2.39-.13.24-.26.48-.38.72-.38.76-.69,1.56-1.05,2.33-.02.05.05.08.07.03h0Z" />
+          <path id="path1658" class="st49" d="M238.47,77.8c0,.16-.01.32.05.47.08.15.13.05.23.05.01,0,.02,0,.03,0,.01,0,0,.01,0,.02,0,.01.01.02.02.03.01.03.01.06.02.09.02.16,0,.32.02.48.03.12.07.27.19.32.02,0,.04.01.06.01.06.01.29-.03.32.01.04.14.07.29.12.43.06.16.09.27.28.27.02,0,.05-.01.07,0,.02,0,.08.12.09.13.07.11.16.2.29.21,0,0,.01,0,.02,0,.03.02.08.09.1.12.06.07.05.06.12.1.14.07.24-.01.35-.09.02,0,.04-.01.06-.01.08,0,.08-.11,0-.11h0s-.08,0-.12.03c-.07.05-.14.12-.23.09-.06-.04-.05-.03-.1-.09-.05-.05-.09-.12-.15-.15-.01,0-.03,0-.04-.01-.1,0-.16-.09-.21-.16-.06-.1-.12-.21-.26-.18,0,0-.05,0-.06,0-.07-.01-.08-.15-.12-.19-.01-.04-.06-.17-.06-.21-.02-.09-.03-.2-.1-.28-.12-.07-.23-.03-.36-.03-.11-.01-.14-.15-.17-.24-.02-.16,0-.32-.02-.48-.02-.1-.05-.22-.18-.23-.06,0-.05,0-.09.02-.04.02.01,0,0,.02,0,.01-.05-.04-.03-.03-.07-.13-.03-.29-.04-.43,0-.08-.11-.08-.11,0h0Z" />
+          <path id="path1659" class="st87" d="M236.18,80.57c.27,0,.55.02.82.07.09.03.11.03.09.11,0,.07.03.12.06.18.03.06.09.1.14.14.14.07.3.08.46.1.16.03.33.03.48.1.06.06.06.13.06.21-.01.11,0,.22.03.33.01.09.08.15.15.2.02,0,.05.01.07.02.05,0,.13.01.18.03.08.01.15.04.23.06.06.03.09.08.1.15,0,.08,0,.17,0,.25,0,.08.06.15.1.22.04.07.08.13.14.19,0,.01.02.03.01.04,0,.08.12.07.11-.01h0s-.02-.08-.05-.11c-.05-.04-.09-.09-.12-.16,0-.01-.02-.03-.03-.04,0-.01-.01-.03-.02-.05-.01-.02-.02-.04-.03-.05,0,0,0,0,0,0,0,0,0-.01,0-.02,0-.09.01-.18,0-.27-.02-.11-.07-.19-.17-.23-.15-.05-.3-.08-.46-.1-.05-.02-.09-.08-.1-.13-.03-.1-.03-.2-.02-.3,0-.13-.01-.22-.12-.3-.16-.07-.34-.08-.52-.11-.14-.01-.28-.03-.4-.08-.04-.03-.09-.06-.11-.11-.02-.03-.04-.06-.05-.1.03-.14-.04-.2-.17-.24-.28-.05-.56-.07-.84-.07-.08,0-.52.04-.45.04l.44.07Z" />
+          </g>
+        <g id="g1809">
+          <g id="g1789-1">
+            <path id="path1782-6-8-8" class="st73" d="M270.63,91.74c-5.72-15.53,2.22-32.76,17.75-38.49,15.53-5.73,32.76,2.2,38.51,17.72,5.74,15.52-2.17,32.76-17.69,38.52-15.52,5.76-32.76-2.15-38.53-17.66" />
+            <path id="path1782-2-4" class="st70" d="M288.34,80.42c.39-1.87,2.63-2.24,5-.83s3.99,4.06,3.61,5.92c-.38,1.87-2.62,2.24-5,.84s-4-4.05-3.62-5.92" transform="translate(0.62 -0.94)" />
+            <path id="path1782-2-2-1" class="st72" d="M305.78,81.29c-.73-1.54.67-3.01,3.12-3.29,2.45-.28,5.04.74,5.77,2.28.73,1.54-.66,3.01-3.11,3.3-2.45.28-5.04-.74-5.77-2.28" transform="translate(-0.61 0.51)" />
+            <path id="path1660" class="st47" d="M280.67,92.04c-.42-1.54-.87-3.12-.91-4.73,0-.29.03-.58.04-.86.05-.27.07-.55.15-.82.2-.76.63-1.57,1.27-2.05.1-.08.22-.13.34-.19.62-.25,1.32-.23,1.96-.02.14.05.28.12.42.18.54.25,1.03.61,1.6.8.28.09.42.1.7.15.1,0,.21.02.31-.01.57-.15,1.39-.97,1.85-1.35.61-.42,1.24-.93,1.98-1.11.39-.1.59-.04.98,0,.18.06.37.1.55.18.67.3,1.3.86,1.63,1.53.08.16.12.33.18.5.03.17.08.34.1.52.04.56-.15,1.23-.51,1.67-.11.13-.25.24-.37.36-1.33,1.05-2.91,1.72-4.29,2.69-.2.14-.39.3-.58.45-.11.15-.27.28-.34.45-.39.88.62,1.72,1.18,2.23.8.64,1.76.99,2.79.99.27,0,.54-.05.82-.07,1.36-.24,2.59-.86,3.73-1.62.5-.33.97-.69,1.45-1.04.41-.22.72-.43,1.19-.48,1.07-.1,2.04.58,2.88,1.13.24.18.49.36.73.55.83.65,1.58,1.46,2.52,1.97.2.11.42.18.63.27.23.02.46.09.7.07.87-.05,1.5-.59,1.93-1.31.42-.69.46-1.06.67-1.83.1-.6.28-1.55.25-2.16-.09-1.85-.73-3.71-1.69-5.29-.35-.57-.8-1.08-1.2-1.62-.52-.48-1.01-.99-1.55-1.44-1.45-1.22-3.27-2.35-5.06-2.98-.28-.1-.57-.16-.85-.24-.45-.03-1.08-.29-1.53-.05-.36.19-.34.71-.38,1.04.02.61.07,1.26.33,1.82.13.29.23.4.41.66.24.33.56.58.95.69.13.1.26.18.41.24.49.39.91.52,1.52.66,1.29.27,2.57-.03,3.83-.33,1.89-.47,3.77-1,5.7-1.31,1.43-.2,2.01.16,3.1,1.05,1.02.96,1.93,2.03,2.96,2.98.21.15.46.53.77.44.05-.01.09-.05.14-.07.05-.03.11-.05.16-.08.05-.03.01-.1-.04-.07h0c-.05.03-.11.05-.16.08-.07.04-.13.09-.22.08-.25-.03-.41-.31-.6-.43-1.04-.95-1.94-2.03-2.97-2.98-1.12-.9-1.71-1.26-3.17-1.06-1.93.31-3.81.84-5.7,1.31-1.24.3-2.51.6-3.79.33-.62-.14-1-.26-1.51-.65-.15-.05-.28-.15-.41-.24-.37-.11-.68-.35-.9-.66-.17-.25-.27-.36-.4-.64-.26-.55-.31-1.19-.33-1.78.03-.28.01-.8.32-.97.43-.24,1.05.02,1.49.05.28.08.57.14.84.24,1.79.63,3.6,1.76,5.04,2.97.54.45,1.03.95,1.54,1.43.4.54.84,1.04,1.19,1.61.95,1.56,1.59,3.41,1.68,5.24.03.6-.15,1.55-.25,2.14-.09.32-.14.64-.26.95-.37,1.03-1.07,2.06-2.26,2.14-.23.01-.45-.04-.67-.07-.21-.09-.42-.16-.62-.26-.92-.5-1.69-1.32-2.51-1.96-.24-.19-.49-.37-.74-.55-.86-.56-1.85-1.25-2.95-1.14-.48.05-.79.27-1.21.49-.49.34-.96.7-1.45,1.03-1.13.75-2.35,1.37-3.69,1.61-.27.02-.53.07-.8.07-1.01,0-1.96-.34-2.75-.97-.52-.46-1.52-1.29-1.17-2.12.07-.17.22-.29.33-.44.19-.15.38-.31.58-.45,1.39-.97,2.97-1.64,4.3-2.7.13-.13.27-.24.38-.38.37-.45.57-1.14.52-1.72-.01-.18-.07-.35-.1-.53-.06-.17-.11-.35-.19-.52-.33-.68-.98-1.26-1.67-1.56-.18-.08-.38-.12-.57-.18-.42-.04-.61-.1-1.02,0-.75.19-1.39.69-2.01,1.12-.42.34-1.29,1.19-1.8,1.33-.09.03-.19,0-.29.01-.28-.04-.41-.05-.68-.14-.57-.19-1.06-.55-1.6-.8-.14-.06-.29-.13-.43-.18-.66-.21-1.38-.23-2.02.03-.12.07-.24.12-.35.2-.66.49-1.09,1.32-1.29,2.1-.07.27-.1.56-.15.83-.01.29-.04.58-.04.87.04,1.61.49,3.2.91,4.74.01.06.09.04.08-.02h0Z" />
+            <path id="path43-12-7" class="st46" d="M293.89,84.69c0-.16.02-.31-.05-.46-.08-.14-.13-.05-.22-.05,0,0-.02,0-.03,0-.01,0,0-.01,0-.02,0-.01-.01-.02-.02-.03-.01-.02-.01-.06-.02-.08-.02-.15,0-.31-.02-.46-.03-.11-.07-.26-.19-.31-.02,0-.04,0-.06-.01-.05,0-.28.03-.31-.01-.04-.14-.07-.28-.12-.41-.06-.15-.08-.26-.27-.26-.02,0-.05.01-.07,0-.02,0-.08-.11-.09-.13-.07-.11-.15-.19-.28-.21,0,0-.01,0-.02,0-.03-.02-.07-.09-.09-.11-.06-.06-.05-.05-.12-.1-.13-.07-.23.01-.34.08-.02,0-.03.01-.05.01-.07,0-.08.1,0,.11h0s.08,0,.11-.03c.07-.04.14-.11.22-.08.05.04.05.03.1.08.05.05.08.11.15.14.01,0,.03,0,.04,0,.1,0,.16.09.2.16.06.09.12.2.25.17,0,0,.04,0,.06,0,.07.01.08.14.11.19.01.04.05.16.06.2.02.09.02.2.09.27.11.07.22.03.35.03.11.01.13.15.16.23.02.16,0,.31.02.47.02.1.05.22.18.22.05,0,.05,0,.09-.02.04-.02,0,0,0-.02,0-.01.04.04.03.03.06.13.03.28.04.41,0,.07.11.07.11,0h0Z" />
+            <path id="path41-45-9" class="st48" d="M308.57,81.19c.22-.15.44-.29.68-.4.09-.02.1-.03.13.04.04.06.09.08.15.11.06.03.12.03.19.03.15-.02.29-.1.42-.18.14-.06.28-.17.43-.19.08.01.12.07.16.13.05.1.12.17.21.24.06.06.14.08.23.07.02,0,.05-.01.07-.02.05-.03.11-.06.16-.08.07-.03.14-.05.22-.08.06-.01.12.01.16.06.05.06.09.13.14.2.05.06.13.08.2.11.07.04.14.06.22.07.01,0,.03.01.03.02.05.06.13-.01.08-.07h0s-.06-.05-.11-.06c-.07,0-.12-.02-.18-.06-.02,0-.03-.01-.05-.02-.01,0-.03-.02-.04-.02-.02,0-.04-.02-.06-.03,0,0,0,0,0,0,0,0,0,0,0-.01-.05-.07-.09-.15-.15-.22-.07-.07-.16-.11-.27-.09-.15.04-.29.1-.42.18-.05.01-.11-.01-.15-.05-.08-.06-.14-.14-.19-.22-.08-.1-.13-.17-.27-.17-.17.04-.31.13-.47.21-.11.07-.23.13-.36.16-.05,0-.1,0-.14-.02-.03-.02-.07-.03-.1-.05-.06-.13-.15-.14-.27-.09-.25.11-.48.26-.7.41-.06.04,0,.13.06.09h0Z" />
+            <path id="path1786-4-4" class="st68" d="M289.83,82.22c-.18-.49.07-1.03.56-1.21s1.03.07,1.21.56-.07,1.03-.56,1.21-1.03-.07-1.21-.56" />
+          </g>
+          </g>
+      </g>
+    </g>
+    </g></svg>
