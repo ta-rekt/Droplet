@@ -51,6 +51,25 @@ Per `context/CRITICAL_PRINCIPLES.md` and `context/style_guide.md`:
 
 The `data/` and `jobs/` directories are gitignored.
 
+## Paper Figures
+
+Figures for the manuscript are built in `figure_production/` — one notebook per
+figure, reading `figure_production/processed_data/` and writing
+`figure_production/figures/<fig>/`.
+
+**Before producing or changing any figure, read `figure_production/FIGURE_STYLE.md`
+and follow it.** It is the source of truth for figure typography and geometry, and
+it exists because these mistakes are easy to make and invisible until the figure is
+on the page:
+
+- all text at the caption size (9 pt *as printed*), tick labels 8 pt, panel letters Arial 12 pt;
+- build at the width the figure is included at, so LaTeX's scale factor is 1 —
+  a column-width PDF dropped into a `figure*` prints at nearly twice the intended size;
+- never `bbox_inches="tight"` on a print-sized figure; it re-crops the page and
+  LaTeX silently rescales it;
+- verify the output PDF's page size and embedded font sizes rather than trusting
+  the rcParams.
+
 ## Context Files
 
 When the task is generating proposals, specs, or visualizations, read the corresponding doc in `context/` first — it is the source of truth and more current than this file:
@@ -58,6 +77,8 @@ When the task is generating proposals, specs, or visualizations, read the corres
 - `context/spec_template_guide.md` — full spec-file syntax and `target!` contract
 - `context/visualization_guide.md` — dashboard structure and the spec→dashboard→`viz.ipynb` pipeline
 - `context/experiment_types.md` — catalog of existing experiments to copy from
+- `figure_production/FIGURE_STYLE.md` — **required reading before producing or
+  modifying any paper figure** (type sizes, scale factors, panel letters)
 - `context/domain_knowledge.md` — physics/biology background
 - `context/heterogeneous_polymer_implementation.md` — heteropolymer subsystem details
 - VERY IMPORTANT: please don't use skills without asking first. do not load a skill
