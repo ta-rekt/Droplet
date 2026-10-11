@@ -1,13 +1,14 @@
 # Paper figures
 
 One folder per figure, each holding its notebook, the code that feeds it, and
-the PDF it produces. `processed_data/` is shared by Figs. 2, 3 and 5.
+the PDF it produces. `processed_data/` holds the reduced data of Figs. 1, 2, 3 and 5.
 
 ```
 figure_production/
 ├── README.md             this file
 ├── FIGURE_STYLE.md       typography and geometry rules -- read before changing a figure
-├── processed_data/       small CSV/JSON, committed, enough to rebuild Figs. 2 and 3 (and most of 5)
+├── processed_data/       small CSV/JSON, committed, enough to rebuild Figs. 1, 2, 3 and most of 5
+├── fig1/   fig1.ipynb · prepare_fig1_data.py · art_{a,b,c,d}.{svg,pdf} · art_bc_labels.json · extract_art.py · fig1.pdf
 ├── fig2/   fig2.ipynb · prepare_fig2_data.py · fig2.pdf
 ├── fig3/   fig3.ipynb · prepare_fig3_data.py · fig3.pdf
 ├── fig4/   fig4.ipynb · run_fig4_solver.sh · fig4_cartoon.svg · fig4.pdf
@@ -33,8 +34,59 @@ and **`cm-super`** must be present. Without `cm-super` the notebooks print a
 warning and silently fall back to mathtext: the numbers stay right, the
 typography does not.
 
-Figs. 4 and 5 additionally need `pypdf` (`pip install pypdf`) and an SVG converter,
+Figs. 1, 4 and 5 additionally need `pypdf` (`pip install pypdf`) and an SVG converter,
 either `cairosvg` or Inkscape, to composite their artwork. See below.
+
+## Fig. 1 — lattice Monte Carlo model
+
+The remake of `figs/fig1.svg` of the paper canvas, at `\textwidth`: 481.9 ×
+486.1 pt. **Include it with `width=\linewidth`** — the old composite was placed at
+`0.95\linewidth`, which would now shrink the 9 pt type.
+
+**B and C are pasted** from the source canvas — the published matplotlib
+rendering of the two 3D configurations (c = 0.003 run 13, c = 0.017 run 2 of the
+20260423 sweep). Re-plotting them depends on the matplotlib version (3D depth
+shading made the ligands vanish on a newer one). Only their tick labels are
+re-set, at the published positions (`art_bc_labels.json`).
+
+**Data** (`processed_data/fig1_*`, committed) for E come from one run of the
+20260423 proximal-promoter sweep (the raw output Fig. 2 uses), and for F from
+the source SVG:
+
+```
+python figure_production/fig1/prepare_fig1_data.py --data-root ~/Archive/Work/droplet_data
+```
+
+| panel | run | notes |
+|---|---|---|
+| E | c = 0.006, `output_cpu3` | frames 0–40000, transcription smoothed over 4000 frames (cell 155) |
+| F | — | a hand-drawn sketch; its step traces, shaded intervals and markers are read back from the SVG's path data |
+
+Cell 155 says `run = 12`, but the published trace is `output_cpu3` (its activity
+peaks at 0.58 near t = 1.71 × 10⁵ inside the long distance dip; no other run
+does). Its smoothing window is 4000 frames ≈ 3.2 × 10⁴ MC samples, not the
+"500-MCS" of the old caption.
+
+**Artwork.** `extract_art.py` cut the drawing of panels A–D out of the
+source SVG by element id, and converts each piece to PDF with Inkscape once:
+the notebook stamps the committed `art_*.pdf`, because SVG renderers disagree on
+this file's gradients (cairosvg drew D's glows wrongly on another machine). D's
+clouds and glows are also made opaque (pre-composited over what lies under
+them): macOS Preview fills the transparent gradients of an Inkscape/cairo PDF
+as solid discs (all lettering there is glyph outlines, and is dropped).
+The pieces keep the whole source canvas, and the notebook places every label in
+the same canvas units, so text and drawing stay registered. The source SVG had
+stale `sodipodi:type="arc"` attributes on several circles; Inkscape redrew those
+from the stale centres (D's clouds vanished off canvas, a stray dot appeared by
+A's "Off"), so the extraction strips all `sodipodi:*` attributes. It also re-centres D's three
+small contact glows, which every SVG renderer draws about a unit away from the
+published Illustrator PDF (offsets measured, in `GLOW_SHIFT`). Source files now
+live in `Tarek_Droplets/fig_sources/`.
+
+**Changes from the source:** E is as tall as F and its time axis starts at 0;
+E has a full box; F's rows moved down a few points to give its headers two rows;
+Anchor/Probe and D's open-polymer labels moved apart; the F letter now aligns
+with C and D.
 
 ## Fig. 2 — concentration sensitivity
 
