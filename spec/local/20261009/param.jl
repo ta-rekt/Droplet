@@ -123,6 +123,7 @@ Base.@kwdef struct FPTParams
     Nlocal::Int             = 100_000  # dense grid for the local-concentration integral
     ridge_scan_max::Float64 = 200     # x-range scanned to locate the barrier ridge
     ridge_scan_n::Int       = 8000
+    plateau_tol::Float64    = 1e-3     # |dU_att/dx| (kBT/site) at which the largest-phi well has flattened; x_div = 1.2 x there
 end
 
 # --- Swept axes --------------------------------------------------------------

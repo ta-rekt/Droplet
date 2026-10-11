@@ -80,6 +80,7 @@ Deff   = D_eff(PARAMS.rouse)           # 2 kBT / friction (relative end-to-end c
 Ngrid  = PARAMS.fpt.Ngrid
 Nlocal = PARAMS.fpt.Nlocal
 ridge_max = PARAMS.fpt.ridge_scan_max
+plateau_tol = PARAMS.fpt.plateau_tol
 
 length(xg_full) == Ngrid ||
     error("interp x_grid has $(length(xg_full)) points, PARAMS.fpt.Ngrid = $Ngrid")
@@ -106,28 +107,49 @@ function _find_ridge(xg, U, xmax)
     return xg[i] + 0.5 * (xg[2] - xg[1]) * (A - C) / (A - 2B + C)
 end
 
-# ── The dividing surface: ONE phi-independent x for the whole sweep ───────────
+# ── The dividing surface: ONE phi- and s-independent x for the whole sweep ─────
 # The escape/return split has to happen somewhere; making that somewhere depend on
 # phi makes the grids depend on phi and pollutes the score (see the header).  x_div
-# is therefore the first stored node at or beyond the LARGEST ridge in the sweep, so
-# it sits at/past the barrier top for every phi_inf.  Beyond the top U_tot falls
-# monotonically, so for the smaller-phi rows the extra stretch [x_ridge, x_div] is a
-# short downhill run whose transit time varies smoothly with phi -- it shifts the
-# MFPTs slightly but adds no structure.  Landing x_div exactly ON a node also makes
-# the return IC an exact delta at that node instead of a two-node blend that ripples
-# as the start point drifts between nodes.
-_ridges  = [all(isfinite, r) ? _find_ridge(xg_full, r, ridge_max) : -Inf for r in U_tot_rows]
-_max_ridge = maximum(_ridges) * 1.2
-isfinite(_max_ridge) ||
-    error("no phi_inf row has a finite U_tot: cannot place the dividing surface")
-i_div = clamp(something(findfirst(>=(_max_ridge), xg_full), Ngrid), 3, Ngrid - 1)
+# is therefore set by the ATTRACTIVE potential alone (U_full_interp under :bvp,
+# U_linear under :linear: no Rouse spring, no radial jacobian, hence no s) of the
+# LARGEST phi_inf, whose well reaches furthest out.  x_plat is the first x where that
+# well has flattened, |dU_att/dx| < plateau_tol, and x_div is the first stored node
+# at or beyond 1.1 x_plat.  (The old rule, 1.1 x the largest U_tot ridge of the sweep,
+# moved with s, and with no ridge below ridge_scan_max it returned the scan cap: x_div
+# was 240 for s <= 130 but 225 at s = 150.)  No fallback: if the well never flattens,
+# its first flat point is not its outer edge, or 1.1 x_plat is off the grid, stop.
+# Landing x_div exactly ON a node also makes the return IC an exact delta at that
+# node instead of a two-node blend that ripples as the start point drifts between nodes.
+U_att_max = _farr((potential == :bvp ? _ip["U_full_interp"] : _ip["U_linear"])[argmax(phi_infs)])
+all(isfinite, U_att_max) ||
+    error("attractive potential at the largest phi_inf is not finite: cannot place x_div")
+_xm    = (xg_full[1:end-1] .+ xg_full[2:end]) ./ 2        # the slopes live between nodes
+_slope = abs.(diff(U_att_max) ./ diff(xg_full))
+_k     = findfirst(<(plateau_tol), _slope)
+_k === nothing &&
+    error("the largest-phi attractive well never flattens to |dU/dx| < $plateau_tol on the x-grid")
+_k > 1 ||
+    error("the largest-phi attractive potential is already flat at contact: no well to escape")
+# Outer edge, not a flat stretch or local minimum INSIDE the well: from here out the
+# potential must stay flat all the way to the end of the grid.
+let _j = _k - 1 + argmax(@view _slope[_k:end])
+    _slope[_j] < plateau_tol ||
+        error(@sprintf("|dU_att/dx| < %g first at x = %.3f, but it is %.3g again at x = %.3f: a flat spot inside the well, not its outer edge",
+                       plateau_tol, _xm[_k], _slope[_j], _xm[_j]))
+end
+# sub-grid: where |dU_att/dx| crosses plateau_tol, linearly between slopes _k-1 and _k
+x_plat = _xm[_k-1] + (_slope[_k-1] - plateau_tol) / (_slope[_k-1] - _slope[_k]) * (_xm[_k] - _xm[_k-1])
+i_div  = findfirst(>=(1.1 * x_plat), xg_full)
+(i_div === nothing || i_div == Ngrid) &&
+    error(@sprintf("x_div = 1.1 x_plat = %.3f is not inside the x-grid [%.3f, %.3f)",
+                   1.1 * x_plat, xg_full[1], xg_full[end]))
 x_div = xg_full[i_div]
 
 # Frozen escape grid: the same nodes (hence the same _interp phase) at every phi.
 const xg_esc_fixed = collect(range(R, x_div; length = Ngrid))
 
-@printf("dividing surface: x_div=%.4f (node %d of %d), max ridge over sweep=%.4f\n",
-        x_div, i_div, Ngrid, _max_ridge)
+@printf("dividing surface: x_div=%.4f (node %d of %d) = first node >= 1.1 x_plat, x_plat=%.4f (largest-phi well flat to |dU/dx| < %g, U_att(x_plat)=%.3g)\n",
+        x_div, i_div, Ngrid, x_plat, plateau_tol, _interp(xg_full, U_att_max, x_plat))
 
 # ── Solve the escape and return FPT problems at one phi_inf ───────────────────
 # `Urow` is the stored U_tot(x) on xg_full for this phi_inf.  If t_esc/t_ret are
@@ -318,11 +340,13 @@ open(outpath, "w") do io
                               "range(R,x_div,Ngrid)",
             "return_setup" => "IC=delta at the node x_div; absorbing at R, reflecting far end " *
                               "(time x_div->R), on the stored grid x_grid itself",
-            "x_div_def"    => "single phi-independent dividing surface: the first stored node at " *
-                              "or beyond max_phi x_ridge(phi), so it is at/past the barrier top " *
-                              "for every phi.  Freezing it (instead of absorbing at each phi's " *
-                              "own ridge) keeps the phi-derivative of logP from differencing a " *
-                              "phi-dependent discretisation, which is what rippled the rate.",
+            "x_div_def"    => "single phi- and s-independent dividing surface: the first stored " *
+                              "node at or beyond 1.1 x_plat, x_plat = first x where the attractive " *
+                              "potential (no spring, no jacobian) of the LARGEST phi_inf has " *
+                              "flattened to |dU/dx| < fpt.plateau_tol.  Freezing it (instead of " *
+                              "absorbing at each phi's own ridge) keeps the phi-derivative of logP " *
+                              "from differencing a phi-dependent discretisation, which is what " *
+                              "rippled the rate.",
             "fisher_def" => "phi^2 (A_esc+A_ret), " *
                                  "A=∫P(t|phi) (∂logP/∂phi)² dt (squared central 1st deriv in phi)",
             "phi_local_def" => "Boltzmann-weighted (w=exp(-U_tot/kBT)) avg over the well " *
@@ -333,6 +357,7 @@ open(outpath, "w") do io
         "phi_infs"    => phi_infs,
         "x_div"       => x_div,                         # the sweep-wide dividing surface
         "i_div"       => i_div,                         # its node index in x_grid
+        "x_plat"      => x_plat,                        # largest-phi well edge; x_div ≈ 1.1 x_plat
         "fisher" => fisher,                   # length nphi-2, indexed by phi-index
         "phi_local"             => phi_local_vals,      # length nphi
         "dphi_local_dphi_inf"   => dphi_local_vals,
