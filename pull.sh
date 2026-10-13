@@ -1,14 +1,12 @@
 #!/bin/bash
 
-DATE=20260624
-EXP=proximal_promoter_transc_long
-D=30
+DATE=20261012
+EXP=s
 
-for c in 0.003 0.004 0.005 0.006 0.007 0.008 0.009 0.010 0.011 0.012 0.013 0.014; do
-    DIR="${EXP}_d_${D}_c_${c}"
+for S in 50 100 150 200 250 300 350 400 450 500 550 600 650 700 750 800; do
+    DIR="${EXP}${S}"
     echo "Pulling $DIR ..."
     mkdir -p "data/${DATE}/${DIR}"
-    scp -J tohme@bastion.phys.ens.fr \
-        "tohme@thanos.phys.ens.fr:/home/tohme/.julia/dev/Droplet/data/${DATE}/${DIR}/*" \
+    scp -r "tohme@thanos.phys.ens.fr:/home/tohme/.julia/dev/Droplet/data/${DATE}/${DIR}/*" \
         "data/${DATE}/${DIR}"
 done
