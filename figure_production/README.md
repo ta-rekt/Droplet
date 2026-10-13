@@ -12,8 +12,9 @@ figure_production/
 ├── fig2/   fig2.ipynb · prepare_fig2_data.py · fig2.pdf
 ├── fig3/   fig3.ipynb · prepare_fig3_data.py · fig3.pdf
 ├── fig4/   fig4.ipynb · run_fig4_solver.sh · fig4_cartoon.svg · fig4.pdf
-└── fig5/   fig5.ipynb · prepare_fig5_data.py · run_fig5_rouse.sh · rouse_toy.jl ·
+├── fig5/   fig5.ipynb · prepare_fig5_data.py · run_fig5_rouse.sh · rouse_toy.jl ·
             art_*.svg · extract_art.py · fig5.pdf
+└── figs1/  figs1.ipynb · figs1.pdf
 ```
 
 The notebooks are **hand-maintained**: edit them directly. Nothing generates
@@ -97,10 +98,10 @@ jupyter lab fig2/fig2.ipynb      # run all cells -> fig2/fig2.pdf
 ```
 
 To rebuild `processed_data/fig2_*` from the raw lattice Monte Carlo runs
-(not in the repo — pass their directory as the argument):
+(not in the repo — pass the folder holding `20260423/`):
 
 ```
-python fig2/prepare_fig2_data.py /path/to/raw/runs
+python figure_production/fig2/prepare_fig2_data.py --data-root ~/Archive/Work/droplet_data
 ```
 
 It writes to `figure_production/processed_data/` by default (`--out` overrides).
@@ -117,7 +118,7 @@ Same pattern:
 
 ```
 jupyter lab fig3/fig3.ipynb      # -> fig3/fig3.pdf
-python  fig3/prepare_fig3_data.py /path/to/raw/runs   # optional, rebuilds the data
+python  figure_production/fig3/prepare_fig3_data.py --data-root ~/Archive/Work/droplet_data   # optional, rebuilds the data
 ```
 
 **Fig. 3 is single column.** It must go in a `figure`, not a `figure*`: it is
@@ -254,6 +255,27 @@ panels mark contact as 2R, as the original did, while in the model contact is
 at d = R (D's axis starts at 2.5).
 
 Goes in a `figure*` (full width), 481.9 × 304 pt.
+
+## Fig. S1 — mechanical analogy
+
+The radial equation read as a unit mass rolling in the inverted potential
+−f(φ)/κ, with "time" r and drag 2/r. Three panels, c/c_sat = 0.2, 0.5, 0.8
+(nearest points of the Fig. 4D sweep), at the parameters of Fig. 4D. Each
+panel shows the starting position φ(R) for R = 20, 50 and 3000 nm (the
+`small_R`, `medium_R` and `large_R` runs, colours as in Fig. 4D), the initial "speed"
+−h₀/κ as an arrow of fixed length (not to scale; it is the same for every R),
+and the end point φ∞ at the top of the curve, enlarged in an inset because
+φ∞ ~ 1e-5 sits on the y axis at this scale.
+
+It reads the same solver output as Fig. 4, so run
+`bash figure_production/fig4/run_fig4_solver.sh` first if `data/20261004/` is
+missing, then:
+
+```
+jupyter lab figs1/figs1.ipynb    # -> figs1/figs1.pdf
+```
+
+Built at 481.9 pt: goes in a `figure*`.
 
 ## Changing a figure
 
