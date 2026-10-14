@@ -1,9 +1,9 @@
 #!/bin/bash
 
-DATE=20261013
-EXP=run2/high_c/s
+DATE=20261014
+EXP=run3/s
 
-for S in 50 100 150 200 250 300 350 400 450 500 550 600; do
+for S in 300; do
     DIR="${EXP}${S}"
     echo "Pulling $DIR ..."
     mkdir -p "data/${DATE}/${DIR}"
