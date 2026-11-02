@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" version="1.1" id="svg1" inkscape:version="1.4.3 (1:1.4.3+202512261034+0d15f75042)" width="17.9083mm" height="11.9004mm" viewBox="23.8702 30.9753 17.9083 11.9004" sodipodi:docname="scene24.svg">
+  <sodipodi:namedview id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" inkscape:showpageshadow="2" inkscape:pageopacity="0.0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#d1d1d1" inkscape:document-units="mm" inkscape:current-layer="layer1" />
+  <defs id="defs1">
+    </defs>
+  <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
+    <rect style="fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.05;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill" id="rect576-1" width="11.360972" height="5.5758209" x="27.823442" y="32.964706" />
+    <text xml:space="preserve" style="font-size:0.352777px;line-height:1.1;font-family:KacstScreen;-inkscape-font-specification:'KacstScreen, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.0499999;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill" x="33.456356" y="35.134132" id="text576-5"><tspan sodipodi:role="line" style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.05" x="33.456356" y="35.134132" id="tspan578-5">steady-state plots showing sharp transition</tspan></text>
+    </g>
+</svg>
