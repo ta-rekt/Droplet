@@ -18,27 +18,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
 
-from matplotlib.patches import ArrowStyle, FancyArrowPatch
-
 from common.cells import draw_neuron, draw_round_cell
 from common.chromosomes import CHROMOSOMES, GENE_COLORS, draw_chromosome
-from common.drawing import new_slide, save
+from common.drawing import draw_arrow, new_slide, save
 
 NEURON_RED = dict(fill="#F8CFCF", edge=GENE_COLORS["neuron"], shine="#FFFFFF")
 ROUND_CELL_BLUE = dict(fill="#CEDBF5", edge=GENE_COLORS["round"], shine="#FFFFFF",
                        organelle="#93AFE6")
 
-ARROW_PT = 3.0
 # Arrows from the chromosomes to each cell (start, end), traced from the sketch.
 NEURON_ARROW = ((5.94, 8.45), (5.94, 9.95))
 ROUND_CELL_ARROW = ((7.6, 6.85), (10.8, 6.85))
-
-
-def draw_arrow(ax, start, end, color, z):
-    ax.add_patch(FancyArrowPatch(
-        start, end, arrowstyle=ArrowStyle("-|>", head_length=0.5, head_width=0.3),
-        mutation_scale=12, lw=ARROW_PT, color=color, capstyle="round",
-        joinstyle="miter", shrinkA=0, shrinkB=0, zorder=z))
 
 
 if __name__ == "__main__":

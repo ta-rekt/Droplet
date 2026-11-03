@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  3 NOV 2026 00:09
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  3 NOV 2026 03:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1037,7 +1037,7 @@ Package pdftex.def Info: figures/scene2/scene2.pdf  used on input line 37.
  [3
 
  <./figures/scene2/scene2.pdf>]
-<figures/scene3/scene3.pdf, id=102, 364.19528pt x 273.14645pt>
+<figures/scene3/scene3.pdf, id=103, 364.19528pt x 273.14645pt>
 File: figures/scene3/scene3.pdf Graphic file (type pdf)
 <use figures/scene3/scene3.pdf>
 Package pdftex.def Info: figures/scene3/scene3.pdf  used on input line 43.
@@ -1045,6 +1045,276 @@ Package pdftex.def Info: figures/scene3/scene3.pdf  used on input line 43.
  [4
 
  <./figures/scene3/scene3.pdf>]
+<figures/scene4/scene4_1.pdf, id=132, 364.19528pt x 273.14645pt>
+File: figures/scene4/scene4_1.pdf Graphic file (type pdf)
+<use figures/scene4/scene4_1.pdf>
+Package pdftex.def Info: figures/scene4/scene4_1.pdf  used on input line 49.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[5
+
+ <./figures/scene4/scene4_1.pdf>]
+<figures/scene4/scene4_2.pdf, id=170, 364.19528pt x 273.14645pt>
+File: figures/scene4/scene4_2.pdf Graphic file (type pdf)
+<use figures/scene4/scene4_2.pdf>
+Package pdftex.def Info: figures/scene4/scene4_2.pdf  used on input line 55.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [6
+
+ <./figures/scene4/scene4_2.pdf>]
+<figures/scene4/scene4_3.pdf, id=204, 364.19528pt x 273.14645pt>
+File: figures/scene4/scene4_3.pdf Graphic file (type pdf)
+<use figures/scene4/scene4_3.pdf>
+Package pdftex.def Info: figures/scene4/scene4_3.pdf  used on input line 61.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[7
+
+ <./figures/scene4/scene4_3.pdf>]
+<figures/scene5/scene5.pdf, id=240, 364.19528pt x 273.14645pt>
+File: figures/scene5/scene5.pdf Graphic file (type pdf)
+<use figures/scene5/scene5.pdf>
+Package pdftex.def Info: figures/scene5/scene5.pdf  used on input line 67.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [8
+
+ <./figures/scene5/scene5.pdf>]
+<figures/scene6/scene6_1.pdf, id=268, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_1.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_1.pdf>
+Package pdftex.def Info: figures/scene6/scene6_1.pdf  used on input line 73.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [9
+
+ <./figures/scene6/scene6_1.pdf>]
+<figures/scene6/scene6_2.pdf, id=296, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_2.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_2.pdf>
+Package pdftex.def Info: figures/scene6/scene6_2.pdf  used on input line 79.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [10
+
+ <./figures/scene6/scene6_2.pdf>]
+<figures/scene6/scene6_3.pdf, id=324, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_3.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_3.pdf>
+Package pdftex.def Info: figures/scene6/scene6_3.pdf  used on input line 85.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [11
+
+ <./figures/scene6/scene6_3.pdf>]
+<figures/scene6/scene6_4.pdf, id=353, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_4.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_4.pdf>
+Package pdftex.def Info: figures/scene6/scene6_4.pdf  used on input line 91.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [12
+
+ <./figures/scene6/scene6_4.pdf>]
+<figures/scene6/scene6_5.pdf, id=381, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_5.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_5.pdf>
+Package pdftex.def Info: figures/scene6/scene6_5.pdf  used on input line 97.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [13
+
+ <./figures/scene6/scene6_5.pdf>]
+<figures/scene6/scene6_6.pdf, id=410, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_6.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_6.pdf>
+Package pdftex.def Info: figures/scene6/scene6_6.pdf  used on input line 103.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [14
+
+ <./figures/scene6/scene6_6.pdf>]
+<figures/scene6/scene6_7.pdf, id=438, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_7.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_7.pdf>
+Package pdftex.def Info: figures/scene6/scene6_7.pdf  used on input line 109.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [15
+
+ <./figures/scene6/scene6_7.pdf>]
+<figures/scene6/scene6_8.pdf, id=470, 364.19528pt x 273.14645pt>
+File: figures/scene6/scene6_8.pdf Graphic file (type pdf)
+<use figures/scene6/scene6_8.pdf>
+Package pdftex.def Info: figures/scene6/scene6_8.pdf  used on input line 115.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [16
+
+ <./figures/scene6/scene6_8.pdf>]
+<figures/scene7/scene7.pdf, id=498, 364.19528pt x 273.14645pt>
+File: figures/scene7/scene7.pdf Graphic file (type pdf)
+<use figures/scene7/scene7.pdf>
+Package pdftex.def Info: figures/scene7/scene7.pdf  used on input line 121.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [17
+
+ <./figures/scene7/scene7.pdf>]
+<figures/scene8/scene8_1.pdf, id=563, 364.19528pt x 273.14645pt>
+File: figures/scene8/scene8_1.pdf Graphic file (type pdf)
+<use figures/scene8/scene8_1.pdf>
+Package pdftex.def Info: figures/scene8/scene8_1.pdf  used on input line 127.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [18
+
+ <./figures/scene8/scene8_1.pdf>]
+<figures/scene8/scene8_2.pdf, id=607, 364.19528pt x 273.14645pt>
+File: figures/scene8/scene8_2.pdf Graphic file (type pdf)
+<use figures/scene8/scene8_2.pdf>
+Package pdftex.def Info: figures/scene8/scene8_2.pdf  used on input line 133.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [19
+
+ <./figures/scene8/scene8_2.pdf>]
+<figures/scene8/scene8_3.pdf, id=666, 364.19528pt x 273.14645pt>
+File: figures/scene8/scene8_3.pdf Graphic file (type pdf)
+<use figures/scene8/scene8_3.pdf>
+Package pdftex.def Info: figures/scene8/scene8_3.pdf  used on input line 139.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[20
+
+ <./figures/scene8/scene8_3.pdf>]
+<figures/scene8/scene8_4.pdf, id=725, 364.19528pt x 273.14645pt>
+File: figures/scene8/scene8_4.pdf Graphic file (type pdf)
+<use figures/scene8/scene8_4.pdf>
+Package pdftex.def Info: figures/scene8/scene8_4.pdf  used on input line 145.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [21
+
+ <./figures/scene8/scene8_4.pdf>]
+<figures/scene9/scene9.pdf, id=783, 364.19528pt x 273.14645pt>
+File: figures/scene9/scene9.pdf Graphic file (type pdf)
+<use figures/scene9/scene9.pdf>
+Package pdftex.def Info: figures/scene9/scene9.pdf  used on input line 151.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[22
+
+ <./figures/scene9/scene9.pdf>]
+<figures/scene10/scene10.pdf, id=812, 364.19528pt x 273.14645pt>
+File: figures/scene10/scene10.pdf Graphic file (type pdf)
+<use figures/scene10/scene10.pdf>
+Package pdftex.def Info: figures/scene10/scene10.pdf  used on input line 157.
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [23
+
+ <./figures/scene10/scene10.pdf>]
+<figures/scene11/scene11_1.pdf, id=843, 364.19528pt x 273.14645pt>
+File: figures/scene11/scene11_1.pdf Graphic file (type pdf)
+<use figures/scene11/scene11_1.pdf>
+Package pdftex.def Info: figures/scene11/scene11_1.pdf  used on input line 163.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[24
+
+ <./figures/scene11/scene11_1.pdf>]
+<figures/scene11/scene11_2.pdf, id=884, 364.19528pt x 273.14645pt>
+File: figures/scene11/scene11_2.pdf Graphic file (type pdf)
+<use figures/scene11/scene11_2.pdf>
+Package pdftex.def Info: figures/scene11/scene11_2.pdf  used on input line 169.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [25
+
+ <./figures/scene11/scene11_2.pdf>]
+<figures/scene11/scene11_3.pdf, id=923, 364.19528pt x 273.14645pt>
+File: figures/scene11/scene11_3.pdf Graphic file (type pdf)
+<use figures/scene11/scene11_3.pdf>
+Package pdftex.def Info: figures/scene11/scene11_3.pdf  used on input line 175.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[26
+
+ <./figures/scene11/scene11_3.pdf>]
+<figures/scene11/scene11_4.pdf, id=970, 364.19528pt x 273.14645pt>
+File: figures/scene11/scene11_4.pdf Graphic file (type pdf)
+<use figures/scene11/scene11_4.pdf>
+Package pdftex.def Info: figures/scene11/scene11_4.pdf  used on input line 181.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [27
+
+ <./figures/scene11/scene11_4.pdf>]
+<figures/scene11/scene11_5.pdf, id=1013, 364.19528pt x 273.14645pt>
+File: figures/scene11/scene11_5.pdf Graphic file (type pdf)
+<use figures/scene11/scene11_5.pdf>
+Package pdftex.def Info: figures/scene11/scene11_5.pdf  used on input line 187.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[28
+
+ <./figures/scene11/scene11_5.pdf>]
+<figures/scene11/scene11_6.pdf, id=1062, 364.19528pt x 273.14645pt>
+File: figures/scene11/scene11_6.pdf Graphic file (type pdf)
+<use figures/scene11/scene11_6.pdf>
+Package pdftex.def Info: figures/scene11/scene11_6.pdf  used on input line 193.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [29
+
+ <./figures/scene11/scene11_6.pdf>]
+<figures/scene12/scene12_1.pdf, id=1105, 364.19528pt x 273.14645pt>
+File: figures/scene12/scene12_1.pdf Graphic file (type pdf)
+<use figures/scene12/scene12_1.pdf>
+Package pdftex.def Info: figures/scene12/scene12_1.pdf  used on input line 199.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[30
+
+ <./figures/scene12/scene12_1.pdf>]
+<figures/scene12/scene12_2.pdf, id=1155, 364.19528pt x 273.14645pt>
+File: figures/scene12/scene12_2.pdf Graphic file (type pdf)
+<use figures/scene12/scene12_2.pdf>
+Package pdftex.def Info: figures/scene12/scene12_2.pdf  used on input line 205.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [31
+
+ <./figures/scene12/scene12_2.pdf>]
+<figures/scene13/scene13_1.pdf, id=1199, 364.19528pt x 273.14645pt>
+File: figures/scene13/scene13_1.pdf Graphic file (type pdf)
+<use figures/scene13/scene13_1.pdf>
+Package pdftex.def Info: figures/scene13/scene13_1.pdf  used on input line 211.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[32
+
+ <./figures/scene13/scene13_1.pdf>]
+<figures/scene13/scene13_2.pdf, id=1247, 364.19528pt x 273.14645pt>
+File: figures/scene13/scene13_2.pdf Graphic file (type pdf)
+<use figures/scene13/scene13_2.pdf>
+Package pdftex.def Info: figures/scene13/scene13_2.pdf  used on input line 217.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [33
+
+ <./figures/scene13/scene13_2.pdf>]
+<figures/scene13/scene13_3.pdf, id=1294, 364.19528pt x 273.14645pt>
+File: figures/scene13/scene13_3.pdf Graphic file (type pdf)
+<use figures/scene13/scene13_3.pdf>
+Package pdftex.def Info: figures/scene13/scene13_3.pdf  used on input line 223.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[34
+
+ <./figures/scene13/scene13_3.pdf>]
+<figures/scene13/scene13_4.pdf, id=1339, 364.19528pt x 273.14645pt>
+File: figures/scene13/scene13_4.pdf Graphic file (type pdf)
+<use figures/scene13/scene13_4.pdf>
+Package pdftex.def Info: figures/scene13/scene13_4.pdf  used on input line 229.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [35
+
+ <./figures/scene13/scene13_4.pdf>]
 \tf@nav=\write6
 \openout6 = `defense.nav'.
 
@@ -1064,20 +1334,28 @@ Package rerunfilecheck Info: File `defense.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 25745 strings out of 474504
- 510020 string characters out of 5752696
+ 26148 strings out of 474504
+ 521146 string characters out of 5752696
  1929040 words of memory out of 5000000
- 47216 multiletter control sequences out of 15000+600000
+ 47557 multiletter control sequences out of 15000+600000
  559881 words of font info for 42 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  128i,14n,123p,400b,564s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb
-></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb>
-
-Output written on defense.pdf (4 pages, 1172829 bytes).
+</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb
+></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb>
+</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb><
+/usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss17.pfb></
+usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss8.pfb></us
+r/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb></u
+sr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi10.pfb></u
+sr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi12.pfb></u
+sr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi17.pfb></u
+sr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi9.pfb></us
+r/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
+Output written on defense.pdf (35 pages, 4992175 bytes).
 PDF statistics:
- 144 PDF objects out of 1000 (max. 8388607)
- 121 compressed objects within 2 object streams
- 9 named destinations out of 1000 (max. 500000)
- 63 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1419 PDF objects out of 1440 (max. 8388607)
+ 1285 compressed objects within 13 object streams
+ 71 named destinations out of 1000 (max. 500000)
+ 218 words of extra memory for PDF output out of 10000 (max. 10000000)
 

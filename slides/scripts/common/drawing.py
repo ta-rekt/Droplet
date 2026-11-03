@@ -14,7 +14,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Polygon
+from matplotlib.patches import ArrowStyle, FancyArrowPatch, Polygon
 from scipy.interpolate import splev, splprep
 
 FIGURES_DIR = Path(__file__).resolve().parents[2] / "figures"
@@ -30,6 +30,20 @@ SLIDE_UNITS = (SLIDE_MM[0] / UNIT_MM, SLIDE_MM[1] / UNIT_MM)
 
 EDGE_PT = 1.0                       # visible outline width of shapes, in points
 LIGHT_DIR = np.array([-0.5, 0.85])  # highlights are lit from the upper left
+ARROW_PT = 3.0
+
+# Labels are typeset by LaTeX in Computer Modern Sans, the beamer default, so
+# they match the slide text. Sizes are as drawn; the frames include figures at
+# width=\textwidth (x0.84), so 11 pt prints at about 9.3 pt.
+LABEL_PT = 11
+TEXT_COLOR = "#222222"
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    # Sans-serif text, and sans-serif math as in beamer.
+    "text.latex.preamble": r"\renewcommand{\familydefault}{\sfdefault}"
+                           r"\usepackage{sansmath}\sansmath",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +151,19 @@ def draw_tube_shine(ax, curve, half_width, weight, z, color="#FFFFFF", alpha=0.5
         if b - a > 1:
             ax.add_patch(Polygon(ribbon(center[a:b], width[a:b]), closed=True, fc=color,
                                  ec="none", alpha=alpha, zorder=z))
+
+
+def draw_arrow(ax, start, end, color, z, lw=ARROW_PT, head=12):
+    ax.add_patch(FancyArrowPatch(
+        start, end, arrowstyle=ArrowStyle("-|>", head_length=0.5, head_width=0.3),
+        mutation_scale=head, lw=lw, color=color, capstyle="round",
+        joinstyle="miter", shrinkA=0, shrinkB=0, zorder=z))
+
+
+def draw_label(ax, xy, text, bold=False, ha="center", va="center", size=LABEL_PT, z=20):
+    """Text label; `xy` is its centre (ha="center") or its left end (ha="left")."""
+    ax.text(*xy, rf"\textbf{{{text}}}" if bold else text, ha=ha, va=va,
+            fontsize=size, color=TEXT_COLOR, zorder=z)
 
 
 # ---------------------------------------------------------------------------
