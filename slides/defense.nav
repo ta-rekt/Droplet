@@ -138,8 +138,10 @@
 \headcommand {\beamer@framepages {69}{72}}
 \headcommand {\slideentry {0}{0}{70}{73/73}{}{0}}
 \headcommand {\beamer@framepages {73}{73}}
-\headcommand {\beamer@partpages {1}{73}}
-\headcommand {\beamer@subsectionpages {1}{73}}
-\headcommand {\beamer@sectionpages {1}{73}}
-\headcommand {\beamer@documentpages {73}}
-\headcommand {\gdef \inserttotalframenumber {70}}
+\headcommand {\slideentry {0}{0}{71}{74/77}{}{0}}
+\headcommand {\beamer@framepages {74}{77}}
+\headcommand {\beamer@partpages {1}{77}}
+\headcommand {\beamer@subsectionpages {1}{77}}
+\headcommand {\beamer@sectionpages {1}{77}}
+\headcommand {\beamer@documentpages {77}}
+\headcommand {\gdef \inserttotalframenumber {71}}
