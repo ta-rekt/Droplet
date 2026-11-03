@@ -37,6 +37,7 @@ ARROW_PT = 3.0
 # width=\textwidth (x0.84), so 11 pt prints at about 9.3 pt.
 LABEL_PT = 11
 TEXT_COLOR = "#222222"
+AXIS_COLOR = "#3A3A3A"
 plt.rcParams.update({
     "text.usetex": True,
     "font.family": "sans-serif",
@@ -164,6 +165,19 @@ def draw_label(ax, xy, text, bold=False, ha="center", va="center", size=LABEL_PT
     """Text label; `xy` is its centre (ha="center") or its left end (ha="left")."""
     ax.text(*xy, rf"\textbf{{{text}}}" if bold else text, ha=ha, va=va,
             fontsize=size, color=TEXT_COLOR, zorder=z)
+
+
+def draw_plot_axes(ax, origin, tips, y_label=None, x_label=None):
+    """Axes of a sketched plot: two arrows from `origin` to `tips` (x of the
+    horizontal arrow's tip, y of the vertical one's), with `y_label` right of
+    the vertical tip and `x_label` right of the horizontal one."""
+    (x0, y0), (x_tip, y_tip) = origin, tips
+    draw_arrow(ax, (x0, y0), (x_tip, y0), AXIS_COLOR, z=3, lw=1.3, head=9)
+    draw_arrow(ax, (x0, y0), (x0, y_tip), AXIS_COLOR, z=3, lw=1.3, head=9)
+    if y_label:
+        draw_label(ax, (x0 + 0.27, y_tip), y_label, ha="left")
+    if x_label:
+        draw_label(ax, (x_tip + 0.25, y0), x_label, ha="left")
 
 
 # ---------------------------------------------------------------------------

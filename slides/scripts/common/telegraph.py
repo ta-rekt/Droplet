@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Ellipse
 
-from .drawing import draw_arrow, draw_label
+from .drawing import AXIS_COLOR, LABEL_PT, draw_arrow, draw_label
 from .molecules import GREEN
 
 # ---------------------------------------------------------------------------
@@ -125,7 +125,6 @@ def log_likelihood_ratio(trace, c_low, c_high):
 # Panels
 # ---------------------------------------------------------------------------
 
-AXIS_COLOR = "#3A3A3A"
 HIGHLIGHT = dict(color="#FFD54A", alpha=0.55)
 
 # Two-state graph, as placed in scene 11.
@@ -170,6 +169,52 @@ def draw_two_state_graph(ax, highlight=None, offset=(0.0, 0.0)):
             va="center", fontsize=13, color=UNBIND["color"])
     ax.text(BIND["x"] + dx + 0.22, RATE_LABEL_Y + dy, BIND["label"], ha="left", va="center",
             fontsize=13, color=BIND["color"])
+
+
+PAIR_GAP = 0.15         # half-distance between the two arrows of a pair
+ARROW_CLEARANCE = 0.12  # between arrow ends and states
+FAINT = "#C4C4C4"       # greyed-out states and arrows
+ARROW_HIGHLIGHT_PT = 5
+
+
+def draw_state_graph(ax, states, arrows, highlight=None, faded=(), labels=None, styles=None):
+    """A graph of states (name -> centre), drawn as ellipses -- `highlight`
+    (a name) behind a yellow halo, `faded` ones greyed out -- with arrows
+    (source, target) between them.
+
+    Each arrow is shifted to its left, so the two arrows between a pair of
+    states run side by side in opposite directions (round a square, the
+    clockwise ones outside). `labels` {(source, target): text} go beside their
+    arrow, on its outer side; `styles` {(source, target): "faint" or
+    "highlight"} greys an arrow out or highlights it. Arrows to or from a
+    faded state are faint.
+    """
+    labels, styles = labels or {}, styles or {}
+    for name, center in states.items():
+        if name == highlight:
+            ax.add_patch(Ellipse(center, STATE_SIZE[0] + 0.3, STATE_SIZE[1] + 0.3,
+                                 fc=HIGHLIGHT["color"], ec="none", alpha=HIGHLIGHT["alpha"],
+                                 zorder=2))
+        ax.add_patch(Ellipse(center, *STATE_SIZE, fc="none", lw=1.3, zorder=3,
+                             ec=FAINT if name in faded else AXIS_COLOR))
+    for source, target in arrows:
+        p, q = np.array(states[source]), np.array(states[target])
+        direction = (q - p) / np.linalg.norm(q - p)
+        left = np.array([-direction[1], direction[0]])
+        # Ends clear of the ellipses (semi-axis along the arrow).
+        reach = np.abs(direction) @ np.array(STATE_SIZE) / 2 + ARROW_CLEARANCE
+        start, end = p + direction * reach + PAIR_GAP * left, q - direction * reach + PAIR_GAP * left
+        style = "faint" if {source, target} & set(faded) else styles.get((source, target))
+        color = FAINT if style == "faint" else AXIS_COLOR
+        if style == "highlight":
+            ax.plot(*np.transpose([start, end]), color=HIGHLIGHT["color"], alpha=HIGHLIGHT["alpha"],
+                    lw=ARROW_HIGHLIGHT_PT, solid_capstyle="round", zorder=2)
+        draw_arrow(ax, start, end, color, z=3, lw=1.4, head=8)
+        if (source, target) in labels:
+            xy = (p + q) / 2 + (PAIR_GAP + 0.2) * left
+            ax.text(*xy, labels[source, target], fontsize=LABEL_PT + 2, color=color,
+                    ha={1: "left", -1: "right", 0: "center"}[int(round(left[0]))],
+                    va={1: "bottom", -1: "top", 0: "center"}[int(round(left[1]))])
 
 
 def slider_y(c):

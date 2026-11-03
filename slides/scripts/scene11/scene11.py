@@ -137,17 +137,23 @@ def molecules():
     return dict(bound=tfs_bound, states=states, rnaps=rnaps, tfs=tfs)
 
 
+def draw_cartoon(ax, mol, c, transcribing, bound_tfs):
+    """The locus, with its polymerases if `transcribing` and TFs bound at
+    `bound_tfs` (centres), among the free polymerases and the TFs at
+    concentration c."""
+    LOCUS.draw(ax, mol["states"] if transcribing else [], bound_tfs)
+    for q in mol["rnaps"]:
+        draw_rnap_at(ax, q["center"], q["angle"], scale=depth_scale(q["depth"]),
+                     alpha=depth_alpha(q["depth"]), z=0.4 if q["depth"] < 0.5 else 5.5)
+    draw_scattered_proteins(ax, mol["tfs"][c], GREEN, z_back=0.5, z_front=6)
+
+
 def draw_slide(name, spec, traces, mol):
     c, on = spec["c"], spec.get("on", True)
     highlight = on if spec.get("highlight") else None
     fig, ax = new_slide()
 
-    states = mol["states"] if on else []
-    LOCUS.draw(ax, states, mol["bound"] if on else [])
-    for q in mol["rnaps"]:
-        draw_rnap_at(ax, q["center"], q["angle"], scale=depth_scale(q["depth"]),
-                     alpha=depth_alpha(q["depth"]), z=0.4 if q["depth"] < 0.5 else 5.5)
-    draw_scattered_proteins(ax, mol["tfs"][c], GREEN, z_back=0.5, z_front=6)
+    draw_cartoon(ax, mol, c, transcribing=on, bound_tfs=mol["bound"] if on else [])
 
     if spec.get("slider", True):
         draw_slider(ax, c)

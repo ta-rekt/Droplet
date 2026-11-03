@@ -58,9 +58,11 @@ def shifted(points, offset):
 
 
 class Locus:
-    def __init__(self, offset=(0.0, 0.0), promoter=False):
+    # `trace` replaces DNA_TRACE, e.g. by DNA_TRACE continued further along the
+    # chain (scene 20); it must keep DNA_TRACE up to the end of the gene.
+    def __init__(self, offset=(0.0, 0.0), promoter=False, trace=DNA_TRACE):
         self.offset = np.asarray(offset, float)
-        self.dna = Polymer.from_trace([(kind, shifted(pts, offset)) for kind, pts in DNA_TRACE],
+        self.dna = Polymer.from_trace([(kind, shifted(pts, offset)) for kind, pts in trace],
                                       DNA_BOND)
         gene_start = self.dna.span("gene")[0]
         # Node indices: polymerase at initiation and termination, TF binding site.

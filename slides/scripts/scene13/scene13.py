@@ -35,8 +35,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, 
 import numpy as np
 from matplotlib.patches import Circle
 
-from common.drawing import LABEL_PT, TEXT_COLOR, draw_arrow, draw_label, new_slide, save
-from common.telegraph import (AXIS_COLOR, K_UNBIND, TimeAxes, draw_slider, draw_time_series,
+from common.drawing import (AXIS_COLOR, LABEL_PT, draw_arrow, draw_label, draw_plot_axes,
+                            new_slide, save)
+from common.telegraph import (K_UNBIND, TimeAxes, draw_slider, draw_time_series,
                               draw_two_state_graph, first_seed, likelihood, log_likelihood_ratio,
                               slope, telegraph, use_trace_glyph)
 
@@ -130,11 +131,8 @@ def draw_ratio(ax, t, log_r, v):
 
 def draw_slope(ax, c, dc_over_c):
     """V against c, saturating at 1/2 (dc/c)^2 ku (dashed), with c marked."""
-    (x0, y0), (x_tip, y_tip) = SLOPE_ORIGIN, SLOPE_TIPS
-    draw_arrow(ax, (x0, y0), (x_tip, y0), AXIS_COLOR, z=3, lw=1.3, head=9)
-    draw_arrow(ax, (x0, y0), (x0, y_tip), AXIS_COLOR, z=3, lw=1.3, head=9)
-    draw_label(ax, (x0 + 0.27, y_tip), r"slope $V$", ha="left")
-    draw_label(ax, (x_tip + 0.25, y0), "$c$", ha="left")
+    draw_plot_axes(ax, SLOPE_ORIGIN, SLOPE_TIPS, y_label=r"slope $V$", x_label="$c$")
+    x0, y0 = SLOPE_ORIGIN
 
     def at(c, v):
         return x0 + c / C_MAX * (C_RIGHT - x0), y0 + v * V_UNIT

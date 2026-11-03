@@ -1,0 +1,125 @@
+"""
+Scene 21 -- "Another ingredient has been emerging in this recipe, building on
+recent experimental evidence: surface condensation. [...] condensation of a
+liquid-like droplet on the surface of DNA. this is a physical phenomenon that
+has been studied since the 1970s, called pre-wetting. [...] below the
+concentration at which it saturates."
+
+Left: the scene-4 locus, with transcription factors (green) dilute in the bulk
+and a dense droplet of them condensed on the DNA at the promoter. Right: clips
+from papers (screenshots in slides/figures/scene21/), each with its citation
+below:
+    Morin et al., 2022 (Klf4 condensates on DNA; Klf4 droplets vs [Klf4], [DNA])
+    Rouches & Machta, 2025 (polymer with strongly interacting stretches)
+
+Output: slides/figures/scene21/scene21.{pdf,svg}, a full 128 x 96 mm slide.
+
+Usage (from slides/):
+    python3 scripts/scene21/scene21.py
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
+
+import numpy as np
+from PIL import Image
+from matplotlib.patches import Rectangle
+
+from common.drawing import FIGURES_DIR, TEXT_COLOR, UNIT_MM, draw_shine, new_slide, save
+from common.locus import Locus
+from common.molecules import (GREEN, PROTEIN_RADIUS, circle_points, depth_scale, draw_dna,
+                              draw_scattered_proteins, scatter_proteins)
+
+CLIPS_DIR = FIGURES_DIR / "scene21"
+
+# ---------------------------------------------------------------------------
+# Left: the locus, a droplet at its promoter, dilute TFs
+# ---------------------------------------------------------------------------
+
+LOCUS = Locus(offset=(1.16, -0.34))  # the scene-4 locus, where the sketch copies it
+DROPLET_CENTER = LOCUS.dna.at(LOCUS.promoter)[0]
+# TFs of the droplet are packed within DROPLET_RADIUS of its centre (closer than
+# in the bulk: they overlap in projection); a soft glow marks the dense phase.
+DROPLET = dict(n_tfs=16, radius=0.55, spacing=0.22, seed=21)
+GLOW = dict(radius=1.0, alpha=0.045, layers=14)
+FREE_TFS = dict(n_tfs=10, seed=1021)
+REGION = (0.5, 10.4, 5.0, 14.4)  # where the free TFs are scattered
+
+# ---------------------------------------------------------------------------
+# Right: clips from papers, in two columns, each with its citation below
+# ---------------------------------------------------------------------------
+
+# Crop boxes (left, top, right, bottom, in pixels) trim the screenshots' white
+# margins; the Rouches clip's last row holds a stray piece of the next panel.
+CLIPS = {
+    "morin_dna": dict(file="morin1.png", crop=(20, 22, 810, 232)),
+    "morin_droplets": dict(file="morin2.png", crop=(6, 8, 868, 746)),
+    "rouches": dict(file="rouches.png", crop=(37, 31, 1115, 1401)),
+}
+# Columns: left edge and width (slide units), clips from top to bottom. The
+# Rouches column is as wide as its author line.
+COLUMNS = [
+    dict(x=10.8, width=4.2, clips=["morin_dna", "morin_droplets"],
+         citation=r"\textit{Sequence-dependent surface condensation of a pioneer "
+                  r"transcription factor on DNA}\\ \mbox{Morin et al., 2022}"),
+    dict(x=15.35, width=4.35, clips=["rouches"],
+         citation=r"\textit{Protein-DNA Co-condensation is Prewetting to a Collapsed "
+                  r"Polymer}\\ \mbox{Rouches \& Machta, 2025}"),
+]
+CLIPS_TOP = 13.75
+CLIP_GAP = 0.15            # between clips of a column
+CITATION_GAP = 0.22        # between a column's last clip and its citation
+CITATION_PT = 7
+FRAME = dict(color="#C8C8C8", lw=0.5)
+
+
+def droplet_tfs():
+    """TFs packed in a disc around the droplet's centre, at random depths and
+    orientations, ordered from back to front (as scatter_proteins())."""
+    rng = np.random.default_rng(DROPLET["seed"])
+    placed = []
+    while len(placed) < DROPLET["n_tfs"]:
+        r, a = DROPLET["radius"] * np.sqrt(rng.uniform()), rng.uniform(0, 2 * np.pi)
+        c = DROPLET_CENTER + r * np.array([np.cos(a), np.sin(a)])
+        if all(np.linalg.norm(q["center"] - c) > DROPLET["spacing"] for q in placed):
+            placed.append(dict(center=c, depth=rng.uniform(), angle=rng.uniform(0, 360)))
+    return sorted(placed, key=lambda q: q["depth"])
+
+
+def draw_locus(ax):
+    draw_shine(ax, circle_points(DROPLET_CENTER, GLOW["radius"], n=64), DROPLET_CENTER,
+               GREEN["fill"], z=0.3, layers=GLOW["layers"], alpha=GLOW["alpha"])
+    draw_dna(ax, LOCUS.dna, z=1)
+    draw_scattered_proteins(ax, droplet_tfs(), GREEN, z_back=0.5, z_front=6)
+    avoid = LOCUS.obstacles() + [(DROPLET_CENTER, GLOW["radius"])]
+    free = scatter_proteins(FREE_TFS["n_tfs"], REGION, np.random.default_rng(FREE_TFS["seed"]),
+                            avoid)
+    draw_scattered_proteins(ax, free, GREEN, z_back=0.5, z_front=6)
+
+
+def draw_clips(ax):
+    for column in COLUMNS:
+        x0, width, top = column["x"], column["width"], CLIPS_TOP
+        for name in column["clips"]:
+            clip = CLIPS[name]
+            image = Image.open(CLIPS_DIR / clip["file"]).convert("RGB").crop(clip["crop"])
+            height = width * image.height / image.width
+            # interpolation="none": the PDF keeps the screenshot's own pixels.
+            ax.imshow(np.asarray(image), extent=(x0, x0 + width, top - height, top),
+                      interpolation="none", aspect="auto", zorder=2)
+            ax.add_patch(Rectangle((x0, top - height), width, height, fc="none",
+                                   ec=FRAME["color"], lw=FRAME["lw"], zorder=3))
+            top -= height + CLIP_GAP
+        top += CLIP_GAP
+        ax.text(x0 + width / 2, top - CITATION_GAP,
+                rf"\parbox{{{width * UNIT_MM:.1f}mm}}{{\centering {column['citation']}}}",
+                ha="center", va="top", fontsize=CITATION_PT, color=TEXT_COLOR)
+
+
+if __name__ == "__main__":
+    fig, ax = new_slide()
+    draw_locus(ax)
+    draw_clips(ax)
+    save(fig, "scene21", "scene21")

@@ -132,13 +132,15 @@ class Polymer:
 # DNA
 # ---------------------------------------------------------------------------
 
-def draw_dna(ax, dna, tube_colors=TUBE_COLORS, z=0):
+def draw_dna(ax, dna, tube_colors=TUBE_COLORS, z=0, line_colors=DNA_LINE, line_pt=DNA_LINE_PT):
     """Chromatin: coiled over "coil" chunks, a plain line over open DNA, and a
     coloured tube over chunks whose kind is in `tube_colors` (e.g. the gene).
 
     Coils are loops around the backbone whose phase follows the node index, so
     they stay attached to the same chunks when the nodes move. The front half of
-    each loop is drawn darker, thicker and on top, for a 3D coil look.
+    each loop is drawn darker, thicker and on top, for a 3D coil look; its
+    colours and widths are `line_colors` and `line_pt` (lighter colours dim the
+    chromatin; thinner lines keep the coils open on a zoomed-out drawing).
     """
     center, u = dna.curve()
     n = unit_normals(center)
@@ -158,10 +160,10 @@ def draw_dna(ax, dna, tube_colors=TUBE_COLORS, z=0):
     segments = np.stack([path[:-1], path[1:]], axis=1)
     seg_depth = 0.5 * (depth[:-1] + depth[1:])
     order = np.argsort(seg_depth, kind="stable")  # back first, front on top
-    back, front = np.array(to_rgb(DNA_LINE["back"])), np.array(to_rgb(DNA_LINE["front"]))
+    back, front = np.array(to_rgb(line_colors["back"])), np.array(to_rgb(line_colors["front"]))
     ax.add_collection(LineCollection(
         segments[order], colors=back + (front - back) * seg_depth[order, None],
-        linewidths=DNA_LINE_PT[0] + (DNA_LINE_PT[1] - DNA_LINE_PT[0]) * seg_depth[order],
+        linewidths=line_pt[0] + (line_pt[1] - line_pt[0]) * seg_depth[order],
         capstyle="round", zorder=z))
 
     for kind, colors in tube_colors.items():
