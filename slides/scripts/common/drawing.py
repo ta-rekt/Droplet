@@ -199,6 +199,17 @@ def new_slide():
     return new_canvas(*SLIDE_UNITS)
 
 
+def zoomed_axes(fig, shift, zoom):
+    """Axes over the whole slide on which a point p of a drawing lands at
+    shift + zoom * p (slide units): the drawing, details included (coils, tubes,
+    proteins), is drawn `zoom` times its size. Line widths, in points, stay."""
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_axis_off()
+    ax.set_xlim(-shift[0] / zoom, (SLIDE_UNITS[0] - shift[0]) / zoom)
+    ax.set_ylim(-shift[1] / zoom, (SLIDE_UNITS[1] - shift[1]) / zoom)
+    return ax
+
+
 def save(fig, scene, name):
     """Write figures/<scene>/<name>.pdf (for beamer) and .svg (for Inkscape)."""
     out_dir = FIGURES_DIR / scene

@@ -27,9 +27,10 @@ import numpy as np
 from PIL import Image
 from matplotlib.patches import Rectangle
 
-from common.drawing import FIGURES_DIR, TEXT_COLOR, UNIT_MM, draw_shine, new_slide, save
+from common.drawing import (FIGURES_DIR, TEXT_COLOR, UNIT_MM, draw_shine, new_slide, save,
+                            zoomed_axes)
 from common.locus import Locus
-from common.molecules import (GREEN, PROTEIN_RADIUS, circle_points, depth_scale, draw_dna,
+from common.molecules import (DNA_LINE_PT, GREEN, circle_points, draw_dna,
                               draw_scattered_proteins, scatter_proteins)
 
 CLIPS_DIR = FIGURES_DIR / "scene21"
@@ -46,6 +47,10 @@ DROPLET = dict(n_tfs=16, radius=0.55, spacing=0.22, seed=21)
 GLOW = dict(radius=1.0, alpha=0.045, layers=14)
 FREE_TFS = dict(n_tfs=10, seed=1021)
 REGION = (0.5, 10.4, 5.0, 14.4)  # where the free TFs are scattered
+# The cartoon above is drawn `zoom` times its size, a point p of it landing at
+# shift + zoom * p, to leave room for the clips; its coil lines are thinned
+# with it, as in scene 20.
+CARTOON = dict(zoom=0.8, shift=(0.0, 1.3))
 
 # ---------------------------------------------------------------------------
 # Right: clips from papers, in two columns, each with its citation below
@@ -61,17 +66,17 @@ CLIPS = {
 # Columns: left edge and width (slide units), clips from top to bottom. The
 # Rouches column is as wide as its author line.
 COLUMNS = [
-    dict(x=10.8, width=4.2, clips=["morin_dna", "morin_droplets"],
+    dict(x=8.61, width=5.25, clips=["morin_dna", "morin_droplets"],
          citation=r"\textit{Sequence-dependent surface condensation of a pioneer "
                   r"transcription factor on DNA}\\ \mbox{Morin et al., 2022}"),
-    dict(x=15.35, width=4.35, clips=["rouches"],
+    dict(x=14.31, width=5.44, clips=["rouches"],
          citation=r"\textit{Protein-DNA Co-condensation is Prewetting to a Collapsed "
                   r"Polymer}\\ \mbox{Rouches \& Machta, 2025}"),
 ]
-CLIPS_TOP = 13.75
-CLIP_GAP = 0.15            # between clips of a column
-CITATION_GAP = 0.22        # between a column's last clip and its citation
-CITATION_PT = 7
+CLIPS_TOP = 14.2
+CLIP_GAP = 0.19            # between clips of a column
+CITATION_GAP = 0.27        # between a column's last clip and its citation
+CITATION_PT = 8.75
 FRAME = dict(color="#C8C8C8", lw=0.5)
 
 
@@ -88,15 +93,19 @@ def droplet_tfs():
     return sorted(placed, key=lambda q: q["depth"])
 
 
-def draw_locus(ax):
+def draw_locus(fig, shift=CARTOON["shift"], zoom=CARTOON["zoom"]):
+    """The cartoon, placed as CARTOON says (or by `shift` and `zoom`: scene 24
+    copies it); returns the axes it is drawn on, in scene-4 coordinates."""
+    ax = zoomed_axes(fig, shift, zoom)
     draw_shine(ax, circle_points(DROPLET_CENTER, GLOW["radius"], n=64), DROPLET_CENTER,
                GREEN["fill"], z=0.3, layers=GLOW["layers"], alpha=GLOW["alpha"])
-    draw_dna(ax, LOCUS.dna, z=1)
+    draw_dna(ax, LOCUS.dna, z=1, line_pt=tuple(zoom * w for w in DNA_LINE_PT))
     draw_scattered_proteins(ax, droplet_tfs(), GREEN, z_back=0.5, z_front=6)
     avoid = LOCUS.obstacles() + [(DROPLET_CENTER, GLOW["radius"])]
     free = scatter_proteins(FREE_TFS["n_tfs"], REGION, np.random.default_rng(FREE_TFS["seed"]),
                             avoid)
     draw_scattered_proteins(ax, free, GREEN, z_back=0.5, z_front=6)
+    return ax
 
 
 def draw_clips(ax):
@@ -120,6 +129,6 @@ def draw_clips(ax):
 
 if __name__ == "__main__":
     fig, ax = new_slide()
-    draw_locus(ax)
+    draw_locus(fig)
     draw_clips(ax)
     save(fig, "scene21", "scene21")

@@ -29,7 +29,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
 
-from common.drawing import SLIDE_UNITS, draw_label, new_slide, save
+from common.drawing import draw_label, new_slide, save, zoomed_axes
 from common.locus import DNA_TRACE, Locus
 from common.molecules import DNA_LINE_PT, TUBE_COLORS, draw_dna, draw_rna, draw_rnap
 
@@ -85,15 +85,6 @@ FOLDED = dict(
 )
 
 
-def panel(fig, shift):
-    """Axes over the whole slide on which a scene-4 point p lands at shift + ZOOM * p."""
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_axis_off()
-    ax.set_xlim(-shift[0] / ZOOM, (SLIDE_UNITS[0] - shift[0]) / ZOOM)
-    ax.set_ylim(-shift[1] / ZOOM, (SLIDE_UNITS[1] - shift[1]) / ZOOM)
-    return ax
-
-
 def locus(shift, continuation):
     """The scene-4 locus (with its promoter), its DNA continued by `continuation`."""
     pieces = [(kind, [((x - shift[0]) / ZOOM, (y - shift[1]) / ZOOM) for x, y in points])
@@ -108,14 +99,14 @@ def draw_chain(ax, dna):
 
 
 def draw_stretched(fig, ax):
-    draw_chain(panel(fig, STRETCHED["shift"]), locus(**STRETCHED).dna)
+    draw_chain(zoomed_axes(fig, STRETCHED["shift"], ZOOM), locus(**STRETCHED).dna)
     for text, xy, ha in LABELS:
         draw_label(ax, xy, text, ha=ha, va="baseline")
 
 
 def draw_folded(fig):
     folded = locus(FOLDED["shift"], FOLDED["continuation"])
-    pax = panel(fig, FOLDED["shift"])
+    pax = zoomed_axes(fig, FOLDED["shift"], ZOOM)
     draw_chain(pax, folded.dna)
     for u, rna in folded.transcribe(FOLDED["polymerases"], FOLDED["seed"]):
         if rna is not None:

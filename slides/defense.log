@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  3 NOV 2026 05:36
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  3 NOV 2026 06:44
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1538,23 +1538,145 @@ Package pdftex.def Info: figures/scene22/scene22.pdf  used on input line 375.
  [59
 
  <./figures/scene22/scene22.pdf>]
-<figures/scene23/scene23.pdf, id=2446, 364.19363pt x 273.14546pt>
-File: figures/scene23/scene23.pdf Graphic file (type pdf)
-<use figures/scene23/scene23.pdf>
-Package pdftex.def Info: figures/scene23/scene23.pdf  used on input line 381.
+<figures/scene23/scene23_1.pdf, id=2643, 364.19363pt x 273.14546pt>
+File: figures/scene23/scene23_1.pdf Graphic file (type pdf)
+<use figures/scene23/scene23_1.pdf>
+Package pdftex.def Info: figures/scene23/scene23_1.pdf  used on input line 381.
+
 (pdftex.def)             Requested size: 307.28987pt x 230.47008pt.
 
 [60
 
- <./figures/scene23/scene23.pdf>]
-<figures/scene24/scene24.pdf, id=2686, 364.19363pt x 273.14546pt>
-File: figures/scene24/scene24.pdf Graphic file (type pdf)
-<use figures/scene24/scene24.pdf>
-Package pdftex.def Info: figures/scene24/scene24.pdf  used on input line 387.
+ <./figures/scene23/scene23_1.pdf>]
+<figures/scene23/scene23_2.pdf, id=2881, 364.19363pt x 273.14546pt>
+File: figures/scene23/scene23_2.pdf Graphic file (type pdf)
+<use figures/scene23/scene23_2.pdf>
+Package pdftex.def Info: figures/scene23/scene23_2.pdf  used on input line 387.
+
 (pdftex.def)             Requested size: 307.28987pt x 230.47008pt.
  [61
 
+ <./figures/scene23/scene23_2.pdf>]
+<figures/scene24/scene24.pdf, id=3122, 364.19363pt x 273.14546pt>
+File: figures/scene24/scene24.pdf Graphic file (type pdf)
+<use figures/scene24/scene24.pdf>
+Package pdftex.def Info: figures/scene24/scene24.pdf  used on input line 393.
+(pdftex.def)             Requested size: 307.28987pt x 230.47008pt.
+
+[62
+
  <./figures/scene24/scene24.pdf>]
+<figures/scene25/scene25_1.pdf, id=3222, 364.19528pt x 273.14645pt>
+File: figures/scene25/scene25_1.pdf Graphic file (type pdf)
+<use figures/scene25/scene25_1.pdf>
+Package pdftex.def Info: figures/scene25/scene25_1.pdf  used on input line 399.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [63
+
+ <./figures/scene25/scene25_1.pdf>]
+<figures/scene25/scene25_2.pdf, id=3294, 364.19528pt x 273.14645pt>
+File: figures/scene25/scene25_2.pdf Graphic file (type pdf)
+<use figures/scene25/scene25_2.pdf>
+Package pdftex.def Info: figures/scene25/scene25_2.pdf  used on input line 405.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[64
+
+ <./figures/scene25/scene25_2.pdf>]
+<figures/scene25/scene25_3.pdf, id=3362, 364.19528pt x 273.14645pt>
+File: figures/scene25/scene25_3.pdf Graphic file (type pdf)
+<use figures/scene25/scene25_3.pdf>
+Package pdftex.def Info: figures/scene25/scene25_3.pdf  used on input line 411.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [65
+
+ <./figures/scene25/scene25_3.pdf>]
+<figures/scene26/scene26_1.pdf, id=3425, 364.19528pt x 273.14645pt>
+File: figures/scene26/scene26_1.pdf Graphic file (type pdf)
+<use figures/scene26/scene26_1.pdf>
+Package pdftex.def Info: figures/scene26/scene26_1.pdf  used on input line 417.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+
+[66
+
+ <./figures/scene26/scene26_1.pdf>]
+<figures/scene26/scene26_2.pdf, id=3490, 364.19528pt x 273.14645pt>
+File: figures/scene26/scene26_2.pdf Graphic file (type pdf)
+<use figures/scene26/scene26_2.pdf>
+Package pdftex.def Info: figures/scene26/scene26_2.pdf  used on input line 423.
+
+(pdftex.def)             Requested size: 307.28987pt x 230.47092pt.
+ [67
+
+ <./figures/scene26/scene26_2.pdf>]
+<figures/scene27/scene27.pdf, id=3560, 364.19363pt x 273.14546pt>
+File: figures/scene27/scene27.pdf Graphic file (type pdf)
+<use figures/scene27/scene27.pdf>
+Package pdftex.def Info: figures/scene27/scene27.pdf  used on input line 429.
+(pdftex.def)             Requested size: 307.28987pt x 230.47008pt.
+
+[68
+
+ <./figures/scene27/scene27.pdf>]
+<figures/scene28/rouse.png, id=3746, 1461.46pt x 406.51875pt>
+File: figures/scene28/rouse.png Graphic file (type png)
+<use figures/scene28/rouse.png>
+Package pdftex.def Info: figures/scene28/rouse.png  used on input line 448.
+(pdftex.def)             Requested size: 245.83282pt x 68.37532pt.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 448
+.
+
+(/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 448
+.
+
+(/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+)
+LaTeX Font Info:    Trying to load font information for OT1+mathkerncmss on inp
+ut line 448.
+
+(/usr/local/texlive/2023/texmf-dist/tex/latex/sansmathaccent/ot1mathkerncmss.fd
+File: ot1mathkerncmss.fd 2020/01/31 Fontinst v1.933 font definitions for OT1/ma
+thkerncmss.
+) [69
+
+ <./figures/scene28/rouse.png>]
+File: figures/scene28/rouse.png Graphic file (type png)
+<use figures/scene28/rouse.png>
+Package pdftex.def Info: figures/scene28/rouse.png  used on input line 448.
+(pdftex.def)             Requested size: 245.83282pt x 68.37532pt.
+ [70
+
+]
+File: figures/scene28/rouse.png Graphic file (type png)
+<use figures/scene28/rouse.png>
+Package pdftex.def Info: figures/scene28/rouse.png  used on input line 448.
+(pdftex.def)             Requested size: 245.83282pt x 68.37532pt.
+ [71
+
+]
+File: figures/scene28/rouse.png Graphic file (type png)
+<use figures/scene28/rouse.png>
+Package pdftex.def Info: figures/scene28/rouse.png  used on input line 448.
+(pdftex.def)             Requested size: 245.83282pt x 68.37532pt.
+ [72
+
+]
+<figures/scene30/scene30.pdf, id=3859, 364.19363pt x 273.14546pt>
+File: figures/scene30/scene30.pdf Graphic file (type pdf)
+<use figures/scene30/scene30.pdf>
+Package pdftex.def Info: figures/scene30/scene30.pdf  used on input line 456.
+(pdftex.def)             Requested size: 307.28987pt x 230.47008pt.
+ [73
+
+ <./figures/scene30/scene30.pdf>]
 \tf@nav=\write6
 \openout6 = `defense.nav'.
 
@@ -1565,6 +1687,10 @@ Package pdftex.def Info: figures/scene24/scene24.pdf  used on input line 387.
 \openout8 = `defense.snm'.
 
 
+
+LaTeX Warning: Hook 'shipout/lastpage' executed on wrong page (70 not 73).
+               Rerun to correct this.
+
 (./defense.aux)
  ***********
 LaTeX2e <2023-06-01> patch level 1
@@ -1574,34 +1700,40 @@ Package rerunfilecheck Info: File `defense.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 26486 strings out of 474504
- 530720 string characters out of 5752696
- 1929040 words of memory out of 5000000
- 47843 multiletter control sequences out of 15000+600000
- 559881 words of font info for 42 fonts, out of 8000000 for 9000
+ 26694 strings out of 474504
+ 536019 string characters out of 5752696
+ 1930040 words of memory out of 5000000
+ 48004 multiletter control sequences out of 15000+600000
+ 565419 words of font info for 62 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 128i,14n,123p,400b,564s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 128i,14n,123p,400b,570s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb
-></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb>
-</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb><
-/usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb></
-usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss17.pfb></u
-sr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss8.pfb></usr
-/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss9.pfb></usr/l
-ocal/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb></usr/
-local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi10.pfb></usr/
-local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi12.pfb></usr/
-local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi17.pfb></usr/
-local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi8.pfb></usr/l
-ocal/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi9.pfb></usr/lo
-cal/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/loc
-al/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local
-/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/t
-exlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb>
-Output written on defense.pdf (61 pages, 10553999 bytes).
+></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb>
+</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><
+/usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></u
+sr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></usr
+/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/lo
+cal/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local
+/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb></usr/local/
+texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb></usr/local/t
+exlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss17.pfb></usr/local/te
+xlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss8.pfb></usr/local/texl
+ive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss9.pfb></usr/local/texliv
+e/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb></usr/local/texli
+ve/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi10.pfb></usr/local/texli
+ve/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi12.pfb></usr/local/texli
+ve/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi17.pfb></usr/local/texli
+ve/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi8.pfb></usr/local/texliv
+e/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi9.pfb></usr/local/texlive
+/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/
+2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/20
+23/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2023
+/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2023/t
+exmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
+Output written on defense.pdf (73 pages, 14160007 bytes).
 PDF statistics:
- 2980 PDF objects out of 2984 (max. 8388607)
- 2658 compressed objects within 27 object streams
- 123 named destinations out of 1000 (max. 500000)
- 348 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 4040 PDF objects out of 4296 (max. 8388607)
+ 3540 compressed objects within 36 object streams
+ 147 named destinations out of 1000 (max. 500000)
+ 393 words of extra memory for PDF output out of 10000 (max. 10000000)
 
