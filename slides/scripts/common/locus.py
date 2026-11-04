@@ -1,6 +1,7 @@
 """
 The gene locus first drawn in scene 4 and reused, shifted, in later scenes:
-compacted chromatin on both sides of an open stretch of DNA carrying one gene.
+compacted chromatin on both sides of an open stretch of DNA carrying one gene
+and its promoter.
 
 The storyboard copies the same drawing from scene to scene, so the geometry is
 kept here once, in scene-4 slide coordinates; a scene places the locus with
@@ -30,7 +31,8 @@ DNA_TRACE = [
               (7.73, 12.83), (7.51, 12.91), (7.24, 13.05), (7.02, 13.13), (6.69, 13.19)]),
 ]
 
-# The finished transcript, from the polymerase (where it grows) to its free end.
+# The transcript, from the polymerase (where it grows) to its free end; it is
+# cut to the length of the gene (see Locus.full_transcript).
 FULL_TRANSCRIPT_TRACE = [
     (7.46, 8.85), (7.43, 8.57), (7.26, 8.37), (7.19, 8.19), (6.93, 8.06), (6.65, 8.06),
     (6.4, 8.02), (6.44, 7.74), (6.33, 7.6), (6.08, 7.67), (5.8, 7.85), (5.58, 7.83),
@@ -59,7 +61,7 @@ def shifted(points, offset):
 class Locus:
     # `trace` replaces DNA_TRACE, e.g. by DNA_TRACE continued further along the
     # chain (scene 20); it must keep DNA_TRACE up to the end of the gene.
-    def __init__(self, offset=(0.0, 0.0), promoter=False, trace=DNA_TRACE):
+    def __init__(self, offset=(0.0, 0.0), trace=DNA_TRACE):
         self.offset = np.asarray(offset, float)
         self.dna = Polymer.from_trace([(kind, shifted(pts, offset)) for kind, pts in trace],
                                       DNA_BOND)
@@ -68,26 +70,30 @@ class Locus:
         self.start = gene_start + POLYMERASE_START_OFFSET
         self.end = self.dna.nearest(self.offset + POLYMERASE_AT_END)
         self.promoter = gene_start - PROMOTER_OFFSET
-        if promoter:  # drawn as an orange stretch of the DNA just before the gene
-            first, last = (int(gene_start - n) for n in PROMOTER_SPAN)
-            self.dna.kinds[first:last] = "promoter"
+        # Drawn as an orange stretch of the DNA just before the gene.
+        first, last = (int(gene_start - n) for n in PROMOTER_SPAN)
+        self.dna.kinds[first:last] = "promoter"
+        gene_first, gene_last = self.dna.span("gene")
+        self.gene_length = (gene_last - gene_first) * DNA_BOND
 
     def progress(self, fraction):
         """Node index of a polymerase that has transcribed `fraction` of the gene."""
         return self.start + fraction * (self.end - self.start)
 
     def full_transcript(self):
+        """The finished mRNA: no longer than the gene it copies."""
         return Polymer.from_trace([("rna", shifted(FULL_TRANSCRIPT_TRACE, self.offset))],
-                                  RNA_BOND)
+                                  RNA_BOND).cut(self.gene_length)
 
     def transcribe(self, fractions, seed, blocked=()):
         """(node index, transcript or None) for polymerases on the gene, given the
         fraction of the gene each has transcribed (0 = initiating, 1 = terminating).
 
         A transcript's length is proportional to how far its polymerase has gone;
-        the finished one is the traced scene-4 mRNA, shorter ones are grown at
-        random, trailing behind their polymerase, clear of the DNA, of the other
-        polymerases, of the `blocked` points (e.g. bound proteins) and of each other.
+        the finished one is the traced scene-4 mRNA, cut to the length of the gene;
+        shorter ones are grown at random, trailing behind their polymerase, clear of
+        the DNA, of the other polymerases, of the `blocked` points (e.g. bound
+        proteins) and of each other.
         """
         rng = np.random.default_rng(seed)
         full = self.full_transcript()

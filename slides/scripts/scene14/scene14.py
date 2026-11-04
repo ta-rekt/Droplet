@@ -26,30 +26,29 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-from common.drawing import AXIS_COLOR, TEXT_COLOR, draw_label, draw_plot_axes, new_slide, save
+from common.drawing import (AXIS_COLOR, TEXT_COLOR, draw_label, draw_plot_axes, draw_underbrace,
+                            new_slide, save)
 from common.telegraph import K_BIND, K_UNBIND, binding_rate
-
-plt.rcParams["text.latex.preamble"] += r"\usepackage{amsmath}"
 
 # ---------------------------------------------------------------------------
 # Equations (left half), in display style
 # ---------------------------------------------------------------------------
 
-EQUATION_PT = 12
+EQUATION_PT = 10
 EQUATIONS_X = 0.7  # left end of the equations
-DRIFT = (r"V = \frac{1}{2}\left(\frac{\delta c}{c}\right)^2"
-         r"\underbrace{\dot{\mathcal F}(c)}_{\makebox[0pt]{\text{Fisher information rate}}}")
-FISHER_LHS = r"\dot{\mathcal F}(c) ="
-FISHER = (FISHER_LHS + r"-\lim_{t\rightarrow\infty} \frac{1}{t}"
-          r"\left\langle\frac{\partial^2 \ln P(\mathcal{O}(t)\,|\,c)}{(\partial \ln c)^2}"
+DRIFT = r"V = \dfrac{1}{2}\left(\dfrac{\delta c}{c}\right)^2"
+FISHER_RATE = r"\dot{ℱ}(c)"  # after DRIFT, with a brace under it
+FISHER_LHS = FISHER_RATE + " ="
+FISHER = (FISHER_LHS + r"-\lim_{t\rightarrow\infty} \dfrac{1}{t}"
+          r"\left\langle\dfrac{\partial^2 \ln P(\mathcal{O}(t)\,|\,c)}{(\partial \ln c)^2}"
           r"\right\rangle_c")
-BURST = r"= \frac{1}{\tau_{\rm burst}}"  # on the next line, under the "="
-DECISION = r"\langle T_{\rm dec}\rangle = \frac{K}{V}\tanh\left(\frac{K}{2}\right)"
+BURST = r"= \dfrac{1}{\tau_{\rm burst}}"  # on the next line, under the "="
+DECISION = r"\langle T_{\rm dec}\rangle = \dfrac{K}{V}\tanh\left(\dfrac{K}{2}\right)"
 # Baselines (slide units).
 DRIFT_Y = 12.6
+BRACE_DROP = 0.3   # from the baseline to the top of the brace
 FISHER_Y = 9.3
 BURST_Y = 7.3
 DECISION_Y = 4.4
@@ -80,8 +79,8 @@ SLIDES = {
 
 
 def equation(ax, xy, tex):
-    return ax.text(*xy, rf"$\displaystyle {tex}$", ha="left", va="baseline",
-                   fontsize=EQUATION_PT, color=TEXT_COLOR)
+    return ax.text(*xy, rf"${tex}$", ha="left", va="baseline", fontsize=EQUATION_PT,
+                   color=TEXT_COLOR)
 
 
 def ink_x(ax, tex):
@@ -90,6 +89,14 @@ def ink_x(ax, tex):
     box = text.get_window_extent().transformed(ax.transData.inverted())
     text.remove()
     return box.x0, box.x1
+
+
+def draw_drift(ax):
+    """V = ..., then the Fisher information rate, with its name under a brace."""
+    equation(ax, (EQUATIONS_X, DRIFT_Y), DRIFT)
+    rate = equation(ax, (ink_x(ax, DRIFT)[1] + 0.1, DRIFT_Y), FISHER_RATE)
+    box = rate.get_window_extent().transformed(ax.transData.inverted())
+    draw_underbrace(ax, (box.x0, box.x1), DRIFT_Y - BRACE_DROP, "Fisher information rate")
 
 
 def draw_burst(ax):
@@ -109,7 +116,7 @@ def plot_curve(ax, origin, c, y, unit, asymptote):
 
 
 def draw_fisher_plot(ax):
-    draw_plot_axes(ax, FISHER_ORIGIN, FISHER_TIPS, y_label=r"$\dot{\mathcal F}(c)$",
+    draw_plot_axes(ax, FISHER_ORIGIN, FISHER_TIPS, y_label=rf"${FISHER_RATE}$",
                    x_label="$c$")
     c = np.linspace(0, C_MAX, 200)
     plot_curve(ax, FISHER_ORIGIN, c, binding_rate(c), FISHER_UNIT, K_UNBIND)
@@ -124,7 +131,7 @@ def draw_decision_plot(ax):
 
 def draw_slide(name, fisher, burst, decision):
     fig, ax = new_slide()
-    equation(ax, (EQUATIONS_X, DRIFT_Y), DRIFT)
+    draw_drift(ax)
     if fisher:
         equation(ax, (EQUATIONS_X, FISHER_Y), FISHER)
     if burst:

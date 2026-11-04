@@ -13,12 +13,12 @@ Panels are drawn where scene 11 has them; other scenes move them with `offset`
 
 from dataclasses import dataclass
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Ellipse
+from matplotlib.textpath import TextPath
 
-from .drawing import AXIS_COLOR, LABEL_PT, draw_arrow, draw_label
-from .molecules import GREEN
+from .drawing import AXIS_COLOR, LABEL_PT, TEXT_COLOR, draw_arrow, draw_label, placer
+from .molecules import GREEN, POINTS_PER_UNIT
 
 # ---------------------------------------------------------------------------
 # Model and simulated time series
@@ -91,12 +91,6 @@ def binding_rate(c):
     return c * K_BIND * K_UNBIND / (c * K_BIND + K_UNBIND)
 
 
-def slope(c, dc_over_c):
-    """V = 1/2 (dc/c)^2 c kb ku / (c kb + ku): the mean slope of log R(t) in
-    time, for a small concentration difference dc."""
-    return 0.5 * dc_over_c ** 2 * binding_rate(c)
-
-
 def log_likelihood_ratio(trace, c_low, c_high):
     """log R(t) = log P(trace until t | c_low) - log P(trace until t | c_high),
     given the initial state; returned as a polyline (t, log R).
@@ -166,9 +160,9 @@ def draw_two_state_graph(ax, highlight=None, offset=(0.0, 0.0)):
                lw=1.8)
     draw_arrow(ax, (BIND["x"] + dx, high), (BIND["x"] + dx, low), BIND["color"], z=3, lw=1.8)
     ax.text(UNBIND["x"] + dx - 0.22, RATE_LABEL_Y + dy, UNBIND["label"], ha="right",
-            va="center", fontsize=13, color=UNBIND["color"])
+            va="center", fontsize=LABEL_PT + 2, color=UNBIND["color"])
     ax.text(BIND["x"] + dx + 0.22, RATE_LABEL_Y + dy, BIND["label"], ha="left", va="center",
-            fontsize=13, color=BIND["color"])
+            fontsize=LABEL_PT + 2, color=BIND["color"])
 
 
 PAIR_GAP = 0.15         # half-distance between the two arrows of a pair
@@ -280,7 +274,7 @@ def draw_time_series(ax, trace, duration, axes=TIME_SERIES_AXES, lw=1.3, highlig
         draw_label(ax, (x0 - 0.2, levels[state]), text, ha="right")
     if label:
         draw_label(ax, (x_tip + 0.3, (levels[True] + levels[False]) / 2), label, ha="left",
-                   size=13)
+                   size=LABEL_PT + 2)
 
     times, states = trace
     x = axes.x(times, duration)
@@ -302,27 +296,70 @@ def draw_time_series(ax, trace, duration, axes=TIME_SERIES_AXES, lw=1.3, highlig
 GLYPH_STRETCHES = [0.18, 0.26, 0.28, 0.72, 0.15, 0.14, 0.15, 0.14, 0.55, 0.3, 0.14]
 GLYPH_HEIGHT = 0.62  # em; about the height of capitals
 GLYPH_LINE = 0.05    # em
+GLYPH_GAP = 0.14     # em, between the pictogram and the text around it
+
+LIKELIHOOD_OPEN = "$P($"
 
 
-def trace_macro():
-    r"""LaTeX definition of \trace, the pictogram drawn with rules (which
-    matplotlib renders, unlike TikZ), sitting on the baseline."""
-    t, h = GLYPH_LINE, GLYPH_HEIGHT
-    parts = []
-    for i, length in enumerate(GLYPH_STRETCHES):
-        if i:  # the switch: a vertical rule centred on it, taking no room
-            parts.append(rf"\kern-{t / 2:.4f}em\rule{{{t:.4f}em}}{{{h + t:.4f}em}}"
-                         rf"\kern-{t / 2:.4f}em")
-        parts.append(rf"\rule[{h * (i % 2):.4f}em]{{{length:.4f}em}}{{{t:.4f}em}}")
-    return r"\newcommand{\trace}{\mbox{" + "".join(parts) + "}}"
+def likelihood_close(which):
+    return rf"$\mid c_{{\mathrm{{{which}}}}})$"
 
 
-def use_trace_glyph():
-    r"""Make \trace and amsmath (\dfrac, \overset) available in labels."""
-    plt.rcParams["text.latex.preamble"] += r"\usepackage{amsmath}" + trace_macro()
+def text_width(text, size):
+    """Width of `text` as set at `size` (both in points)."""
+    return TextPath((0, 0), text, size=size).get_extents().width
 
 
-def likelihood(which):
-    r"""LaTeX for P(\trace | c_<which>), the likelihood of the trace at
-    concentration c_low or c_high (`which` = "low" or "high")."""
-    return rf"P(\,\trace \mid c_{{\mathrm{{{which}}}}})"
+def likelihood_width(which, size):
+    """Width of P(trace | c_<which>) at `size`, in points."""
+    return (text_width(LIKELIHOOD_OPEN, size) + text_width(likelihood_close(which), size)
+            + (sum(GLYPH_STRETCHES) + 2 * GLYPH_GAP) * size)
+
+
+def trace_glyph():
+    """The pictogram as a polyline (em), sitting on the baseline at the origin."""
+    x, level, points = 0.0, 0.0, [(0.0, 0.0)]
+    for length in GLYPH_STRETCHES:
+        x += length
+        points.append((x, level))
+        level = GLYPH_HEIGHT - level  # the switch
+        points.append((x, level))
+    return np.array(points[:-1])
+
+
+def draw_likelihood(ax, place, start, which, size, rotation=0, color=TEXT_COLOR):
+    """P(trace | c_<which>), the likelihood of the trace at concentration c_low
+    or c_high (`which` = "low" or "high"). `place` maps points from a local frame
+    to slide units (see placer), `start` is the left end of the baseline there,
+    and `rotation` is the frame's angle. Returns the right end of the line."""
+    x, y = start
+
+    def write(text, x):
+        ax.text(*place((x, y)), text, rotation=rotation, rotation_mode="anchor", ha="left",
+                va="baseline", fontsize=size, color=color)
+        return x + text_width(text, size)
+
+    x = write(LIKELIHOOD_OPEN, x) + GLYPH_GAP * size
+    glyph = trace_glyph() * size + (x, y)
+    ax.plot(*np.transpose(place(glyph)), color=color, lw=GLYPH_LINE * size,
+            solid_joinstyle="miter", solid_capstyle="butt")
+    return write(likelihood_close(which), glyph[-1, 0] + GLYPH_GAP * size)
+
+
+def draw_likelihood_ratio(ax, center, size=LABEL_PT, rotation=0, log=True):
+    """The fraction P(trace | c_low) / P(trace | c_high), with "log" in front if
+    `log`, centred at `center` and turned by `rotation` degrees."""
+    place = placer(center, 1 / POINTS_PER_UNIT, rotation)
+    log_width = text_width("log", size) + 0.3 * size if log else 0.0
+    widths = {which: likelihood_width(which, size) for which in ("low", "high")}
+    bar_width = max(widths.values()) + 0.2 * size
+    left = -(log_width + bar_width) / 2
+    bar_start = left + log_width
+    if log:
+        ax.text(*place((left, -0.33 * size)), "log", rotation=rotation, rotation_mode="anchor",
+                ha="left", va="baseline", fontsize=size, color=TEXT_COLOR)
+    ax.plot(*np.transpose(place([(bar_start, 0.0), (bar_start + bar_width, 0.0)])),
+            color=TEXT_COLOR, lw=0.04 * size)
+    for which, y in (("low", 0.33 * size), ("high", -1.0 * size)):
+        draw_likelihood(ax, place, (bar_start + (bar_width - widths[which]) / 2, y), which, size,
+                        rotation)

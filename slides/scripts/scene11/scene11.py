@@ -85,7 +85,7 @@ def make_traces():
 # ---------------------------------------------------------------------------
 
 # Where the sketch copies it, moved 0.4 left to leave room before the plots.
-LOCUS = Locus(offset=(-0.43, -0.57), promoter=True)
+LOCUS = Locus(offset=(-0.43, -0.57))
 POLYMERASES = [0.95, 0.35]  # two polymerases, at different stages of elongation
 TRANSCRIPT_SEED = 11
 BOUND_SITES = [(-6.5, -1)]  # the TF on the promoter (nodes from the gene start, side)
@@ -146,7 +146,7 @@ def draw_cartoon(ax, mol, c, transcribing, bound_tfs):
         draw_rnap_at(ax, q["center"], q["angle"], scale=depth_scale(q["depth"]),
                      alpha=depth_alpha(q["depth"]), z=0.4 if q["depth"] < 0.5 else 5.5)
     draw_scattered_tfs(ax, mol["tfs"][c], z_back=0.5, z_front=6)
-    draw_legend(ax, ["DNA", "TF", "RNAP", "mRNA"] if transcribing else ["DNA", "TF", "RNAP"])
+    draw_legend(ax, ["DNA", "Promoter", "Gene", "TF", "RNAP"] + ["mRNA"] * transcribing)
 
 
 def draw_slide(name, spec, traces, mol):

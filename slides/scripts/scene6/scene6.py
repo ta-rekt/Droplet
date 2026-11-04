@@ -67,7 +67,7 @@ SLIDES = {
     "scene6_7": dict(n_tfs=30, seed=17, polymerases=[0.0], bound=True, highlight=True),
     "scene6_8": dict(n_tfs=30, seed=18, polymerases=[1.0], bound=True),
 }
-LEGEND = ["DNA", "TF", "RNAP", "mRNA"]
+LEGEND = ["DNA", "Promoter", "Gene", "TF", "RNAP", "mRNA"]
 
 
 def transcription(polymerases, bound, seed):
@@ -131,7 +131,7 @@ def draw_slide(name, spec, tfs):
     draw_scattered_tfs(ax, tfs, z_back=0.5, z_front=6)
     # Polymerases, then transcripts, are the last rows: the others stay put.
     has_mrna = any(rna is not None for _, rna in states)
-    draw_legend(ax, LEGEND[:2 + bool(states) + has_mrna])
+    draw_legend(ax, LEGEND[:4 + bool(states) + has_mrna])
     save(fig, "scene6", name)
 
 

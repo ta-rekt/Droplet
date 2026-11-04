@@ -27,8 +27,7 @@ import numpy as np
 from PIL import Image
 from matplotlib.patches import Rectangle
 
-from common.drawing import (FIGURES_DIR, TEXT_COLOR, UNIT_MM, draw_shine, new_slide, save,
-                            zoomed_axes)
+from common.drawing import FIGURES_DIR, TEXT_COLOR, draw_shine, new_slide, save, zoomed_axes
 from common.locus import Locus
 from common.molecules import (DNA_LINE_PT, TF, circle_points, draw_dna, draw_legend,
                               draw_scattered_tfs, scatter_proteins)
@@ -44,7 +43,7 @@ DROPLET_CENTER = LOCUS.dna.at(LOCUS.promoter)[0]
 # TFs of the droplet are packed within DROPLET_RADIUS of its centre (closer than
 # in the bulk: they overlap in projection); a soft glow marks the dense phase.
 DROPLET = dict(n_tfs=32, radius=0.55, spacing=0.11, seed=21)
-GLOW = dict(radius=1.0, alpha=0.045, layers=14)
+GLOW = dict(radius=1.0, alpha=0.027, layers=14)
 FREE_TFS = dict(n_tfs=20, seed=1021)
 REGION = (0.5, 10.4, 5.0, 14.4)  # where the free TFs are scattered
 # The cartoon above is drawn `zoom` times its size, a point p of it landing at
@@ -67,16 +66,18 @@ CLIPS = {
 # Rouches column is as wide as its author line.
 COLUMNS = [
     dict(x=8.61, width=5.25, clips=["morin_dna", "morin_droplets"],
-         citation=r"\textit{Sequence-dependent surface condensation of a pioneer "
-                  r"transcription factor on DNA}\\ \mbox{Morin et al., 2022}"),
+         title="Sequence-dependent surface\ncondensation of a pioneer\n"
+               "transcription factor on DNA",
+         authors="Morin et al., 2022"),
     dict(x=14.31, width=5.44, clips=["rouches"],
-         citation=r"\textit{Protein-DNA Co-condensation is Prewetting to a Collapsed "
-                  r"Polymer}\\ \mbox{Rouches \& Machta, 2025}"),
+         title="Protein-DNA Co-condensation\nis Prewetting to a Collapsed\nPolymer",
+         authors="Rouches & Machta, 2025"),
 ]
 CLIPS_TOP = 14.2
 CLIP_GAP = 0.19            # between clips of a column
 CITATION_GAP = 0.27        # between a column's last clip and its citation
-CITATION_PT = 8.75
+CITATION_PT = 7.4
+CITATION_LINE = 0.46       # from one line of a citation to the next
 FRAME = dict(color="#C8C8C8", lw=0.5)
 
 
@@ -122,14 +123,17 @@ def draw_clips(ax):
                                    ec=FRAME["color"], lw=FRAME["lw"], zorder=3))
             top -= height + CLIP_GAP
         top += CLIP_GAP
-        ax.text(x0 + width / 2, top - CITATION_GAP,
-                rf"\parbox{{{width * UNIT_MM:.1f}mm}}{{\centering {column['citation']}}}",
-                ha="center", va="top", fontsize=CITATION_PT, color=TEXT_COLOR)
+        title_top = top - CITATION_GAP
+        ax.text(x0 + width / 2, title_top, column["title"], style="italic", ha="center", va="top",
+                fontsize=CITATION_PT, color=TEXT_COLOR)
+        authors_top = title_top - (column["title"].count("\n") + 1) * CITATION_LINE
+        ax.text(x0 + width / 2, authors_top, column["authors"], ha="center", va="top",
+                fontsize=CITATION_PT, color=TEXT_COLOR)
 
 
 if __name__ == "__main__":
     fig, ax = new_slide()
     draw_locus(fig)
     draw_clips(ax)
-    draw_legend(ax, ["DNA", "TF"])
+    draw_legend(ax, ["DNA", "Promoter", "Gene", "TF"])
     save(fig, "scene21", "scene21")

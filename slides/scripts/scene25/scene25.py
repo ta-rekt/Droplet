@@ -35,7 +35,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Circle
 
@@ -45,8 +44,6 @@ from common.molecules import (DNA_BOND, DNA_LINE_PT, NUCLEOSOME_EXTENT, TF, TF_R
                               depth_scale, draw_dna, draw_legend, draw_tf, legend_area,
                               nucleosomes, scatter_proteins, tf_alpha)
 from common.telegraph import draw_state_graph
-
-plt.rcParams["text.latex.preamble"] += r"\usepackage{amsmath}"
 
 # ---------------------------------------------------------------------------
 # The paper's curves
@@ -106,7 +103,7 @@ SPHERE_CENTER, SPHERE_RADIUS = np.array([4.6, 8.6]), 1.9
 SPHERE_FILL = "#F3EFE6"
 # The condensed layer: translucent discs stacked out to HALO_WIDTH beyond the
 # surface, so the green deepens towards it.
-HALO_WIDTH, HALO_LAYERS, HALO_ALPHA = 1.6, 14, 0.035
+HALO_WIDTH, HALO_LAYERS, HALO_ALPHA = 1.6, 14, 0.021
 
 # Chromatin entering at the lower left, two loops folded inside the sphere,
 # leaving at the top (traced in slide units, then smoothed), drawn at DNA_ZOOM
@@ -206,16 +203,16 @@ def draw_cartoon(fig, ax):
 # Right half: equations, or a plot
 # ---------------------------------------------------------------------------
 
-EQUATION_PT = 12
+EQUATION_PT = 10
 EQUATIONS_X = 9.95
-HEADINGS = [("Flory--Huggins potential", 13.55), ("Cahn--Hilliard equation", 10.1)]
-POTENTIAL = [(r"f(\phi) = \frac{\phi}{\nu}\ln\phi + (1-\phi)\ln(1-\phi)", 12.45),
+HEADINGS = [("Flory–Huggins potential", 13.55), ("Cahn–Hilliard equation", 10.1)]
+POTENTIAL = [(r"f(\phi) = \dfrac{\phi}{\nu}\ln\phi + (1-\phi)\ln(1-\phi)", 12.45),
              (r"-\,\chi\phi^2 - \mu\phi", 11.2)]   # second line, after the "="
 CAHN_HILLIARD = [(r"0 = \nabla^2\left[f'(\phi) - \kappa\nabla^2\phi\right]", 9.0),
-                 (r"\kappa\,\partial_r\phi\,\big|_{r=R} = -h_0", 7.85)]
+                 (r"\kappa\,\partial_r\phi\,|_{r=R} = -h_0", 7.85)]
 SYMBOLS = [(r"$\phi$", "TF volume fraction"),
            (r"$\nu$", "TF / solvent volume ratio"),
-           (r"$\chi$", "TF--TF attraction"),
+           (r"$\chi$", "TF–TF attraction"),
            (r"$\mu$", "chemical potential"),
            (r"$h_0$", "surface attraction"),
            (r"$\kappa$", "interface stiffness")]
@@ -224,7 +221,7 @@ SYMBOLS_Y, SYMBOLS_STEP, SYMBOLS_INDENT = 6.5, 0.6, 0.85
 # Plots: axes box (left, bottom, width, height, slide units), title above.
 PLOT_BOX = (11.2, 2.5, 8.2, 8.2)
 PLOT_TITLE_XY = (15.3, 12.55)
-TITLE_PT, LEGEND_PT, TICK_PT = 13, 9.5, 10
+TITLE_PT, LEGEND_PT, TICK_PT = 11, 8, 8.4
 CURVE_PT = 1.6
 PANELS = {
     "E": dict(colors=["orange", "red", "#2563EB", "gray", "green"], critical=3,
@@ -236,8 +233,8 @@ SURFACE_LIMITS = (0.0, 0.2)
 
 
 def equation(ax, xy, tex):
-    return ax.text(*xy, rf"$\displaystyle {tex}$", ha="left", va="baseline",
-                   fontsize=EQUATION_PT, color=TEXT_COLOR)
+    return ax.text(*xy, rf"${tex}$", ha="left", va="baseline", fontsize=EQUATION_PT,
+                   color=TEXT_COLOR)
 
 
 def draw_equations(ax):

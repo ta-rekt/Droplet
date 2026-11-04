@@ -108,8 +108,8 @@ def constraint(edge, log_rate, c):
 
 AXES = (3.2, 2.9, 15.6, 9.6)  # left, bottom, width, height (slide units)
 X_LIMITS, Y_LIMITS = (8e-2, 1.2e3), (6e-3, 16)  # as in the paper
-TICK_PT = 10
-Y_LABEL = r"$\max_{\rm rates} \dot{\mathcal F}(c)$"  # the best circuit at each c
+TICK_PT = 8.4
+Y_LABEL = r"$\max_{\rm rates} \dot{ℱ}(c)$"  # the best circuit at each c
 LIMIT_STYLE = dict(color="black", alpha=0.5, lw=1.2)
 DIFFUSION_LABEL_C = 0.25   # where the diffusion limit is labelled...
 LABEL_LIFT = 2.0           # ...this factor above the line

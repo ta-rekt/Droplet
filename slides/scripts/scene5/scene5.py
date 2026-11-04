@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, 
 
 from common.drawing import draw_arrow, new_slide, save
 from common.locus import Locus
-from common.molecules import (DNA_BOND, GREEN, RNA_BOND, Polymer, draw_dna, draw_legend, draw_rna,
-                              draw_rnap_at, draw_tf)
+from common.molecules import (DNA_BOND, GREEN, RNA_BOND, SEGMENT_COLORS, Polymer, draw_dna,
+                              draw_legend, draw_rna, draw_rnap_at, draw_tf)
 
 # ---------------------------------------------------------------------------
 # Geometry traced from the storyboard (slide units)
@@ -33,7 +33,7 @@ TF_DNA_TRACE = [
     ("coil", [(4.5, 8.94), (4.72, 9.18), (4.64, 9.46), (4.44, 9.73), (4.28, 10.01),
               (4.37, 10.28), (4.59, 10.45), (4.86, 10.56), (5.14, 10.65), (5.36, 10.65),
               (5.53, 10.59)]),
-    ("linker", [(5.53, 10.59), (5.75, 10.56), (5.91, 10.43), (6.08, 10.26)]),
+    ("promoter", [(5.53, 10.59), (5.75, 10.56), (5.91, 10.43), (6.08, 10.26)]),
     ("gene", [(6.08, 10.26), (6.35, 10.17), (6.63, 10.23), (6.91, 10.28), (7.09, 10.43),
               (7.15, 10.62), (7.04, 11.0)]),
     ("linker", [(7.04, 11.0), (6.96, 11.17), (6.85, 11.39), (6.69, 11.5), (6.46, 11.53),
@@ -41,13 +41,11 @@ TF_DNA_TRACE = [
     ("coil", [(5.8, 11.72), (5.64, 11.89), (5.41, 11.97), (5.19, 12.11), (5.03, 12.27),
               (5.05, 12.49), (5.19, 12.66), (5.41, 12.75), (5.64, 12.77)]),
 ]
+# Between the two arrows; it is cut to the length of the gene.
 TF_MRNA_TRACE = [
-    (9.19, 9.23), (9.12, 9.38), (9.08, 9.52), (9.13, 9.67), (9.19, 9.78), (9.34, 9.81),
     (9.5, 9.83), (9.64, 9.85), (9.78, 9.89), (9.76, 10.04), (9.75, 10.17), (9.88, 10.22),
     (10.02, 10.25), (10.11, 10.35), (10.02, 10.47), (9.89, 10.55), (9.78, 10.62),
-    (9.64, 10.68), (9.5, 10.76), (9.47, 10.9), (9.58, 11.0), (9.72, 11.05), (9.88, 11.06),
-    (10.01, 11.06), (10.17, 11.06), (10.31, 11.07), (10.42, 11.15), (10.52, 11.23),
-    (10.66, 11.26), (10.8, 11.28), (10.83, 11.44), (10.84, 11.61)]
+    (9.64, 10.68), (9.5, 10.76), (9.47, 10.9), (9.58, 11.0)]
 TF_PROTEINS = [((12.42, 10.14), 15), ((12.85, 9.92), 300)]  # (centre, angle)
 
 # gene -> mRNA -> protein -> binds near the blue gene
@@ -62,9 +60,11 @@ FREE_POLYMERASE = (13.31, 5.7)
 if __name__ == "__main__":
     fig, ax = new_slide()
 
-    draw_dna(ax, Polymer.from_trace(TF_DNA_TRACE, DNA_BOND), segment_colors={"gene": GREEN}, z=1)
-    draw_rna(ax, Polymer.from_trace([("rna", TF_MRNA_TRACE)], RNA_BOND), color=GREEN["fill"],
-             z=3)
+    tf_dna = Polymer.from_trace(TF_DNA_TRACE, DNA_BOND)
+    gene_first, gene_last = tf_dna.span("gene")
+    draw_dna(ax, tf_dna, segment_colors={**SEGMENT_COLORS, "gene": GREEN}, z=1)
+    draw_rna(ax, Polymer.from_trace([("rna", TF_MRNA_TRACE)], RNA_BOND)
+             .cut((gene_last - gene_first) * DNA_BOND), color=GREEN["fill"], z=3)
     for center, angle in TF_PROTEINS:
         draw_tf(ax, center, angle=angle, z=3)
     for start, end in ARROWS:
@@ -73,6 +73,6 @@ if __name__ == "__main__":
     draw_dna(ax, LOCUS.dna, z=1)
     draw_tf(ax, LOCUS.dna.at(LOCUS.promoter)[0], angle=20, z=5)
     draw_rnap_at(ax, FREE_POLYMERASE, angle=10, z=4)
-    draw_legend(ax, ["DNA", "TF", "RNAP", "mRNA"], mrna=GREEN["fill"])
+    draw_legend(ax, ["DNA", "Promoter", "Gene", "TF", "RNAP", "mRNA"], mrna=GREEN["fill"])
 
     save(fig, "scene5", "scene5")

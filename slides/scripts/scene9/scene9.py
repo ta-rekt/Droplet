@@ -36,7 +36,7 @@ N_FREE_TFS = 10
 TF_SEED = 90
 MARGIN = 0.5
 REGION = (MARGIN, SLIDE_UNITS[0] - MARGIN, MARGIN, SLIDE_UNITS[1] - MARGIN)
-LEGEND = ["DNA", "TF", "RNAP", "mRNA"]
+LEGEND = ["DNA", "Promoter", "Gene", "TF", "RNAP", "mRNA"]
 
 
 if __name__ == "__main__":

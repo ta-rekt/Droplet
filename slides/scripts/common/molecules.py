@@ -26,15 +26,15 @@ from matplotlib.path import Path
 from scipy.interpolate import splev, splprep
 from scipy.ndimage import gaussian_filter1d
 
-from .drawing import (EDGE_PT, FIGURES_DIR, LABEL_PT, UNIT_MM, draw_label, draw_silhouette,
-                      placer, smooth_closed, smooth_open, unit_normals)
+from .drawing import (EDGE_PT, FIGURES_DIR, UNIT_MM, draw_label, draw_silhouette, placer,
+                      smooth_closed, smooth_open, unit_normals)
 
 # ---------------------------------------------------------------------------
 # Palettes and sizes (drawing units unless stated)
 # ---------------------------------------------------------------------------
 
 BLUE = dict(fill="#2F62C8", edge="#1D3F85")  # same blue as the rounded cell's genes
-GREEN = dict(fill="#4AA851", edge="#2B6E31")  # transcription factor, its gene and mRNA
+GREEN = dict(fill="#07B503", edge="#2B6E31")  # transcription factor, its gene and mRNA
 ORANGE = dict(fill="#F39A2B", edge="#B5651D")  # promoter
 RNAP_COLORS = dict(fill="#D957DB", edge="#8E1F90")
 MOLECULE_EDGE_PT = 0.7 * EDGE_PT
@@ -62,7 +62,6 @@ NUCLEOSOME_EXTENT = WRAP_RADIUS + HELIX_RADIUS  # how far a nucleosome reaches f
 RNA_BOND = 0.15            # node spacing along RNA = distance between beads
 RNA_BEAD_RADIUS = 0.052
 
-PROTEIN_HALF_WIDTH = 0.08
 TF_HEIGHT = 0.38           # transcription factor, drawn at scale 1
 TF_RADIUS = 0.2            # outer radius of the same
 
@@ -150,6 +149,12 @@ class Polymer:
         """Fractional node index of the point of the chain closest to `point`."""
         pts, u = self.curve()
         return u[np.argmin(np.linalg.norm(pts - np.asarray(point), axis=1))]
+
+    def cut(self, length):
+        """The first nodes of the chain, as many as stay within `length` along it."""
+        along = np.r_[0, np.cumsum(np.linalg.norm(np.diff(self.nodes, axis=0), axis=1))]
+        n = np.searchsorted(along, length, side="right")
+        return Polymer(self.nodes[:n], self.kinds[:n - 1])
 
 
 # ---------------------------------------------------------------------------
@@ -389,22 +394,6 @@ def draw_rnap(ax, dna, u, colors=RNAP_COLORS, z=0):
     return p
 
 
-# A folded protein, drawn as in the storyboard: a thick closed loop.
-PROTEIN_TRACE = [(-0.26, 0.17), (-0.07, 0.29), (0.15, 0.29), (0.24, 0.09), (0.25, -0.14),
-                 (0.12, -0.28), (-0.13, -0.29), (-0.3, -0.17)]
-
-
-def draw_protein(ax, center, colors=BLUE, scale=1.0, angle=0.0, alpha=1.0, z=0):
-    loop = placer(center, scale, angle)(smooth_closed(np.array(PROTEIN_TRACE)))[:-1]
-    n = unit_normals(np.vstack([loop[-1:], loop, loop[:1]]))[1:-1]  # periodic normals
-    outer, inner = loop + n * PROTEIN_HALF_WIDTH * scale, loop - n * PROTEIN_HALF_WIDTH * scale
-    # Outer and inner edges with opposite orientation: the inner one cuts a hole.
-    verts = np.vstack([outer, outer[:1], inner[::-1], inner[-1:]])
-    codes = ([Path.MOVETO] + [Path.LINETO] * (len(outer) - 1) + [Path.CLOSEPOLY]) * 2
-    ax.add_patch(PathPatch(Path(verts, codes), fc=colors["fill"], ec=colors["edge"],
-                           lw=MOLECULE_EDGE_PT, joinstyle="round", alpha=alpha, zorder=z))
-
-
 # ---------------------------------------------------------------------------
 # Transcription factors: exact copies of figures/tf.svg
 # ---------------------------------------------------------------------------
@@ -449,10 +438,12 @@ TF = load_tf()
 POINTS_PER_UNIT = UNIT_MM / 25.4 * 72
 
 
-def draw_tf(ax, center, scale=1.0, angle=0.0, alpha=1.0, z=0):
-    """A transcription factor at `center`, turned by `angle` degrees."""
+def draw_tf(ax, center, scale=1.0, angle=0.0, alpha=1.0, z=0, colors=None):
+    """A transcription factor at `center`, turned by `angle` degrees; `colors`
+    (fill and edge) repaint it, e.g. as a protein of another gene."""
     height = scale * TF_HEIGHT
-    fill, edge = (TF[key][:3] + (TF[key][3] * alpha,) for key in ("fill", "edge"))
+    fill, edge = (to_rgba(colors[key]) if colors else TF[key] for key in ("fill", "edge"))
+    fill, edge = (color[:3] + (color[3] * alpha,) for color in (fill, edge))
     ax.add_patch(PathPatch(Path(placer(center, height, angle)(TF["vertices"]), TF["codes"]),
                            fc=fill, ec=edge, lw=TF["edge_width"] * height * POINTS_PER_UNIT,
                            joinstyle="round", zorder=z))
@@ -473,7 +464,7 @@ def depth_alpha(d):
 
 
 def tf_alpha(d):
-    """As depth_alpha, for TFs: they are pale and small, so far ones fade less."""
+    """As depth_alpha, for TFs: they are small, so far ones fade less."""
     return 0.65 + 0.35 * d
 
 
@@ -515,33 +506,39 @@ def draw_scattered_tfs(ax, tfs, z_back=0, z_front=10):
 # Legend
 # ---------------------------------------------------------------------------
 
-LEGEND_NAMES = {"DNA": "DNA", "TF": "Transcription factor", "RNAP": "RNA polymerase",
-                "mRNA": "mRNA"}
-LEGEND_HOME = (1.0, 3.9)  # the middle of the first row's icon, in most scenes
-LEGEND_ROW = 0.62         # distance between rows
-LEGEND_TEXT_X = 0.62      # from the middle of the icons to the labels
-LEGEND_ICON = 0.36        # half-width of the icons of DNA and mRNA
-LEGEND_PT = LABEL_PT - 1
-LEGEND_WIDTH = 5.5        # room taken, from the left of the icons to the labels' end
+# The legend of scene 11, whose rows are these in this order.
+LEGEND_NAMES = {"DNA": "DNA", "Promoter": "Promoter", "Gene": "Gene",
+                "TF": "Transcription factor", "RNAP": "RNA Polymerase", "mRNA": "mRNA"}
+LEGEND_HOME = (1.28, 4.44)  # the middle of the first row's icon, in most scenes
+LEGEND_ROW = 0.6            # distance between rows
+LEGEND_TEXT_X = 0.61        # from the middle of the icons to the labels
+LEGEND_ICON = 0.34          # half-width of the icons of DNA, promoter, gene and mRNA
+LEGEND_HELIX = 0.85         # the helix of those three is drawn this many times its size
+LEGEND_BEADS = dict(n=9, radius=0.028)
+LEGEND_PT = 8.5
+LEGEND_WIDTH = 5.0          # room taken, from the left of the icons to the labels' end
 
 
 def draw_legend(ax, items, at=LEGEND_HOME, mrna=BLUE["fill"], z=20):
     """A small legend of `items` (keys of LEGEND_NAMES, in the order wanted), going
     down from the row at `at`. Rows don't move when later ones come and go.
     `mrna` is the colour of its transcript."""
+    strands = {"DNA": DNA_LINE, "Promoter": ORANGE, "Gene": BLUE}
     for row, item in enumerate(items):
         x, y = at[0], at[1] - row * LEGEND_ROW
         ends = np.array([(x - LEGEND_ICON, y), (x + LEGEND_ICON, y)])
-        if item == "DNA":
-            axis = np.linspace(*ends, 60)
-            draw_ribbon(ax, helix(axis), DNA_LINE, DNA_LINE_PT, z)
+        if item in strands:
+            center = np.array((x, y))
+            axis = center + (np.linspace(*ends, 60) - center) / LEGEND_HELIX
+            draw_ribbon(ax, center + LEGEND_HELIX * (helix(axis) - center), strands[item],
+                        tuple(LEGEND_HELIX * width for width in DNA_LINE_PT), z)
         elif item == "TF":
-            draw_tf(ax, (x, y), z=z)
+            draw_tf(ax, (x, y), scale=1.1, z=z)
         elif item == "RNAP":
             draw_rnap_at(ax, (x, y), scale=0.72, z=z)
         elif item == "mRNA":
-            beads = np.linspace(*ends, 6) + (0, 0.07) * np.sin(np.arange(6) * 1.7)[:, None]
-            draw_rna(ax, Polymer(beads, ["rna"] * 5), color=mrna, z=z)
+            for bead in np.linspace(*ends, LEGEND_BEADS["n"]):
+                ax.add_patch(Circle(bead, LEGEND_BEADS["radius"], fc=mrna, ec="none", zorder=z))
         draw_label(ax, (x + LEGEND_TEXT_X, y), LEGEND_NAMES[item], ha="left", size=LEGEND_PT, z=z)
 
 

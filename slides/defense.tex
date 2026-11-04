@@ -1,9 +1,20 @@
+% !TEX program = xelatex
 \documentclass[usenames,dvipsnames]{beamer}
 \usetheme{default}
 \usepackage{xcolor}
 \usepackage{tikz}
 \usepackage{animate}
 \usepackage{xmpmulti}
+\usepackage{iftex}
+% FreeSans, like the figures. It needs XeLaTeX: under pdflatex the slides keep
+% beamer's Computer Modern.
+\ifXeTeX
+	\usefonttheme{professionalfonts}
+	\usepackage{mathspec}
+	\setsansfont{FreeSans}
+	\setmathsfont(Digits,Latin,Greek){FreeSans}
+	\setmathrm{FreeSans}
+\fi
 
 \newcommand{\la}{\langle}
 \newcommand{\ra}{\rangle}
@@ -218,50 +229,50 @@
 \begin{frame}
 	\ft{A simple model of transcriptional control}
     \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11_1}
+    	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11}
     scene$11_1$
 	\end{figure}	
 \end{frame}
 
-\begin{frame}
-	\ft{A simple model of transcriptional control}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11_2}
-    scene$11_2$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{A simple model of transcriptional control}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11_2}
+%     scene$11_2$
+% 	\end{figure}	
+% \end{frame}
 
-\begin{frame}
-	\ft{A simple model of transcriptional control}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11_3}
-    scene$11_3$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{A simple model of transcriptional control}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11_3}
+%     scene$11_3$
+% 	\end{figure}	
+% \end{frame}
 
-\begin{frame}
-	\ft{A simple model of transcriptional control}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11_4}
-    scene$11_4$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{A simple model of transcriptional control}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene11/scene11_4}
+%     scene$11_4$
+% 	\end{figure}	
+% \end{frame}
 
 \begin{frame}
 	\ft{Sequential hypothesis testing}
     \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene12/scene12_1}
+    	\includegraphics[width=0.9\textwidth]{figures/scene12/scene12}
     scene$12_1$
 	\end{figure}	
 \end{frame}
 
-\begin{frame}
-	\ft{Sequential hypothesis testing}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene12/scene12_2}
-    scene$12_2$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{Sequential hypothesis testing}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene12/scene12_2}
+%     scene$12_2$
+% 	\end{figure}	
+% \end{frame}
 
 \begin{frame}
 	\ft{Sequential hypothesis testing}
@@ -276,72 +287,88 @@
     \begin{figure}
     	\includegraphics[width=0.9\textwidth]{figures/scene13/scene13_2}
     scene$13_2$
-	\end{figure}	
+	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\ft{Sequential hypothesis testing}
+    \begin{figure}
+    	\includegraphics[width=0.9\textwidth]{figures/scene13/scene13_3}
+    scene$13_3$
+	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\ft{Sequential hypothesis testing}
+    \begin{figure}
+    	\includegraphics[width=0.9\textwidth]{figures/scene13/scene13_4}
+    scene$13_4$
+	\end{figure}
 \end{frame}
 
 \begin{frame}
 	\ft{Fisher information rate and decision time}
     \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14_1}
+    	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14}
     scene$14_1$
 	\end{figure}	
 \end{frame}
 
-\begin{frame}
-	\ft{Fisher information rate and decision time}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14_2}
-    scene$14_2$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{Fisher information rate and decision time}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14_2}
+%     scene$14_2$
+% 	\end{figure}	
+% \end{frame}
+
+% \begin{frame}
+% 	\ft{Fisher information rate and decision time}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14_3}
+%     scene$14_3$
+% 	\end{figure}	
+% \end{frame}
+
+% \begin{frame}
+% 	\ft{Fisher information rate and decision time}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14_4}
+%     scene$14_4$
+% 	\end{figure}	
+% \end{frame}
 
 \begin{frame}
-	\ft{Fisher information rate and decision time}
+	\ft{The optimization problem}
     \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14_3}
-    scene$14_3$
-	\end{figure}	
-\end{frame}
-
-\begin{frame}
-	\ft{Fisher information rate and decision time}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene14/scene14_4}
-    scene$14_4$
-	\end{figure}	
-\end{frame}
-
-\begin{frame}
-	\ft{Modeling time-limited activation}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15_1}
+    	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15}
     scene$15_1$
 	\end{figure}	
 \end{frame}
 
-\begin{frame}
-	\ft{Modeling time-limited activation}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15_2}
-    scene$15_2$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{Modeling time-limited activation}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15_2}
+%     scene$15_2$
+% 	\end{figure}	
+% \end{frame}
 
-\begin{frame}
-	\ft{Modeling time-limited activation}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15_3}
-    scene$15_3$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{Modeling time-limited activation}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15_3}
+%     scene$15_3$
+% 	\end{figure}	
+% \end{frame}
 
-\begin{frame}
-	\ft{Modeling time-limited activation}
-    \begin{figure}
-    	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15_4}
-    scene$15_4$
-	\end{figure}	
-\end{frame}
+% \begin{frame}
+% 	\ft{Modeling time-limited activation}
+%     \begin{figure}
+%     	\includegraphics[width=0.9\textwidth]{figures/scene15/scene15_4}
+%     scene$15_4$
+% 	\end{figure}	
+% \end{frame}
 
 \begin{frame}
 	\ft{Optimal promoters: two distinct regimes}

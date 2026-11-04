@@ -1,25 +1,23 @@
 """
-Scene 13 -- "Let's plot this ratio in real time, while transcription is
-happening, and vary concentration. [...] a larger concentration difference is
-easier to tell apart. Larger absolute concentrations are also easier to
-distinguish. [...]"
+Scene 13 -- The sequential probability ratio test (SPRT) of scene 12, watched
+in real time on simulated transcription.
 
-A transcription time series simulated at concentration c_low = c (top left);
-below it, the log-likelihood ratio R(t) of that very trace, low vs high
-concentration c_high = c + dc, with its trend V t; the two-state graph (top
-right); the slope V against c (bottom right), with the current c marked and
-the value it saturates at, 1/2 (dc/c)^2 ku, dashed; and the concentration-
-difference slider, at c_high / c_low = 1 + dc/c.
+A transcription time series at the true concentration (top); below it, on the
+same time axis, its log-likelihood ratio, c_low vs c_high, on a linear scale
+from -2K to 2K. The test stops as soon as the ratio leaves (-K, K), the dashed
+horizontal lines: +K decides c_low, -K decides c_high. The vertical dashed line
+marks that decision time, through both plots, and the box of the decision taken
+lights up. The ratio is drawn on past it, until it leaves the plot at +-2K.
 
-    scene13_1  c = 1, dc/c = 1 (a 2x difference)
-    scene13_2  c = 1, dc/c = 0.5 (1.5x): same trace, shallower trend
-    scene13_3  low c (dc/c = 1): fewer bindings, shallower trend
-    scene13_4  high c (dc/c = 1): steeper, close to saturation
+    scene13_1  true c = c_low: a typical trace, decided correctly
+    scene13_2  true c = c_high: a typical trace, decided correctly
+    scene13_3  true c = c_low, decided incorrectly; K = log (1 - eps) / eps is
+               added on the side, with what eps is
+    scene13_4  the trace of 13_1 again, with c_high further from c_low: the
+               ratio climbs faster and the decision comes sooner
 
-V is plotted as 1/2 (dc/c)^2 c kb ku / (c kb + ku), the slope for small dc. All
-slides use the same random seed: the first one whose log R(t) follows V t on
-every slide (least-squares slope within SLOPE_TOLERANCE of V, and RMS distance
-from V t within DISTANCE_TOLERANCE of its end value).
+Each trace is the first random seed meeting the criteria of typical_run() or
+misled_run(), so they are reproducible and easy to re-draw.
 
 Outputs: slides/figures/scene13/scene13_<k>.{pdf,svg}, full 128 x 96 mm slides.
 
@@ -33,133 +31,242 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
 
 import numpy as np
-from matplotlib.patches import Circle
+from matplotlib.colors import to_rgba
 
-from common.drawing import (AXIS_COLOR, LABEL_PT, draw_arrow, draw_label, draw_plot_axes,
-                            new_slide, save)
-from common.telegraph import (K_UNBIND, TimeAxes, draw_slider, draw_time_series,
-                              draw_two_state_graph, first_seed, likelihood, log_likelihood_ratio,
-                              slope, telegraph, use_trace_glyph)
-
-use_trace_glyph()
+from common.drawing import AXIS_COLOR, LABEL_PT, TEXT_COLOR, draw_label, new_slide, save
+from common.telegraph import (HIGHLIGHT, TimeAxes, draw_likelihood_ratio, draw_time_series,
+                              first_seed, log_likelihood_ratio, telegraph, typical)
 
 # ---------------------------------------------------------------------------
-# Slides and their traces
+# The test
 # ---------------------------------------------------------------------------
 
-DURATION = 48.0  # time shown, as in 11_5-6
+C_LOW = 1.0
+EPSILON = 0.05                         # error level: simulated errors come out at 3-5%
+K = np.log((1 - EPSILON) / EPSILON)    # the test stops at log ratio +-K
+DURATION = 36.0                        # time shown, on every slide
+
+# dc_over_c sets c_high = c_low (1 + dc/c), `truth` the concentration simulated.
+BASE_DC, LARGE_DC = 1.0, 2.0
 SLIDES = {
-    "scene13_1": dict(c=1.0, dc_over_c=1.0),
-    "scene13_2": dict(c=1.0, dc_over_c=0.5),
-    "scene13_3": dict(c=0.3, dc_over_c=1.0),
-    "scene13_4": dict(c=3.0, dc_over_c=1.0),
+    "scene13_1": dict(truth="low", dc_over_c=BASE_DC, explain_k=False),
+    "scene13_2": dict(truth="high", dc_over_c=BASE_DC, explain_k=False),
+    "scene13_3": dict(truth="low", dc_over_c=BASE_DC, explain_k=True),
+    "scene13_4": dict(truth="low", dc_over_c=LARGE_DC, explain_k=True),
 }
-SLOPE_TOLERANCE = 0.2
-DISTANCE_TOLERANCE = 0.16
 
 
-def ratio(seed, c, dc_over_c):
-    """The trace at c, and its log R(t) (low c vs high c + dc)."""
-    trace = telegraph(c, DURATION, seed)
-    return trace, log_likelihood_ratio(trace, c, c * (1 + dc_over_c))
+def concentrations(dc_over_c):
+    return {"low": C_LOW, "high": C_LOW * (1 + dc_over_c)}
 
 
-def follows_trend(seed, c, dc_over_c):
-    t, log_r = ratio(seed, c, dc_over_c)[1]
-    grid = np.linspace(0, DURATION, 1000)
-    on_grid = np.interp(grid, t, log_r)
-    v = slope(c, dc_over_c)
-    fitted = on_grid @ grid / (grid @ grid)  # least squares, through the origin
-    distance = np.sqrt(np.mean((on_grid - v * grid) ** 2))
-    return (abs(fitted / v - 1) < SLOPE_TOLERANCE
-            and distance < DISTANCE_TOLERANCE * v * DURATION)
+def ratio(seed, truth, dc_over_c, duration=DURATION):
+    """A trace at the true concentration, and its log ratio as a polyline (t, log R)."""
+    c = concentrations(dc_over_c)
+    trace = telegraph(c[truth], duration, seed)
+    return trace, log_likelihood_ratio(trace, c["low"], c["high"])
+
+
+def stopped(t, log_r, level):
+    """The polyline (t, log R), cut where it first reaches +-level (all of it
+    if it never does). log R rises steadily or jumps down, so that point is on
+    a straight piece, or at a jump."""
+    beyond = np.flatnonzero(np.abs(log_r) >= level)
+    if not len(beyond):
+        return t, log_r
+    i = beyond[0]
+    boundary = np.sign(log_r[i]) * level
+    fraction = (boundary - log_r[i - 1]) / (log_r[i] - log_r[i - 1])
+    return (np.append(t[:i], t[i - 1] + fraction * (t[i] - t[i - 1])),
+            np.append(log_r[:i], boundary))
+
+
+def decision(t, log_r):
+    """The outcome of the test: (decision time, "low" or "high"), or None if
+    the log ratio never leaves (-K, K)."""
+    t_stop, log_r_stop = stopped(t, log_r, K)
+    if abs(log_r_stop[-1]) < K:
+        return None
+    return t_stop[-1], "low" if log_r_stop[-1] > 0 else "high"
+
+
+# ---------------------------------------------------------------------------
+# Choosing the traces
+# ---------------------------------------------------------------------------
+
+TYPICAL_TIME_TOLERANCE = 0.15   # decision time within this fraction of the median
+GRAZING = 0.9                   # before deciding, the ratio stays within this fraction of K...
+CARRIES_ON = 1.4                # ...and it ends beyond this many K, towards the truth
+MEDIAN_RUNS = 2000
+LONG_ENOUGH = 400.0             # every simulated run reaches a decision by then
+MISLED_TIMES = (10.0, 20.0)     # when the wrong decision is taken, on 13_3
+MISLED_ON_TOLERANCE = 0.05      # its trace looks like c_low overall
+
+
+def median_decision_time(truth, dc_over_c):
+    return np.median([decision(*ratio(seed, truth, dc_over_c, LONG_ENOUGH)[1])[0]
+                      for seed in range(MEDIAN_RUNS)])
+
+
+def stays_on_plot(log_r):
+    return np.abs(log_r).max() < 2 * K
+
+
+def carries_on(log_r):
+    return stays_on_plot(log_r) and abs(log_r[-1]) > CARRIES_ON * K
+
+
+def no_near_miss(t, log_r):
+    """Does the ratio stay clear of +-K until it crosses, so that the decision
+    time cannot be misread on the plot?"""
+    return np.abs(stopped(t, log_r, K)[1][:-1]).max() < GRAZING * K
+
+
+def typical_run(seed, truth, dc_over_c, median):
+    """Is this a typical trace, decided correctly in about the median time?"""
+    trace, (t, log_r) = ratio(seed, truth, dc_over_c)
+    outcome = decision(t, log_r)
+    return (outcome is not None and outcome[1] == truth
+            and abs(outcome[0] / median - 1) < TYPICAL_TIME_TOLERANCE
+            and no_near_miss(t, log_r)
+            and typical(concentrations(dc_over_c)[truth])(trace))
+
+
+def misled_run(seed):
+    """At c_low: is the wrong decision taken midway, the ratio then recovering
+    on the side of the truth?"""
+    trace, (t, log_r) = ratio(seed, "low", BASE_DC)
+    outcome = decision(t, log_r)
+    return (outcome is not None and outcome[1] == "high"
+            and MISLED_TIMES[0] < outcome[0] < MISLED_TIMES[1]
+            and no_near_miss(t, log_r) and stays_on_plot(log_r) and log_r[-1] > 0
+            and typical(C_LOW, MISLED_ON_TOLERANCE)(trace))
+
+
+def choose_seeds():
+    """Seeds of the slides. 13_4 shows the trace of 13_1, so that seed has to
+    suit both concentration differences."""
+    median_low = median_decision_time("low", BASE_DC)
+    median_high = median_decision_time("high", BASE_DC)
+    median_large = median_decision_time("low", LARGE_DC)
+    print(f"median decision times: {median_low:.1f} at c_low, {median_high:.1f} at c_high, "
+          f"{median_large:.1f} at c_low with the larger difference")
+
+    def low_and_large(seed):
+        return (typical_run(seed, "low", BASE_DC, median_low)
+                and carries_on(ratio(seed, "low", BASE_DC)[1][1])
+                and typical_run(seed, "low", LARGE_DC, median_large))
+
+    def high(seed):
+        return (typical_run(seed, "high", BASE_DC, median_high)
+                and carries_on(ratio(seed, "high", BASE_DC)[1][1]))
+
+    first = first_seed(low_and_large, 1)
+    return {"scene13_1": first, "scene13_2": first_seed(high, 1),
+            "scene13_3": first_seed(misled_run, 1), "scene13_4": first}
 
 
 # ---------------------------------------------------------------------------
 # Layout (slide units)
 # ---------------------------------------------------------------------------
 
-ACCENT = "#D9532B"  # the slope V: the trend line and its point on V(c)
-
-# Left: the time series, and log R(t) below it, on the same time axis.
-TIME_SERIES_AXES = TimeAxes(origin=(4.3, 10.7), tips=(11.2, 13.07), span=(4.37, 10.8))
+ACCENT = "#D9532B"  # the decision time
 TRACE_PT = 0.6
-RATIO_AXES = TimeAxes(origin=(4.3, 2.6), tips=(11.2, 8.6), span=(4.37, 10.8))
-LOG_R_UNIT = 0.3      # slide units per unit of log R (natural log)
-LOG_R_BOTTOM = -2.0   # where the vertical axis starts
-LOG_R_TICKS = [(0, "$1$"), (4, "$10^4$"), (8, "$10^8$")]  # powers of 10 of R
 RATIO_PT = 1.0
+DASHED = dict(color=AXIS_COLOR, lw=1.1, dashes=(4, 3), zorder=3)
 
-# Right: the two-state graph (moved from its scene-11 place) and V(c) below it.
-GRAPH_OFFSET = (0.9, 0.0)
-SLOPE_ORIGIN = (13.2, 2.6)
-SLOPE_TIPS = (19.0, 7.9)
-C_MAX = 4.0           # c at the right end of the curve...
-C_RIGHT = 18.5        # ...drawn at this x
-V_UNIT = 8.0          # slide units per unit of V
+# Left: the time series, and the log ratio below it, on the same time axis.
+PLOT_LEFT, PLOT_RIGHT = 3.0, 15.5
+SPAN = (PLOT_LEFT + 0.07, PLOT_RIGHT - 0.4)
+TIME_SERIES_AXES = TimeAxes(origin=(PLOT_LEFT, 11.3), tips=(PLOT_RIGHT, 13.67), span=SPAN)
+RATIO_ZERO = 5.55     # height of log ratio 0
+K_UNIT = 1.95         # slide units per K of log ratio
+RATIO_AXES = TimeAxes(origin=(PLOT_LEFT, RATIO_ZERO - 2 * K_UNIT),
+                      tips=(PLOT_RIGHT, RATIO_ZERO + 2 * K_UNIT + 0.45), span=SPAN)
+RATIO_TICKS = [(2, "$+2K$"), (1, "$+K$"), (0, "$0$"), (-1, "$-K$"), (-2, "$-2K$")]
+RATIO_LABEL_X = 0.95
 
-# The slider, left of the plots, between them.
-SLIDER_OFFSET = (-0.17, -3.0)
+# Right: what is true, the decisions at the ends of +-K, and what K is.
+SIDE_X = 15.95
+TRUTH_Y = [12.95, 12.25]
+K_LABEL_Y = RATIO_ZERO + 0.45
+EPSILON_LABEL_Y = RATIO_ZERO - 0.6
 
 
 # ---------------------------------------------------------------------------
 # Panels
 # ---------------------------------------------------------------------------
 
-def draw_ratio(ax, t, log_r, v):
-    """log R(t) on a log scale of R, with the trend V t."""
-    (x0, y0), (x_tip, y_tip) = RATIO_AXES.origin, RATIO_AXES.tips
-    draw_arrow(ax, (x0, y0), (x_tip, y0), AXIS_COLOR, z=3, lw=1.3, head=9)
-    draw_arrow(ax, (x0, y0 + LOG_R_BOTTOM * LOG_R_UNIT), (x0, y_tip), AXIS_COLOR, z=3, lw=1.3,
-               head=9)
-    draw_label(ax, (x_tip - 0.15, y0 - 0.5), "time")
-    for power, text in LOG_R_TICKS:
-        y = y0 + power * np.log(10) * LOG_R_UNIT
+def ratio_y(log_r):
+    return RATIO_ZERO + np.asarray(log_r) / K * K_UNIT
+
+
+def draw_ratio(ax, t, log_r):
+    """The log ratio from -2K to 2K, with +-K dashed."""
+    RATIO_AXES.draw(ax)
+    x0 = RATIO_AXES.origin[0]
+    for multiple, text in RATIO_TICKS:
+        y = ratio_y(multiple * K)
         ax.plot([x0 - 0.1, x0], [y, y], color=AXIS_COLOR, lw=1.3, zorder=3)
         draw_label(ax, (x0 - 0.2, y), text, ha="right")
-    draw_label(ax, (x0 + 0.27, y_tip), rf"$\dfrac{{{likelihood('low')}}}{{{likelihood('high')}}}$",
-               ha="left")
+    for level in (K, -K):
+        ax.plot([x0, RATIO_AXES.tips[0]], [ratio_y(level)] * 2, **DASHED)
+    draw_likelihood_ratio(ax, (RATIO_LABEL_X, RATIO_ZERO), rotation=90)
 
-    ax.plot(RATIO_AXES.x(t, DURATION), y0 + log_r * LOG_R_UNIT, color="#222222", lw=RATIO_PT,
+    t_shown, log_r_shown = stopped(t, log_r, 2 * K)
+    ax.plot(RATIO_AXES.x(t_shown, DURATION), ratio_y(log_r_shown), color="#222222", lw=RATIO_PT,
             solid_joinstyle="miter", zorder=4)
-    end = (RATIO_AXES.span[1], y0 + v * DURATION * LOG_R_UNIT)
-    ax.plot([RATIO_AXES.span[0], end[0]], [y0, end[1]], color=ACCENT, lw=1.8,
-            solid_capstyle="round", zorder=5)
-    ax.text(end[0] + 0.15, end[1], "$Vt$", ha="left", va="center", fontsize=LABEL_PT + 2,
+
+
+def draw_decisions(ax, taken):
+    """The two decisions, at the ends of +-K; the one `taken` lit up."""
+    for level, which in ((K, "low"), (-K, "high")):
+        ax.text(SIDE_X, ratio_y(level), rf"Decision: $c_{{\mathrm{{{which}}}}}$", ha="left",
+                va="center", fontsize=LABEL_PT - 1, color=TEXT_COLOR, zorder=20,
+                bbox=dict(boxstyle="square,pad=0.35", ec=AXIS_COLOR, lw=0.8,
+                          fc=to_rgba(HIGHLIGHT["color"], HIGHLIGHT["alpha"]) if which == taken
+                          else "white"))
+
+
+def draw_decision_time(ax, t):
+    """A vertical dashed line at t, through both plots."""
+    x = RATIO_AXES.x(t, DURATION)
+    bottom = RATIO_AXES.origin[1]
+    ax.plot([x, x], [bottom, TIME_SERIES_AXES.tips[1] - 0.35], color=ACCENT, lw=1.4,
+            dashes=(3, 2), zorder=5)
+    ax.text(x, bottom - 0.5, r"$T_{\rm dec}$", ha="center", va="center", fontsize=LABEL_PT,
             color=ACCENT)
 
 
-def draw_slope(ax, c, dc_over_c):
-    """V against c, saturating at 1/2 (dc/c)^2 ku (dashed), with c marked."""
-    draw_plot_axes(ax, SLOPE_ORIGIN, SLOPE_TIPS, y_label=r"slope $V$", x_label="$c$")
-    x0, y0 = SLOPE_ORIGIN
-
-    def at(c, v):
-        return x0 + c / C_MAX * (C_RIGHT - x0), y0 + v * V_UNIT
-
-    cs = np.linspace(0, C_MAX, 200)
-    ax.plot(*at(cs, slope(cs, dc_over_c)), color="#222222", lw=1.6, zorder=4)
-    saturation = at(C_MAX, 0.5 * dc_over_c ** 2 * K_UNBIND)[1]
-    ax.plot([x0, C_RIGHT], [saturation] * 2, color=AXIS_COLOR, lw=1.1, dashes=(4, 3), zorder=3)
-
-    point = at(c, slope(c, dc_over_c))
-    ax.plot([point[0]] * 2, [y0, point[1]], color=ACCENT, lw=1.1, dashes=(3, 2), zorder=3)
-    ax.add_patch(Circle(point, 0.13, fc=ACCENT, ec="none", zorder=5))
+def draw_truth(ax, truth, dc_over_c):
+    """The concentration simulated, and the difference tested for."""
+    lines = (rf"True $c = c_{{\mathrm{{{truth}}}}}$",
+             rf"$c_{{\mathrm{{high}}}} = {1 + dc_over_c:.0f}\,c_{{\mathrm{{low}}}}$")
+    for text, y in zip(lines, TRUTH_Y):
+        draw_label(ax, (SIDE_X, y), text, ha="left")
 
 
-def draw_slide(name, c, dc_over_c, seed):
+def draw_k_explained(ax):
+    draw_label(ax, (SIDE_X, K_LABEL_Y), r"$K = \log\dfrac{1-\epsilon}{\epsilon}$", ha="left")
+    draw_label(ax, (SIDE_X, EPSILON_LABEL_Y), r"$\epsilon$: error level", ha="left")
+
+
+def draw_slide(name, truth, dc_over_c, explain_k, seed):
     fig, ax = new_slide()
-    trace, (t, log_r) = ratio(seed, c, dc_over_c)
+    trace, (t, log_r) = ratio(seed, truth, dc_over_c)
+    t_decision, taken = decision(t, log_r)
+    print(f"{name}: seed {seed}, true c_{truth}, decided c_{taken} at t = {t_decision:.1f}")
     draw_time_series(ax, trace, DURATION, TIME_SERIES_AXES, lw=TRACE_PT, time_label=False)
-    draw_ratio(ax, t, log_r, slope(c, dc_over_c))
-    draw_two_state_graph(ax, offset=GRAPH_OFFSET)
-    draw_slope(ax, c, dc_over_c)
-    draw_slider(ax, 1 + dc_over_c, offset=SLIDER_OFFSET)
+    draw_ratio(ax, t, log_r)
+    draw_decisions(ax, taken)
+    draw_decision_time(ax, t_decision)
+    draw_truth(ax, truth, dc_over_c)
+    if explain_k:
+        draw_k_explained(ax)
     save(fig, "scene13", name)
 
 
 if __name__ == "__main__":
-    seed = first_seed(lambda s: all(follows_trend(s, **spec) for spec in SLIDES.values()), 1)
-    print(f"seed {seed}")
+    seeds = choose_seeds()
     for name, spec in SLIDES.items():
-        draw_slide(name, seed=seed, **spec)
+        draw_slide(name, seed=seeds[name], **spec)

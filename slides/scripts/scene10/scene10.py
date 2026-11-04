@@ -26,7 +26,7 @@ from common.locus import Locus
 from common.molecules import (TF_RADIUS, circle_points, draw_legend, draw_scattered_tfs,
                               legend_area, scatter_proteins)
 
-LOCUS = Locus(offset=(4.81, -1.34), promoter=True)  # where scenes 6 and 9 have it
+LOCUS = Locus(offset=(4.81, -1.34))  # where scenes 6 and 9 have it
 POLYMERASES = [0.95, 0.35]  # the polymerase of scene 9, further on, and a new one
 TRANSCRIPT_SEED = 9
 # TFs bound on the promoter: (nodes from the gene start, side).
@@ -40,7 +40,7 @@ REGION = (MARGIN, SLIDE_UNITS[0] - MARGIN, MARGIN, SLIDE_UNITS[1] - MARGIN)
 # into it (the nearest clear space): offset from the promoter's upstream end.
 PROMOTER_LABEL_OFFSET = (0.4, 1.0)
 PROMOTER_LABEL_HALF_WIDTH = 1.0
-LEGEND = ["DNA", "TF", "RNAP", "mRNA"]
+LEGEND = ["DNA", "Promoter", "Gene", "TF", "RNAP", "mRNA"]
 
 
 if __name__ == "__main__":

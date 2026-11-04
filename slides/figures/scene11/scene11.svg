@@ -3456,7 +3456,8 @@
          style="stroke-linecap:butt;stroke-linejoin:round"
          transform="matrix(0.61720949,0,0,0.61720949,148.36733,12.950014)">
         <!-- $c\,k_b$ -->
-        <g
+        <text xml:space="preserve" id="freesans-g10" x="181.5267" y="89.0974" style="font-size:10.9200px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#3a3a3a;fill-opacity:1;stroke:none"><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">c</tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'"> </tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">k</tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic';font-size:65%;baseline-shift:sub">b</tspan></text>
+<g
            style="fill:#3a3a3a;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.13,0,0,-0.13,171.49559,89.097436)"
            id="g10">
@@ -3475,22 +3476,7 @@
                d="M 1900,4416 H 1427 L 480,-13 h 486 l 58,288 c 185,-224 454,-339 736,-339 716,0 1465,869 1465,1893 0,453 -192,987 -704,987 -198,0 -601,-45 -1043,-340 z M 1408,2095 c 236,246 486,330 691,330 333,0 627,-214 627,-706 0,-693 -448,-1393 -1126,-1393 -391,0 -480,350 -480,382 0,33 6,58 12,84 z"
                transform="scale(0.015625)" />
           </defs>
-          <use
-             xlink:href="#CMSSI17-65"
-             transform="scale(0.996264)"
-             id="use8"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSSI17-6d"
-             transform="matrix(0.996264,0,0,0.996264,66.318414,0)"
-             id="use9"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSSI17-64"
-             transform="matrix(0.697382,0,0,0.697382,111.9209,-14.943915)"
-             id="use10"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
+          </g>
       </g>
       <g
          id="patch_8-1"
@@ -3512,7 +3498,8 @@
          style="stroke-linecap:butt;stroke-linejoin:round"
          transform="matrix(0.61720949,0,0,0.61720949,148.36733,12.950014)">
         <!-- $k_u$ -->
-        <g
+        <text xml:space="preserve" id="freesans-g12" x="181.6507" y="113.3090" style="font-size:10.9200px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#3a3a3a;fill-opacity:1;stroke:none"><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">k</tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic';font-size:65%;baseline-shift:sub">u</tspan></text>
+<g
            style="fill:#3a3a3a;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.13,0,0,-0.13,175.93426,113.309)"
            id="g12">
@@ -3523,17 +3510,7 @@
                d="M 3200,2752 H 2713 L 2329,937 c -77,-373 -422,-630 -838,-630 -295,0 -403,58 -403,231 0,52 19,136 19,142 l 435,2072 H 1056 L 614,667 c -19,-90 -32,-148 -32,-283 0,-397 282,-448 493,-448 409,0 800,128 1133,364 l -64,-313 h 473 z"
                transform="scale(0.015625)" />
           </defs>
-          <use
-             xlink:href="#CMSSI17-6d"
-             transform="scale(0.996264)"
-             id="use11"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSSI17-77"
-             transform="matrix(0.697382,0,0,0.697382,45.602489,-14.943915)"
-             id="use12"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
+          </g>
       </g>
       <g
          id="patch_9-9"
@@ -3555,7 +3532,8 @@
          style="stroke-linecap:butt;stroke-linejoin:round"
          transform="matrix(0.61720949,0,0,0.61720949,148.36733,12.950014)">
         <!-- $k_{\rm on}$ -->
-        <g
+        <text xml:space="preserve" id="freesans-g15" x="225.1350" y="132.9512" style="font-size:10.9200px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#3a3a3a;fill-opacity:1;stroke:none"><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">k</tspan><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal';font-size:65%;baseline-shift:sub">on</tspan></text>
+<g
            style="fill:#3a3a3a;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.13,0,0,-0.13,217.70079,132.95125)"
            id="g15">
@@ -3570,22 +3548,7 @@
                d="m 2617,1878 c 0,405 -96,938 -819,938 -410,0 -678,-212 -858,-430 v 397 H 473 V 0 h 487 v 1556 c 0,406 153,869 588,869 564,0 583,-380 583,-599 V 0 h 486 z"
                transform="scale(0.015625)" />
           </defs>
-          <use
-             xlink:href="#CMSSI17-6d"
-             transform="scale(0.996264)"
-             id="use13"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-71-6"
-             transform="matrix(0.697382,0,0,0.697382,45.602489,-14.943915)"
-             id="use14"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-70-4"
-             transform="matrix(0.697382,0,0,0.697382,78.392871,-14.943915)"
-             id="use15"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
+          </g>
       </g>
       <g
          id="patch_10-1"
@@ -3607,7 +3570,8 @@
          style="stroke-linecap:butt;stroke-linejoin:round"
          transform="matrix(0.61720949,0,0,0.61720949,148.36733,12.950014)">
         <!-- $k_{\rm off}$ -->
-        <g
+        <text xml:space="preserve" id="freesans-g18" x="196.9965" y="132.9512" style="font-size:10.9200px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#3a3a3a;fill-opacity:1;stroke:none"><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">k</tspan><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal';font-size:65%;baseline-shift:sub">off</tspan></text>
+<g
            style="fill:#3a3a3a;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.13,0,0,-0.13,188.75402,132.95125)"
            id="g18">
@@ -3618,22 +3582,7 @@
                d="m 1075,2380 h 659 v 372 h -672 v 811 c 0,437 333,526 550,526 224,0 410,-57 480,-82 v 421 c -70,13 -262,52 -473,52 C 1030,4480 601,4000 601,3366 V 2752 H 160 V 2380 H 601 V 0 h 474 z m 1664,0 h 659 v 372 h -672 v 811 c 0,437 333,526 551,526 224,0 409,-57 480,-82 v 421 c -71,13 -263,52 -474,52 -589,0 -1018,-480 -1018,-1114 V 0 h 474 z"
                transform="scale(0.015625)" />
           </defs>
-          <use
-             xlink:href="#CMSSI17-6d"
-             transform="scale(0.996264)"
-             id="use16"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-71-6"
-             transform="matrix(0.697382,0,0,0.697382,45.602489,-14.943915)"
-             id="use17"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-c-9"
-             transform="matrix(0.697382,0,0,0.697382,78.392871,-14.943915)"
-             id="use18"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
+          </g>
       </g>
       <g
          id="patch_11-2"
@@ -3655,21 +3604,12 @@
          style="stroke-linecap:butt;stroke-linejoin:round"
          transform="matrix(0.61720949,0,0,0.61720949,148.36733,12.950014)">
         <!-- $k_u$ -->
-        <g
+        <text xml:space="preserve" id="freesans-g20" x="181.6507" y="176.8051" style="font-size:10.9200px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#3a3a3a;fill-opacity:1;stroke:none"><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">k</tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic';font-size:65%;baseline-shift:sub">u</tspan></text>
+<g
            style="fill:#3a3a3a;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.13,0,0,-0.13,175.93426,176.80507)"
            id="g20">
-          <use
-             xlink:href="#CMSSI17-6d"
-             transform="scale(0.996264)"
-             id="use19"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSSI17-77"
-             transform="matrix(0.697382,0,0,0.697382,45.602489,-14.943915)"
-             id="use20"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
+          </g>
       </g>
       <g
          id="patch_12-6"
@@ -3691,26 +3631,12 @@
          style="stroke-linecap:butt;stroke-linejoin:round"
          transform="matrix(0.61720949,0,0,0.61720949,148.36733,12.950014)">
         <!-- $c\,k_b$ -->
-        <g
+        <text xml:space="preserve" id="freesans-g23" x="181.5267" y="152.5935" style="font-size:10.9200px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#3a3a3a;fill-opacity:1;stroke:none"><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">c</tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'"> </tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'">k</tspan><tspan style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic';font-size:65%;baseline-shift:sub">b</tspan></text>
+<g
            style="fill:#3a3a3a;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.13,0,0,-0.13,171.49559,152.5935)"
            id="g23">
-          <use
-             xlink:href="#CMSSI17-65"
-             transform="scale(0.996264)"
-             id="use21"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSSI17-6d"
-             transform="matrix(0.996264,0,0,0.996264,66.318414,0)"
-             id="use22"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSSI17-64"
-             transform="matrix(0.697382,0,0,0.697382,111.9209,-14.943915)"
-             id="use23"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
+          </g>
       </g>
       <g
          id="patch_13-8"
@@ -4196,46 +4122,6 @@
                id="path159" />
           </g>
           <g
-             id="patch_44-7"
-             style="stroke-linecap:butt;stroke-linejoin:round"
-             transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-            <path
-               d="m 76.771775,181.70167 c 0.362768,0 0.710726,-0.14413 0.967242,-0.40064 0.256516,-0.25652 0.400645,-0.60448 0.400645,-0.96724 0,-0.36277 -0.144129,-0.71073 -0.400645,-0.96724 -0.256516,-0.25652 -0.604474,-0.40065 -0.967242,-0.40065 -0.362768,0 -0.710726,0.14413 -0.967242,0.40065 -0.256515,0.25651 -0.400644,0.60447 -0.400644,0.96724 0,0.36276 0.144129,0.71072 0.400644,0.96724 0.256516,0.25651 0.604474,0.40064 0.967242,0.40064 z"
-               clip-path="url(#p90bbd330fb-4)"
-               style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-               id="path160" />
-          </g>
-          <g
-             id="patch_45-8"
-             style="stroke-linecap:butt;stroke-linejoin:round"
-             transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-            <path
-               d="m 74.338408,184.80784 c 0.362768,0 0.710727,-0.14413 0.967242,-0.40064 0.256516,-0.25652 0.400645,-0.60448 0.400645,-0.96725 0,-0.36276 -0.144129,-0.71072 -0.400645,-0.96724 -0.256515,-0.25651 -0.604474,-0.40064 -0.967242,-0.40064 -0.362767,0 -0.710726,0.14413 -0.967242,0.40064 -0.256515,0.25652 -0.400644,0.60448 -0.400644,0.96724 0,0.36277 0.144129,0.71073 0.400644,0.96725 0.256516,0.25651 0.604475,0.40064 0.967242,0.40064 z"
-               clip-path="url(#p90bbd330fb-4)"
-               style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-               id="path161" />
-          </g>
-          <g
-             id="patch_46-2"
-             style="stroke-linecap:butt;stroke-linejoin:round"
-             transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-            <path
-               d="m 71.830693,187.8543 c 0.362767,0 0.710726,-0.14413 0.967242,-0.40065 0.256515,-0.25651 0.400644,-0.60447 0.400644,-0.96724 0,-0.36276 -0.144129,-0.71072 -0.400644,-0.96724 -0.256516,-0.25651 -0.604475,-0.40064 -0.967242,-0.40064 -0.362768,0 -0.710727,0.14413 -0.967242,0.40064 -0.256516,0.25652 -0.400645,0.60448 -0.400645,0.96724 0,0.36277 0.144129,0.71073 0.400645,0.96724 0.256515,0.25652 0.604474,0.40065 0.967242,0.40065 z"
-               clip-path="url(#p90bbd330fb-4)"
-               style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-               id="path162" />
-          </g>
-          <g
-             id="patch_47-5"
-             style="stroke-linecap:butt;stroke-linejoin:round"
-             transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-            <path
-               d="m 69.376502,190.94404 c 0.362768,0 0.710726,-0.14413 0.967242,-0.40064 0.256515,-0.25652 0.400644,-0.60448 0.400644,-0.96725 0,-0.36276 -0.144129,-0.71072 -0.400644,-0.96724 -0.256516,-0.25651 -0.604474,-0.40064 -0.967242,-0.40064 -0.362768,0 -0.710726,0.14413 -0.967242,0.40064 -0.256516,0.25652 -0.400645,0.60448 -0.400645,0.96724 0,0.36277 0.144129,0.71073 0.400645,0.96725 0.256516,0.25651 0.604474,0.40064 0.967242,0.40064 z"
-               clip-path="url(#p90bbd330fb-4)"
-               style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-               id="path163" />
-          </g>
-          <g
              id="patch_49-4"
              style="stroke-linecap:butt;stroke-linejoin:round"
              transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
@@ -4710,46 +4596,6 @@
              id="path147" />
         </g>
         <g
-           id="patch_32-8"
-           style="stroke-linecap:butt;stroke-linejoin:round"
-           transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-          <path
-             d="m 283.58752,181.70167 c 0.36277,0 0.71073,-0.14413 0.96724,-0.40064 0.25652,-0.25652 0.40065,-0.60448 0.40065,-0.96724 0,-0.36277 -0.14413,-0.71073 -0.40065,-0.96724 -0.25651,-0.25652 -0.60447,-0.40065 -0.96724,-0.40065 -0.36276,0 -0.71072,0.14413 -0.96724,0.40065 -0.25651,0.25651 -0.40064,0.60447 -0.40064,0.96724 0,0.36276 0.14413,0.71072 0.40064,0.96724 0.25652,0.25651 0.60448,0.40064 0.96724,0.40064 z"
-             clip-path="url(#p90bbd330fb-4)"
-             style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-             id="path148" />
-        </g>
-        <g
-           id="patch_33"
-           style="stroke-linecap:butt;stroke-linejoin:round"
-           transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-          <path
-             d="m 281.15416,184.80784 c 0.36276,0 0.71072,-0.14413 0.96724,-0.40064 0.25651,-0.25652 0.40064,-0.60448 0.40064,-0.96725 0,-0.36276 -0.14413,-0.71072 -0.40064,-0.96724 -0.25652,-0.25651 -0.60448,-0.40064 -0.96724,-0.40064 -0.36277,0 -0.71073,0.14413 -0.96725,0.40064 -0.25651,0.25652 -0.40064,0.60448 -0.40064,0.96724 0,0.36277 0.14413,0.71073 0.40064,0.96725 0.25652,0.25651 0.60448,0.40064 0.96725,0.40064 z"
-             clip-path="url(#p90bbd330fb-4)"
-             style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-             id="path149" />
-        </g>
-        <g
-           id="patch_34"
-           style="stroke-linecap:butt;stroke-linejoin:round"
-           transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-          <path
-             d="m 278.64644,187.8543 c 0.36277,0 0.71073,-0.14413 0.96724,-0.40065 0.25652,-0.25651 0.40065,-0.60447 0.40065,-0.96724 0,-0.36276 -0.14413,-0.71072 -0.40065,-0.96724 -0.25651,-0.25651 -0.60447,-0.40064 -0.96724,-0.40064 -0.36277,0 -0.71073,0.14413 -0.96724,0.40064 -0.25652,0.25652 -0.40065,0.60448 -0.40065,0.96724 0,0.36277 0.14413,0.71073 0.40065,0.96724 0.25651,0.25652 0.60447,0.40065 0.96724,0.40065 z"
-             clip-path="url(#p90bbd330fb-4)"
-             style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-             id="path150" />
-        </g>
-        <g
-           id="patch_35"
-           style="stroke-linecap:butt;stroke-linejoin:round"
-           transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
-          <path
-             d="m 276.19225,190.94404 c 0.36277,0 0.71073,-0.14413 0.96724,-0.40064 0.25652,-0.25652 0.40065,-0.60448 0.40065,-0.96725 0,-0.36276 -0.14413,-0.71072 -0.40065,-0.96724 -0.25651,-0.25651 -0.60447,-0.40064 -0.96724,-0.40064 -0.36277,0 -0.71073,0.14413 -0.96724,0.40064 -0.25652,0.25652 -0.40065,0.60448 -0.40065,0.96724 0,0.36277 0.14413,0.71073 0.40065,0.96725 0.25651,0.25651 0.60447,0.40064 0.96724,0.40064 z"
-             clip-path="url(#p90bbd330fb-4)"
-             style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
-             id="path151" />
-        </g>
-        <g
            id="patch_48-3"
            style="stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.55946306,0,0,0.55946306,165.47233,46.739544)">
@@ -4899,105 +4745,24 @@
              style="stroke-linecap:butt;stroke-linejoin:round"
              transform="matrix(0.9159396,0,0,0.9159396,38.770281,94.918215)">
             <!-- time -->
-            <g
+            <text xml:space="preserve" id="freesans-g230" x="324.0588" y="175.8118" style="font-size:9.2400px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#222222;fill-opacity:1;stroke:none"><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'">time</tspan></text>
+<g
                style="fill:#222222;stroke-linecap:butt;stroke-linejoin:round"
                transform="matrix(0.11,0,0,-0.11,314.66089,175.81185)"
                id="g230">
-              <use
-                 xlink:href="#CMSS17-76"
-                 transform="scale(0.996264)"
-                 id="use227-0"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-6b"
-                 transform="matrix(0.996264,0,0,0.996264,33.831567,0)"
-                 id="use228-7"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <path
-                 id="use229-8"
-                 d="m 122.76198,29.234122 c 0,6.709215 -1.69676,14.601494 -12.85803,14.601494 -7.47198,0 -11.955172,-4.685554 -13.9477,-7.596513 -1.790162,5.292653 -5.977584,7.596513 -11.955168,7.596513 -6.771482,0 -11.052304,-3.891656 -13.356164,-6.693649 v 6.17995 H 63.375304 V 0 h 7.580946 v 24.221668 c 0,5.915318 2.179327,13.527398 9.262142,13.527398 9.059776,0 9.059776,-6.41345 9.059776,-9.324409 V 0 h 7.580946 v 24.221668 c 0,5.915318 2.179328,13.527398 9.262146,13.527398 9.05977,0 9.05977,-6.41345 9.05977,-9.324409 V 0 h 7.58095 z"
-                 style="fill:#222222;stroke-width:0.0155666;stroke-linecap:butt;stroke-linejoin:round" />
-              <path
-                 id="use230-6"
-                 d="m 169.18924,21.404109 c 0,3.300125 -0.20237,9.744708 -3.39353,15.13076 -3.48692,5.697385 -9.15317,7.300747 -13.44956,7.300747 -10.35181,0 -19.11582,-9.838107 -19.11582,-22.618306 0,-12.2042341 9.05978,-22.213574 20.51681,-22.213574 4.48319,0 9.96264,1.29202988 14.94396,4.8723536 0,0.4047323 -0.20236,2.5684932 -0.29576,2.6774595 0,0.1867995 -0.29577,3.237858 -0.29577,3.6425899 -4.79452,-3.844956 -10.27397,-5.1214193 -14.25903,-5.1214193 -6.36675,0 -13.24719,5.3082193 -13.54296,16.3293893 z m -28.09776,5.495019 c 1.29203,5.572852 5.68182,10.849938 11.25467,10.849938 1.49439,0 8.46824,-0.202366 10.27397,-10.849938 z"
-                 style="fill:#222222;stroke-width:0.0155666;stroke-linecap:butt;stroke-linejoin:round" />
-            </g>
+              </g>
           </g>
           <g
              id="text_17"
              style="stroke-linecap:butt;stroke-linejoin:round"
              transform="matrix(0.9159396,0,0,0.9159396,38.770281,94.918215)">
             <!-- transcription -->
-            <g
+            <text xml:space="preserve" id="freesans-g243" x="236.3899" y="123.7451" style="font-size:9.2400px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:start;fill:#222222;fill-opacity:1;stroke:none"><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'">transcription</tspan></text>
+<g
                style="fill:#222222;stroke-linecap:butt;stroke-linejoin:round"
                transform="matrix(0.11,0,0,-0.11,236.20535,123.74508)"
                id="g243">
-              <use
-                 xlink:href="#CMSS17-76"
-                 transform="scale(0.996264)"
-                 id="use231-8"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-74"
-                 transform="matrix(0.996264,0,0,0.996264,33.831567,0)"
-                 id="use232-8"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-63"
-                 transform="matrix(0.996264,0,0,0.996264,65.741339,0)"
-                 id="use233-4"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-70"
-                 transform="matrix(0.996264,0,0,0.996264,110.66326,0)"
-                 id="use234-3"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-75"
-                 transform="matrix(0.996264,0,0,0.996264,158.8682,0)"
-                 id="use235-1"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-65"
-                 transform="matrix(0.996264,0,0,0.996264,194.78174,0)"
-                 id="use236-4"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-74"
-                 transform="matrix(0.996264,0,0,0.996264,236.42057,0)"
-                 id="use237-9"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-6b"
-                 transform="matrix(0.996264,0,0,0.996264,268.33034,0)"
-                 id="use238-2"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-72"
-                 transform="matrix(0.996264,0,0,0.996264,290.51106,0)"
-                 id="use239-0"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-76"
-                 transform="matrix(0.996264,0,0,0.996264,338.71601,0)"
-                 id="use240-6"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-6b"
-                 transform="matrix(0.996264,0,0,0.996264,372.54757,0)"
-                 id="use241"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-71"
-                 transform="matrix(0.996264,0,0,0.996264,394.7283,0)"
-                 id="use242"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-              <use
-                 xlink:href="#CMSS17-70"
-                 transform="matrix(0.996264,0,0,0.996264,441.57192,0)"
-                 id="use243"
-                 style="stroke-linecap:butt;stroke-linejoin:round" />
-            </g>
+              </g>
           </g>
         </g>
       </g>
@@ -5035,134 +4800,30 @@
            id="path143-6"
            transform="matrix(0.8122102,0,0,0.8122102,-27.054266,111.8821)"
            sodipodi:nodetypes="cccccccccccccccccccccccccccccccccccccccc" />
-        <g
+        <text xml:space="preserve" id="freesans-g266" x="236.1495" y="254.6783" style="font-size:7.5048px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:middle;fill:#222222;fill-opacity:1;stroke:none"><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'">time</tspan></text>
+<g
            style="fill:#222222;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.08934312,0,0,-0.08934312,228.51652,254.67827)"
            id="g266">
-          <use
-             xlink:href="#CMSS17-76"
-             transform="scale(0.996264)"
-             id="use263"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-6b"
-             transform="matrix(0.996264,0,0,0.996264,33.831567,0)"
-             id="use264"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <path
-             id="use265"
-             d="m 122.76198,29.234122 c 0,6.709215 -1.69676,14.601494 -12.85803,14.601494 -7.47198,0 -11.955172,-4.685554 -13.9477,-7.596513 -1.790162,5.292653 -5.977584,7.596513 -11.955168,7.596513 -6.771482,0 -11.052304,-3.891656 -13.356164,-6.693649 v 6.17995 H 63.375304 V 0 h 7.580946 v 24.221668 c 0,5.915318 2.179327,13.527398 9.262142,13.527398 9.059776,0 9.059776,-6.41345 9.059776,-9.324409 V 0 h 7.580946 v 24.221668 c 0,5.915318 2.179328,13.527398 9.262146,13.527398 9.05977,0 9.05977,-6.41345 9.05977,-9.324409 V 0 h 7.58095 z"
-             style="fill:#222222;stroke-width:0.0155666;stroke-linecap:butt;stroke-linejoin:round" />
-          <path
-             id="use266"
-             d="m 169.18924,21.404109 c 0,3.300125 -0.20237,9.744708 -3.39353,15.13076 -3.48692,5.697385 -9.15317,7.300747 -13.44956,7.300747 -10.35181,0 -19.11582,-9.838107 -19.11582,-22.618306 0,-12.2042341 9.05978,-22.213574 20.51681,-22.213574 4.48319,0 9.96264,1.29202988 14.94396,4.8723536 0,0.4047323 -0.20236,2.5684932 -0.29576,2.6774595 0,0.1867995 -0.29577,3.237858 -0.29577,3.6425899 -4.79452,-3.844956 -10.27397,-5.1214193 -14.25903,-5.1214193 -6.36675,0 -13.24719,5.3082193 -13.54296,16.3293893 z m -28.09776,5.495019 c 1.29203,5.572852 5.68182,10.849938 11.25467,10.849938 1.49439,0 8.46824,-0.202366 10.27397,-10.849938 z"
-             style="fill:#222222;stroke-width:0.0155666;stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
-        <g
+          </g>
+        <text xml:space="preserve" id="freesans-g279" x="164.9446" y="212.3891" style="font-size:7.5048px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:start;fill:#222222;fill-opacity:1;stroke:none"><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'">transcription</tspan></text>
+<g
            style="fill:#222222;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.08934312,0,0,-0.08934312,164.79412,212.38911)"
            id="g279">
-          <use
-             xlink:href="#CMSS17-76"
-             transform="scale(0.996264)"
-             id="use267"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-74"
-             transform="matrix(0.996264,0,0,0.996264,33.831567,0)"
-             id="use268"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-63"
-             transform="matrix(0.996264,0,0,0.996264,65.741339,0)"
-             id="use269"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-70"
-             transform="matrix(0.996264,0,0,0.996264,110.66326,0)"
-             id="use270"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-75"
-             transform="matrix(0.996264,0,0,0.996264,158.8682,0)"
-             id="use271"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-65"
-             transform="matrix(0.996264,0,0,0.996264,194.78174,0)"
-             id="use272"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-74"
-             transform="matrix(0.996264,0,0,0.996264,236.42057,0)"
-             id="use273"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-6b"
-             transform="matrix(0.996264,0,0,0.996264,268.33034,0)"
-             id="use274"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-72"
-             transform="matrix(0.996264,0,0,0.996264,290.51106,0)"
-             id="use275"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-76"
-             transform="matrix(0.996264,0,0,0.996264,338.71601,0)"
-             id="use276"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-6b"
-             transform="matrix(0.996264,0,0,0.996264,372.54757,0)"
-             id="use277"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-71"
-             transform="matrix(0.996264,0,0,0.996264,394.7283,0)"
-             id="use278"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-70"
-             transform="matrix(0.996264,0,0,0.996264,441.57192,0)"
-             id="use279"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
-        <g
+          </g>
+        <text xml:space="preserve" id="freesans-g281" x="156.2872" y="225.6505" style="font-size:7.5048px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:end;fill:#222222;fill-opacity:1;stroke:none"><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'">ON</tspan></text>
+<g
            style="fill:#222222;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.08934312,0,0,-0.08934312,145.01179,225.65052)"
            id="g281">
-          <use
-             xlink:href="#CMSS17-51"
-             transform="scale(0.996264)"
-             id="use280"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-50"
-             transform="matrix(0.996264,0,0,0.996264,69.024255,0)"
-             id="use281"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
-        <g
+          </g>
+        <text xml:space="preserve" id="freesans-g284" x="156.5133" y="241.4169" style="font-size:7.5048px;line-height:1.1;font-family:FreeSans;font-weight:normal;text-anchor:end;fill:#222222;fill-opacity:1;stroke:none"><tspan style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'">OFF</tspan></text>
+<g
            style="fill:#222222;stroke-linecap:butt;stroke-linejoin:round"
            transform="matrix(0.08934312,0,0,-0.08934312,141.17942,241.41686)"
            id="g284">
-          <use
-             xlink:href="#CMSS17-51"
-             transform="scale(0.996264)"
-             id="use282"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-48"
-             transform="matrix(0.996264,0,0,0.996264,69.024255,0)"
-             id="use283"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-          <use
-             xlink:href="#CMSS17-48"
-             transform="matrix(0.996264,0,0,0.996264,122.31382,0)"
-             id="use284"
-             style="stroke-linecap:butt;stroke-linejoin:round" />
-        </g>
+          </g>
       </g>
       <text
          xml:space="preserve"

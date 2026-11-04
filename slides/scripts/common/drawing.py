@@ -14,7 +14,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import ArrowStyle, FancyArrowPatch, Polygon
+from matplotlib.patches import ArrowStyle, FancyArrowPatch, PathPatch, Polygon
+from matplotlib.path import Path as DrawnPath
 from scipy.interpolate import splev, splprep
 
 FIGURES_DIR = Path(__file__).resolve().parents[2] / "figures"
@@ -32,18 +33,25 @@ EDGE_PT = 1.0                       # visible outline width of shapes, in points
 LIGHT_DIR = np.array([-0.5, 0.85])  # highlights are lit from the upper left
 ARROW_PT = 3.0
 
-# Labels are typeset by LaTeX in Computer Modern Sans, the beamer default, so
-# they match the slide text. Sizes are as drawn; the frames include figures at
-# width=\textwidth (x0.84), so 11 pt prints at about 9.3 pt.
-LABEL_PT = 11
+# Labels are in FreeSans, like the slide text: matplotlib sets them itself,
+# equations included (mathtext, so no LaTeX commands beyond math), and they stay
+# real text in the SVGs, editable in Inkscape. FreeSans looks larger than
+# Computer Modern Sans at the same size, so 9.2 pt reads like the old 11 pt.
+LABEL_PT = 9.2
 TEXT_COLOR = "#222222"
 AXIS_COLOR = "#3A3A3A"
+BOLD = 600                          # FreeSans's bold declares itself semi-bold
 plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "sans-serif",
-    # Sans-serif text, and sans-serif math as in beamer.
-    "text.latex.preamble": r"\renewcommand{\familydefault}{\sfdefault}"
-                           r"\usepackage{sansmath}\sansmath",
+    "font.family": "FreeSans",
+    "mathtext.fontset": "custom",
+    "mathtext.rm": "FreeSans",
+    "mathtext.it": "FreeSans:italic",
+    "mathtext.bf": f"FreeSans:weight={BOLD}",
+    "mathtext.sf": "FreeSans",
+    "mathtext.cal": "FreeSans:italic",
+    "mathtext.fallback": "stixsans",   # for what FreeSans lacks: tall brackets
+    "pdf.fonttype": 42,                # TrueType in the PDFs...
+    "svg.fonttype": "none",            # ...and <text> in the SVGs
 })
 
 
@@ -163,8 +171,23 @@ def draw_arrow(ax, start, end, color, z, lw=ARROW_PT, head=12):
 
 def draw_label(ax, xy, text, bold=False, ha="center", va="center", size=LABEL_PT, z=20):
     """Text label; `xy` is its centre (ha="center") or its left end (ha="left")."""
-    ax.text(*xy, rf"\textbf{{{text}}}" if bold else text, ha=ha, va=va,
-            fontsize=size, color=TEXT_COLOR, zorder=z)
+    ax.text(*xy, text, ha=ha, va=va, fontsize=size, fontweight=BOLD if bold else "normal",
+            color=TEXT_COLOR, zorder=z)
+
+
+def draw_underbrace(ax, x_range, y, label, color=TEXT_COLOR, depth=0.26, size=LABEL_PT - 1, z=20):
+    """A curly brace under `x_range`, its arms up at `y`, with `label` under its tip."""
+    x0, x1 = x_range
+    middle, bend, low = (x0 + x1) / 2, depth / 2, y - depth / 2
+    points = [(x0, y), (x0, low), (x0 + bend, low), (middle - bend, low), (middle, low),
+              (middle, y - depth), (middle, low), (middle + bend, low), (x1 - bend, low),
+              (x1, low), (x1, y)]
+    codes = [DrawnPath.MOVETO, DrawnPath.CURVE3, DrawnPath.CURVE3, DrawnPath.LINETO,
+             DrawnPath.CURVE3, DrawnPath.CURVE3, DrawnPath.CURVE3, DrawnPath.CURVE3,
+             DrawnPath.LINETO, DrawnPath.CURVE3, DrawnPath.CURVE3]
+    ax.add_patch(PathPatch(DrawnPath(points, codes), fc="none", ec=color, lw=0.8, zorder=z))
+    ax.text(middle, y - depth - 0.08, label, ha="center", va="top", fontsize=size, color=color,
+            zorder=z)
 
 
 def draw_plot_axes(ax, origin, tips, y_label=None, x_label=None):

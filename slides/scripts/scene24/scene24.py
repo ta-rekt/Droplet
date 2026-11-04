@@ -59,9 +59,10 @@ B_LETTER_MASK = (0.6, 181.4, 13.0, 202.4)
 SPINES_X = (49.0, 356.0)
 SPINES_Y = dict(a=(206.6, 350.4), b=(36.4, 180.1))
 # The means' marker as Fig. 2 draws it: a black dot 4.4 pt across with a 1-pt
-# white edge. Fig. 2's legends are set in 12 pt.
+# white edge. Fig. 2's legends are set in 12 pt of Computer Modern, which 10 pt
+# of FreeSans matches.
 MEAN_MARKER = dict(size=4.4, edge=1.0)
-LEGEND_PT = 12
+LEGEND_PT = 10
 
 # The panels are drawn at SCALE; right of them, after GAP, is a column COLUMN
 # wide for the cartoons. The row is centred, the panels and LEGEND_ROOM above
@@ -76,13 +77,14 @@ LEGEND_ROOM = 0.6
 # `zoom` times the size of its drawing (in scene-4 coordinates), the drawing's
 # point `center` lands at the middle of its slot.
 DISTANCE = dict(zoom=0.4, center=(6.9, 13.3))      # scene 20's stretched chain
-CONDENSATE = dict(zoom=0.47, center=(5.4, 9.9))    # scene 21's locus
+CONDENSATE = dict(zoom=0.42, center=(5.4, 9.9),    # scene 21's locus,
+                  lift=0.75)                       # raised to leave room for the legend
 # The arrow from promoter to enhancer, stopping `gap` (scene-4 units) short of
 # each, in the red of scenes 2-3; its label beside its middle.
 ARROW = dict(color="#D93A45", lw=1.5, head=9, gap=0.4)
 # Around the droplet (scene-4 units, as scene 21's DROPLET).
 RING = dict(radius=1.1, lw=1.0, dashes=(3, 2))
-LEGEND_AT = (14.75, 1.8)  # in the corner under the cartoons (slide units)
+LEGEND_AT = (14.75, 2.2)  # in the corner under the cartoons (slide units)
 
 
 def draw_distance(fig, center):
@@ -122,11 +124,11 @@ if __name__ == "__main__":
     fig, ax = new_slide()
     column_x = left + (x1 - x0) * pt + GAP + COLUMN / 2
     draw_distance(fig, (column_x, to_slide(0, sum(SPINES_Y["a"]) / 2)[1]))
-    draw_condensate(fig, (column_x, to_slide(0, sum(SPINES_Y["b"]) / 2)[1]))
-    draw_legend(ax, ["DNA", "TF"], LEGEND_AT)
+    draw_condensate(fig, (column_x, to_slide(0, sum(SPINES_Y["b"]) / 2)[1] + CONDENSATE["lift"]))
+    draw_legend(ax, ["DNA", "Promoter", "Gene", "TF"], LEGEND_AT)
     mean = Line2D([], [], ls="none", marker="o", ms=MEAN_MARKER["size"] * SCALE,
                   mfc="black", mec="white", mew=MEAN_MARKER["edge"] * SCALE)
-    ax.legend([mean], [r"\textrm{mean}"], loc="center right", frameon=False,
+    ax.legend([mean], ["mean"], loc="center right", frameon=False,
               bbox_to_anchor=(to_slide(SPINES_X[1], 0)[0], top + LEGEND_ROOM / 2),
               bbox_transform=ax.transData, fontsize=LEGEND_PT * SCALE, borderpad=0,
               borderaxespad=0, handlelength=1.0, handletextpad=0.4)

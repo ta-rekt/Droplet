@@ -103,8 +103,9 @@ STRETCHES = [("linker", -1.6, -1.05), ("promoter", -1.05, -0.4), ("linker", -0.4
              ("gene", 0.05, 1.2), ("linker", 1.2, 1.6)]
 TF_AT = (-0.72, 0.27)  # from the middle of the DNA: sitting on the binding site
 POLYMERASE_AT = 0.75   # along the DNA: on the gene
-# The elongating mRNA trails behind the polymerase, away from the DNA.
-MRNA = dict(beads=12, direction=(-1.0, -0.7), seed=15, wiggle=0.3, pull=0.3, clearance=0.2)
+# The elongating mRNA trails behind the polymerase, away from the DNA, and is
+# not longer than the gene.
+MRNA = dict(beads=8, direction=(-1.0, -0.7), seed=15, wiggle=0.3, pull=0.3, clearance=0.2)
 BINDING = dict(radius=0.34, color="#FFD54A", alpha=0.45)  # as in scene 6
 BINDING_LABEL_OFFSET = (0.0, 0.6)  # from the bound TF
 
@@ -142,7 +143,7 @@ def draw_slide(name, state, binding=False):
     for key, spec in CARTOONS.items():
         draw_cartoon(cartoons, **spec, binding=binding and key == state)
     draw_four_state_graph(ax, state)
-    draw_legend(ax, ["DNA", "TF", "RNAP", "mRNA"])
+    draw_legend(ax, ["DNA", "Promoter", "Gene", "TF", "RNAP", "mRNA"])
     save(fig, "scene15", name)
 
 

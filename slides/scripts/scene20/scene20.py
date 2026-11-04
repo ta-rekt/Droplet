@@ -91,7 +91,7 @@ def locus(shift, continuation):
               for kind, points in continuation]
     first_kind, first_points = pieces[0]
     pieces[0] = (first_kind, [DNA_TRACE[-1][1][-1], *first_points])
-    return Locus(promoter=True, trace=DNA_TRACE + pieces)
+    return Locus(trace=DNA_TRACE + pieces)
 
 
 def draw_chain(ax, dna):
@@ -120,5 +120,5 @@ if __name__ == "__main__":
         draw_stretched(fig, ax)
         if folded:
             draw_folded(fig)
-        draw_legend(ax, ["DNA", "RNAP", "mRNA"] if folded else ["DNA"])
+        draw_legend(ax, ["DNA", "Promoter", "Gene"] + ["RNAP", "mRNA"] * folded)
         save(fig, "scene20", name)

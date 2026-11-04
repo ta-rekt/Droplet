@@ -140,10 +140,10 @@ DOUBLE_OCCUPANCY = ("TR", "BR")
 # Figure 3a, below the graph.
 PLOT_BOX = (12.6, 2.0, 6.6, 5.4)
 X_LIMITS, Y_LIMITS = (1e-1, 1e3), (1e-2, 3e1)  # as in the paper
-PLOT_LABEL_PT, TICK_PT = 10, 9
+PLOT_LABEL_PT, TICK_PT = 8.4, 7.6
 # Both labelled on the left, the diffusion limit low enough to end below the
 # activation limit.
-DIFFUSION_LABEL_C, ACTIVATION_LABEL_C = 0.125, 0.13
+DIFFUSION_LABEL_C, ACTIVATION_LABEL_C = 0.15, 0.13
 MARK_LABELS = {LOW_ROW: dict(text="low $c$", offset=(6, -3), ha="left"),
                HIGH_ROW: dict(text="high $c$", offset=(0, -7), ha="center")}
 

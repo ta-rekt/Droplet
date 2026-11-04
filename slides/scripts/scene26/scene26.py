@@ -28,7 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
 
-from common.drawing import TEXT_COLOR, draw_label, new_slide, save
+from common.drawing import TEXT_COLOR, draw_label, draw_underbrace, new_slide, save
 from scene25.scene25 import (CURVE_PT, EQUATIONS_X, LEGEND_PT, PANELS, draw_cartoon, draw_jumps,
                              draw_title, equation, fisher_rate, load_runs, plot_axes, run_label)
 
@@ -38,12 +38,14 @@ SURFACE_RED = "#D93A45"  # the red of scenes 2-3
 # Equations
 # ---------------------------------------------------------------------------
 
-FREE = (r"\dot{\mathcal F}_{\rm free}(c) = \frac{1}{\tau_r(c)}", 11.0)
-# B5, in two pieces so that the surface term can be red.
-PROBE_TERM = r"\dot{\mathcal F}(c) = \underbrace{\frac{1}{\tau_r(\phi)}}_{\rm probe}"
-SURFACE_TERM = r"\underbrace{\left(\frac{d\log\phi}{d\log c}\right)^2}_{\rm surface}"
+FREE = (r"\dot{ℱ}_{\rm free}(c) = \dfrac{1}{\tau_r(c)}", 11.0)
+# B5, in pieces so that the surface term can be red and each term get its brace.
+FISHER_LHS = r"\dot{ℱ}(c) ="
+PROBE_TERM = r"\dfrac{1}{\tau_r(\phi)}"
+SURFACE_TERM = r"\left(\dfrac{d\,\log\phi}{d\,\log c}\right)^2"
 ANCHORED_Y = 7.7
-TERM_GAP = 0.12  # between the two pieces (slide units)
+TERM_GAP = 0.12   # between the pieces (slide units)
+BRACE_DROP = 0.42  # from the baseline to the top of the braces
 HEADINGS = [("Free probe", 12.45), ("Probe on the anchor", 9.2)]
 SYMBOLS = [(r"$\tau_r$", "mean cycle time of the probe"),
            (r"$\phi$", "TF volume fraction at the probe")]
@@ -54,10 +56,19 @@ def draw_equations(ax):
     for text, y in HEADINGS:
         draw_label(ax, (EQUATIONS_X, y), text, ha="left", va="baseline")
     equation(ax, (EQUATIONS_X, FREE[1]), FREE[0])
-    probe = equation(ax, (EQUATIONS_X, ANCHORED_Y), PROBE_TERM)
-    # Placed by ink: the surface term starts just after the probe term.
-    right = probe.get_window_extent().transformed(ax.transData.inverted()).x1
-    equation(ax, (right + TERM_GAP, ANCHORED_Y), SURFACE_TERM).set_color(SURFACE_RED)
+
+    def extent(text):
+        """The x range of a piece's ink, in slide units."""
+        box = text.get_window_extent().transformed(ax.transData.inverted())
+        return box.x0, box.x1
+
+    # Placed by ink: each piece starts just after the one before.
+    lhs = equation(ax, (EQUATIONS_X, ANCHORED_Y), FISHER_LHS)
+    probe = equation(ax, (extent(lhs)[1] + TERM_GAP, ANCHORED_Y), PROBE_TERM)
+    surface = equation(ax, (extent(probe)[1] + TERM_GAP, ANCHORED_Y), SURFACE_TERM)
+    surface.set_color(SURFACE_RED)
+    draw_underbrace(ax, extent(probe), ANCHORED_Y - BRACE_DROP, "probe")
+    draw_underbrace(ax, extent(surface), ANCHORED_Y - BRACE_DROP, "surface", color=SURFACE_RED)
     for k, (symbol, meaning) in enumerate(SYMBOLS):
         y = SYMBOLS_Y - k * SYMBOLS_STEP
         draw_label(ax, (EQUATIONS_X, y), symbol, ha="left", va="baseline")
@@ -73,7 +84,7 @@ FISHER_LIMITS = (0.1, 1e4)
 
 def draw_fisher_plot(fig, ax_slide):
     spec, runs = PANELS["E"], load_runs("E")
-    ax = plot_axes(fig, r"Fisher info. rate $\dot{\mathcal F}(c)$ (bits/s)", log_y=True,
+    ax = plot_axes(fig, r"Fisher info. rate $\dot{ℱ}(c)$ (bits/s)", log_y=True,
                    y_limits=FISHER_LIMITS)
     for k, (run, color) in enumerate(zip(runs, spec["colors"])):
         if k == spec["critical"]:
@@ -82,7 +93,7 @@ def draw_fisher_plot(fig, ax_slide):
         ax.plot(run["x"], rate, color=color, lw=CURVE_PT, zorder=4, label=run_label("E", run, k))
         draw_jumps(ax, run, rate, color)
     ax.plot(run["x"], free, "--", color="black", lw=1.2, zorder=3,
-            label=r"$\dot{\mathcal F}_{\rm free}(c)$")
+            label=r"$\dot{ℱ}_{\rm free}(c)$")
     ax.legend(loc="upper left", fontsize=LEGEND_PT, frameon=False, handlelength=1.6,
               title=rf"$R = {runs[0]['R_nm']:.0f}$ nm",
               title_fontsize=LEGEND_PT, alignment="left", labelcolor=TEXT_COLOR)

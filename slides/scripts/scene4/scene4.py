@@ -8,7 +8,8 @@ Three slides, each a full 128 x 96 mm slide in slides/figures/scene4/:
     scene4_1  transcription panel: RNA polymerase at the start of the gene, no mRNA yet
     scene4_2  transcription panel: polymerase at the end of the gene with its mRNA
               (as in the storyboard)
-    scene4_3  scene4_2 plus the translation panel (mRNA -> protein)
+    scene4_3  scene4_2 plus the translation panel (mRNA -> protein, drawn as the
+              standard transcription factor in the blue of its gene)
 
 DNA and RNA are chunked polymers (see common/molecules.py), ready to be animated.
 
@@ -25,24 +26,25 @@ import numpy as np
 
 from common.drawing import draw_arrow, draw_label, new_slide, save
 from common.locus import Locus
-from common.molecules import (RNA_BOND, Polymer, draw_dna, draw_legend, draw_protein, draw_rna,
-                              draw_rnap)
+from common.molecules import (BLUE, RNA_BOND, Polymer, draw_dna, draw_legend, draw_rna, draw_rnap,
+                              draw_tf)
 
 # ---------------------------------------------------------------------------
 # Geometry traced from the storyboard (slide units); the locus (DNA, polymerase
 # positions, finished mRNA) is in common/locus.py, shared with later scenes.
 # ---------------------------------------------------------------------------
 
-MRNA_TRANSLATED = [(12.82, 8.24), (12.93, 8.46), (13.06, 8.57), (13.2, 8.6), (13.5, 8.6),
-                   (13.65, 8.64), (13.88, 8.81), (14.05, 9.06), (14.2, 9.14), (14.49, 9.2),
-                   (14.76, 9.23), (14.82, 9.37), (14.82, 9.65), (14.92, 9.77), (15.18, 9.96),
-                   (15.3, 10.01)]
+# From the end by the arrow; the mRNA is cut to the length of the gene.
+MRNA_TRANSLATED = [(14.95, 9.3), (14.76, 9.23), (14.49, 9.2), (14.2, 9.14), (14.05, 9.06),
+                   (13.88, 8.81), (13.65, 8.64), (13.5, 8.6), (13.2, 8.6), (13.06, 8.57),
+                   (12.93, 8.46), (12.82, 8.24)]
 
 TRANSLATION_ARROW = ((15.22, 8.99), (16.68, 8.99))
 PROTEIN_CENTER = (17.67, 8.91)
+PROTEIN_SCALE = 1.75
 
 LABELS = {
-    "DNA": (2.27, 6.49), "mRNA": (7.4, 6.2), "Protein": (17.7, 7.94),
+    "DNA": (2.27, 6.49), "mRNA": (6.2, 7.3), "Protein": (17.7, 7.94),
     "Transcription": (5.27, 5.33), "Translation": (15.58, 6.13),
 }
 # "RNA Pol" is placed relative to the polymerase: to its right when it is at the
@@ -77,9 +79,10 @@ def draw_transcription(ax, finished):
 
 
 def draw_translation(ax):
-    draw_rna(ax, Polymer.from_trace([("rna", MRNA_TRANSLATED)], RNA_BOND), z=3)
+    draw_rna(ax, Polymer.from_trace([("rna", MRNA_TRANSLATED)], RNA_BOND).cut(LOCUS.gene_length),
+             z=3)
     draw_arrow(ax, *TRANSLATION_ARROW, color="#3A3A3A", z=3)
-    draw_protein(ax, PROTEIN_CENTER, z=3)
+    draw_tf(ax, PROTEIN_CENTER, scale=PROTEIN_SCALE, colors=BLUE, z=3)
     draw_label(ax, LABELS["Protein"], "Protein")
     draw_label(ax, LABELS["Translation"], "Translation", bold=True)
 
@@ -92,5 +95,5 @@ if __name__ == "__main__":
         draw_transcription(ax, finished)
         if translation:
             draw_translation(ax)
-        draw_legend(ax, ["DNA", "RNAP", "mRNA"] if finished else ["DNA", "RNAP"])
+        draw_legend(ax, ["DNA", "Promoter", "Gene", "RNAP"] + ["mRNA"] * finished)
         save(fig, "scene4", name)

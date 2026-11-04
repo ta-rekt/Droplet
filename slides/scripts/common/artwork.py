@@ -2,7 +2,7 @@
 Slides that reuse storyboard artwork as drawn (scenes 7, 8, ...).
 
 The drawing comes straight from storyboard/scene<N>.svg; only its text is
-redone, typeset by LaTeX in the slides' font like every other label:
+redone, in the slides' font like every other label:
 
   1. the scene's SVG, minus its text, is placed on the 128 x 96 mm slide with
      the same mapping as the traced scenes (sketch frame centre -> slide
