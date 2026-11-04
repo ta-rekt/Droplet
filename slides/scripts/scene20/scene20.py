@@ -31,14 +31,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, 
 
 from common.drawing import draw_label, new_slide, save, zoomed_axes
 from common.locus import DNA_TRACE, Locus
-from common.molecules import DNA_LINE_PT, TUBE_COLORS, draw_dna, draw_rna, draw_rnap
+from common.molecules import DNA_LINE_PT, SEGMENT_COLORS, draw_dna, draw_legend, draw_rna, draw_rnap
 
 ZOOM = 0.61                    # as the storyboard copies the scene-4 drawing
-# Chromatin lines: dimmed, and thinned with the zoom so the coils stay open.
-DIM_DNA = dict(colors=dict(back="#C8C8C8", front="#8C8C8C"),
-               widths=tuple(ZOOM * w for w in DNA_LINE_PT))
+# Chromatin: dimmed, and its lines thinned with the zoom so the helix stays open.
+DIM_DNA = dict(line_colors=dict(edge="#9A9A9A", fill="white"),
+               nucleosome_colors=dict(fill="#B4BAC4", shade="#E9ECF1"))
 ENHANCER = dict(fill="#3CC3E0", edge="#1E7F96")
-TUBES = {**TUBE_COLORS, "enhancer": ENHANCER}
+SEGMENTS = {**SEGMENT_COLORS, "enhancer": ENHANCER}
 
 # ---------------------------------------------------------------------------
 # The chain beyond the scene-4 drawing, traced from the storyboard (slide
@@ -95,7 +95,7 @@ def locus(shift, continuation):
 
 
 def draw_chain(ax, dna):
-    draw_dna(ax, dna, TUBES, z=1, line_colors=DIM_DNA["colors"], line_pt=DIM_DNA["widths"])
+    draw_dna(ax, dna, SEGMENTS, z=1, line_pt=tuple(ZOOM * w for w in DNA_LINE_PT), **DIM_DNA)
 
 
 def draw_stretched(fig, ax):
@@ -120,4 +120,5 @@ if __name__ == "__main__":
         draw_stretched(fig, ax)
         if folded:
             draw_folded(fig)
+        draw_legend(ax, ["DNA", "RNAP", "mRNA"] if folded else ["DNA"])
         save(fig, "scene20", name)

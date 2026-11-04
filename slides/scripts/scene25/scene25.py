@@ -41,8 +41,9 @@ from matplotlib.patches import Circle
 
 from common.drawing import (AXIS_COLOR, LABEL_PT, SLIDE_UNITS, TEXT_COLOR, draw_arrow,
                             draw_label, new_slide, save, smooth_open, zoomed_axes)
-from common.molecules import (DNA_BOND, GREEN, PROTEIN_RADIUS, Polymer, depth_alpha,
-                              depth_scale, draw_dna, draw_protein, scatter_proteins)
+from common.molecules import (DNA_BOND, DNA_LINE_PT, NUCLEOSOME_EXTENT, TF, TF_RADIUS, Polymer,
+                              depth_scale, draw_dna, draw_legend, draw_tf, legend_area,
+                              nucleosomes, scatter_proteins, tf_alpha)
 from common.telegraph import draw_state_graph
 
 plt.rcParams["text.latex.preamble"] += r"\usepackage{amsmath}"
@@ -109,7 +110,7 @@ HALO_WIDTH, HALO_LAYERS, HALO_ALPHA = 1.6, 14, 0.035
 
 # Chromatin entering at the lower left, two loops folded inside the sphere,
 # leaving at the top (traced in slide units, then smoothed), drawn at DNA_ZOOM
-# of its usual size so its coils stay fine at this scale.
+# of its usual size so its helix stays fine at this scale.
 DNA_TRACE = [(0.5, 4.3), (1.4, 5.4), (2.4, 6.6), (3.2, 7.45), (3.6, 7.6), (3.75, 7.15),
              (4.3, 7.1), (4.65, 7.6), (4.45, 8.2), (3.9, 8.3), (3.7, 7.95), (4.2, 8.55),
              (4.9, 8.75), (5.65, 8.7), (6.0, 9.2), (5.75, 9.75), (5.1, 9.7), (4.95, 9.25),
@@ -132,8 +133,9 @@ LEAD_END = (-0.4, 0.27)         # where the probe's leader line meets OFF (from 
 # fraction BACKGROUND + (1 - BACKGROUND) exp(-(r - R) / LAYER_DECAY).
 TF_REGION = (0.3, 9.5, 1.0, 14.6)
 TF_SCALE = 0.62                 # drawn smaller than in earlier scenes: there are many
-TF_CANDIDATES, TF_SEED = 260, 2501
+TF_CANDIDATES, TF_SEED = 520, 2501
 LAYER_DECAY, BACKGROUND = 0.7, 0.07
+LEGEND, LEGEND_AT = ["DNA", "TF"], (1.0, 14.1)
 
 
 def dna():
@@ -153,11 +155,13 @@ def scatter_tfs(chain):
     model_box = np.array([(x, y) for x in np.linspace(model[0, 0] - 0.8, model[1, 0] + 0.8, 8)
                           for y in (model[0, 1] - 0.9, model[0, 1], model[0, 1] + 0.7)])
     avoid = [(SPHERE_CENTER, SPHERE_RADIUS + 0.05), (chain.nodes * DNA_ZOOM, 0.15),
-             (lead, 0.08), (model_box, 0.4),
+             *[(site["center"] * DNA_ZOOM, NUCLEOSOME_EXTENT * DNA_ZOOM)
+               for site in nucleosomes(chain.smoothed())],
+             (lead, 0.08), (model_box, 0.4), legend_area(LEGEND, LEGEND_AT),
              (probe + np.array([[0.3, -0.15], [0.9, -0.15], [1.4, -0.15]]), 0.25)]  # "Probe"
     rng = np.random.default_rng(TF_SEED)
     candidates = scatter_proteins(TF_CANDIDATES, TF_REGION, rng, avoid,
-                                  radius=PROTEIN_RADIUS * TF_SCALE)
+                                  radius=TF_RADIUS * TF_SCALE)
     r = np.array([np.linalg.norm(q["center"] - SPHERE_CENTER) for q in candidates])
     keep = BACKGROUND + (1 - BACKGROUND) * np.exp(-(r - SPHERE_RADIUS) / LAYER_DECAY)
     return [q for q, p in zip(candidates, keep) if rng.uniform() < p]
@@ -166,15 +170,15 @@ def scatter_tfs(chain):
 def draw_cartoon(fig, ax):
     for k in range(HALO_LAYERS):
         ax.add_patch(Circle(SPHERE_CENTER, SPHERE_RADIUS + HALO_WIDTH * (1 - k / HALO_LAYERS),
-                            fc=GREEN["fill"], ec="none", alpha=HALO_ALPHA, zorder=0))
+                            fc=TF["fill"][:3], ec="none", alpha=HALO_ALPHA, zorder=0))
     ax.add_patch(Circle(SPHERE_CENTER, SPHERE_RADIUS, fc=SPHERE_FILL, ec=AXIS_COLOR, lw=1.3,
                         ls=(0, (4, 3)), zorder=1))
     chain = dna()
-    draw_dna(zoomed_axes(fig, (0, 0), DNA_ZOOM), chain)
+    draw_dna(zoomed_axes(fig, (0, 0), DNA_ZOOM), chain, z=1,
+             line_pt=tuple(DNA_ZOOM * w for w in DNA_LINE_PT))
     for q in scatter_tfs(chain):
-        draw_protein(ax, q["center"], GREEN, scale=TF_SCALE * depth_scale(q["depth"]),
-                     angle=q["angle"], alpha=depth_alpha(q["depth"]),
-                     z=1.5 if q["depth"] < 0.5 else 6)
+        draw_tf(ax, q["center"], scale=TF_SCALE * depth_scale(q["depth"]), angle=q["angle"],
+                alpha=tf_alpha(q["depth"]), z=1.5 if q["depth"] < 0.5 else 6)
 
     # Radius.
     tip = on_surface(R_ANGLE, inset=0.05)
@@ -191,10 +195,11 @@ def draw_cartoon(fig, ax):
     draw_label(ax, probe + (0.25, -0.15), "Probe", ha="left", va="top")
     draw_state_graph(ax, MODEL_STATES, list(MODEL_LABELS), labels=MODEL_LABELS)
     for name, center in MODEL_STATES.items():
-        bound = name == "ON"
-        ax.add_patch(Circle(center, SITE_RADIUS, lw=1.0, zorder=4, ec=AXIS_COLOR,
-                            fc=GREEN["fill"] if bound else "white"))
+        ax.add_patch(Circle(center, SITE_RADIUS, lw=1.0, zorder=4, ec=AXIS_COLOR, fc="white"))
+        if name == "ON":
+            draw_tf(ax, center, z=5)
         draw_label(ax, (center[0], center[1] - 0.68), name)
+    draw_legend(ax, LEGEND, LEGEND_AT)
 
 
 # ---------------------------------------------------------------------------

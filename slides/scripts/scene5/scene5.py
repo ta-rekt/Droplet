@@ -6,6 +6,7 @@ process, either by enabling or suppressing it."
 
 The gene of a transcription factor (green) is transcribed and translated; the
 factor binds next to the blue gene of scene 4, near a free RNA polymerase.
+Transcription factors are copies of slides/figures/tf.svg.
 
 Output: slides/figures/scene5/scene5.{pdf,svg}, a full 128 x 96 mm slide.
 
@@ -20,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, 
 
 from common.drawing import draw_arrow, new_slide, save
 from common.locus import Locus
-from common.molecules import (DNA_BOND, GREEN, RNA_BOND, Polymer, draw_dna, draw_protein,
-                              draw_rna, draw_rnap_at)
+from common.molecules import (DNA_BOND, GREEN, RNA_BOND, Polymer, draw_dna, draw_legend, draw_rna,
+                              draw_rnap_at, draw_tf)
 
 # ---------------------------------------------------------------------------
 # Geometry traced from the storyboard (slide units)
@@ -47,7 +48,7 @@ TF_MRNA_TRACE = [
     (9.64, 10.68), (9.5, 10.76), (9.47, 10.9), (9.58, 11.0), (9.72, 11.05), (9.88, 11.06),
     (10.01, 11.06), (10.17, 11.06), (10.31, 11.07), (10.42, 11.15), (10.52, 11.23),
     (10.66, 11.26), (10.8, 11.28), (10.83, 11.44), (10.84, 11.61)]
-TF_PROTEIN = (12.6, 10.02)
+TF_PROTEINS = [((12.42, 10.14), 15), ((12.85, 9.92), 300)]  # (centre, angle)
 
 # gene -> mRNA -> protein -> binds near the blue gene
 ARROWS = [((7.79, 10.54), (8.59, 10.54)), ((10.8, 10.2), (11.62, 10.2)),
@@ -61,15 +62,17 @@ FREE_POLYMERASE = (13.31, 5.7)
 if __name__ == "__main__":
     fig, ax = new_slide()
 
-    draw_dna(ax, Polymer.from_trace(TF_DNA_TRACE, DNA_BOND), tube_colors={"gene": GREEN}, z=1)
+    draw_dna(ax, Polymer.from_trace(TF_DNA_TRACE, DNA_BOND), segment_colors={"gene": GREEN}, z=1)
     draw_rna(ax, Polymer.from_trace([("rna", TF_MRNA_TRACE)], RNA_BOND), color=GREEN["fill"],
              z=3)
-    draw_protein(ax, TF_PROTEIN, GREEN, z=3)
+    for center, angle in TF_PROTEINS:
+        draw_tf(ax, center, angle=angle, z=3)
     for start, end in ARROWS:
         draw_arrow(ax, start, end, ARROW_COLOR, z=3)
 
     draw_dna(ax, LOCUS.dna, z=1)
-    draw_protein(ax, LOCUS.dna.at(LOCUS.promoter)[0], GREEN, angle=20, z=5)
+    draw_tf(ax, LOCUS.dna.at(LOCUS.promoter)[0], angle=20, z=5)
     draw_rnap_at(ax, FREE_POLYMERASE, angle=10, z=4)
+    draw_legend(ax, ["DNA", "TF", "RNAP", "mRNA"], mrna=GREEN["fill"])
 
     save(fig, "scene5", "scene5")

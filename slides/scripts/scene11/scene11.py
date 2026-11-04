@@ -3,8 +3,8 @@ Scene 11 -- "Here it is in action. Let's consider for now that transcription
 gets activated as soon as a single green molecule is bound [...] How long would
 you need to observe this to detect a 1.5x change in concentration? 1.2x?"
 
-The locus with its promoter, TFs (green) and free RNA polymerases (pink)
-scattered in 3D; the two-state model of transcription (OFF -> ON at rate c kb,
+The locus with its promoter, TFs and free RNA polymerases (pink) scattered in
+3D; the two-state model of transcription (OFF -> ON at rate c kb,
 TF binding; ON -> OFF at rate ku, TF unbinding); a time series of transcription
 simulated from that model; and, from 11_3 on, a concentration slider.
 
@@ -40,8 +40,8 @@ import numpy as np
 
 from common.drawing import new_slide, save
 from common.locus import Locus
-from common.molecules import (GREEN, PROTEIN_RADIUS, circle_points, depth_alpha, depth_scale,
-                              draw_rnap_at, draw_scattered_proteins, scatter_proteins)
+from common.molecules import (TF_RADIUS, circle_points, depth_alpha, depth_scale, draw_legend,
+                              draw_rnap_at, draw_scattered_tfs, scatter_proteins)
 from common.telegraph import (TIME_SERIES_AXES, draw_slider, draw_time_series,
                               draw_two_state_graph, first_trace, stats, truncated, typical)
 
@@ -90,7 +90,7 @@ POLYMERASES = [0.95, 0.35]  # two polymerases, at different stages of elongation
 TRANSCRIPT_SEED = 11
 BOUND_SITES = [(-6.5, -1)]  # the TF on the promoter (nodes from the gene start, side)
 
-N_TFS_1X = 12
+N_TFS_1X = 24
 N_FREE_POLYMERASES = 9
 RNAP_RADIUS = 0.37
 SCATTER_SEED = 1100
@@ -121,7 +121,7 @@ SLIDES = {
 def molecules():
     tfs_bound = LOCUS.bound_tfs(BOUND_SITES)
     states = LOCUS.transcribe(POLYMERASES, TRANSCRIPT_SEED,
-                              [circle_points(c, PROTEIN_RADIUS) for c in tfs_bound])
+                              [circle_points(c, TF_RADIUS) for c in tfs_bound])
     # Everything scattered keeps clear of the ON state, so nothing moves when
     # the polymerases and the bound TF come and go.
     avoid = LOCUS.obstacles(states, tfs_bound)
@@ -145,7 +145,8 @@ def draw_cartoon(ax, mol, c, transcribing, bound_tfs):
     for q in mol["rnaps"]:
         draw_rnap_at(ax, q["center"], q["angle"], scale=depth_scale(q["depth"]),
                      alpha=depth_alpha(q["depth"]), z=0.4 if q["depth"] < 0.5 else 5.5)
-    draw_scattered_proteins(ax, mol["tfs"][c], GREEN, z_back=0.5, z_front=6)
+    draw_scattered_tfs(ax, mol["tfs"][c], z_back=0.5, z_front=6)
+    draw_legend(ax, ["DNA", "TF", "RNAP", "mRNA"] if transcribing else ["DNA", "TF", "RNAP"])
 
 
 def draw_slide(name, spec, traces, mol):

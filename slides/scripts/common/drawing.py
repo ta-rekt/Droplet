@@ -201,8 +201,9 @@ def new_slide():
 
 def zoomed_axes(fig, shift, zoom):
     """Axes over the whole slide on which a point p of a drawing lands at
-    shift + zoom * p (slide units): the drawing, details included (coils, tubes,
-    proteins), is drawn `zoom` times its size. Line widths, in points, stay."""
+    shift + zoom * p (slide units): the drawing, details included (helix,
+    nucleosomes, proteins), is drawn `zoom` times its size. Line widths, in points,
+    stay."""
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_axis_off()
     ax.set_xlim(-shift[0] / zoom, (SLIDE_UNITS[0] - shift[0]) / zoom)

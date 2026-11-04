@@ -5,7 +5,7 @@ liquid-like droplet on the surface of DNA. this is a physical phenomenon that
 has been studied since the 1970s, called pre-wetting. [...] below the
 concentration at which it saturates."
 
-Left: the scene-4 locus, with transcription factors (green) dilute in the bulk
+Left: the scene-4 locus, with transcription factors dilute in the bulk
 and a dense droplet of them condensed on the DNA at the promoter. Right: clips
 from papers (screenshots in slides/figures/scene21/), each with its citation
 below:
@@ -30,8 +30,8 @@ from matplotlib.patches import Rectangle
 from common.drawing import (FIGURES_DIR, TEXT_COLOR, UNIT_MM, draw_shine, new_slide, save,
                             zoomed_axes)
 from common.locus import Locus
-from common.molecules import (DNA_LINE_PT, GREEN, circle_points, draw_dna,
-                              draw_scattered_proteins, scatter_proteins)
+from common.molecules import (DNA_LINE_PT, TF, circle_points, draw_dna, draw_legend,
+                              draw_scattered_tfs, scatter_proteins)
 
 CLIPS_DIR = FIGURES_DIR / "scene21"
 
@@ -43,12 +43,12 @@ LOCUS = Locus(offset=(1.16, -0.34))  # the scene-4 locus, where the sketch copie
 DROPLET_CENTER = LOCUS.dna.at(LOCUS.promoter)[0]
 # TFs of the droplet are packed within DROPLET_RADIUS of its centre (closer than
 # in the bulk: they overlap in projection); a soft glow marks the dense phase.
-DROPLET = dict(n_tfs=16, radius=0.55, spacing=0.22, seed=21)
+DROPLET = dict(n_tfs=32, radius=0.55, spacing=0.11, seed=21)
 GLOW = dict(radius=1.0, alpha=0.045, layers=14)
-FREE_TFS = dict(n_tfs=10, seed=1021)
+FREE_TFS = dict(n_tfs=20, seed=1021)
 REGION = (0.5, 10.4, 5.0, 14.4)  # where the free TFs are scattered
 # The cartoon above is drawn `zoom` times its size, a point p of it landing at
-# shift + zoom * p, to leave room for the clips; its coil lines are thinned
+# shift + zoom * p, to leave room for the clips; its DNA's lines are thinned
 # with it, as in scene 20.
 CARTOON = dict(zoom=0.8, shift=(0.0, 1.3))
 
@@ -98,13 +98,13 @@ def draw_locus(fig, shift=CARTOON["shift"], zoom=CARTOON["zoom"]):
     copies it); returns the axes it is drawn on, in scene-4 coordinates."""
     ax = zoomed_axes(fig, shift, zoom)
     draw_shine(ax, circle_points(DROPLET_CENTER, GLOW["radius"], n=64), DROPLET_CENTER,
-               GREEN["fill"], z=0.3, layers=GLOW["layers"], alpha=GLOW["alpha"])
+               TF["fill"][:3], z=0.3, layers=GLOW["layers"], alpha=GLOW["alpha"])
     draw_dna(ax, LOCUS.dna, z=1, line_pt=tuple(zoom * w for w in DNA_LINE_PT))
-    draw_scattered_proteins(ax, droplet_tfs(), GREEN, z_back=0.5, z_front=6)
+    draw_scattered_tfs(ax, droplet_tfs(), z_back=0.5, z_front=6)
     avoid = LOCUS.obstacles() + [(DROPLET_CENTER, GLOW["radius"])]
     free = scatter_proteins(FREE_TFS["n_tfs"], REGION, np.random.default_rng(FREE_TFS["seed"]),
                             avoid)
-    draw_scattered_proteins(ax, free, GREEN, z_back=0.5, z_front=6)
+    draw_scattered_tfs(ax, free, z_back=0.5, z_front=6)
     return ax
 
 
@@ -131,4 +131,5 @@ if __name__ == "__main__":
     fig, ax = new_slide()
     draw_locus(fig)
     draw_clips(ax)
+    draw_legend(ax, ["DNA", "TF"])
     save(fig, "scene21", "scene21")

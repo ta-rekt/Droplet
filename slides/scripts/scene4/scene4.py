@@ -25,7 +25,8 @@ import numpy as np
 
 from common.drawing import draw_arrow, draw_label, new_slide, save
 from common.locus import Locus
-from common.molecules import RNA_BOND, Polymer, draw_dna, draw_protein, draw_rna, draw_rnap
+from common.molecules import (RNA_BOND, Polymer, draw_dna, draw_legend, draw_protein, draw_rna,
+                              draw_rnap)
 
 # ---------------------------------------------------------------------------
 # Geometry traced from the storyboard (slide units); the locus (DNA, polymerase
@@ -91,4 +92,5 @@ if __name__ == "__main__":
         draw_transcription(ax, finished)
         if translation:
             draw_translation(ax)
+        draw_legend(ax, ["DNA", "RNAP", "mRNA"] if finished else ["DNA", "RNAP"])
         save(fig, "scene4", name)

@@ -9,8 +9,8 @@ kept here once, in scene-4 slide coordinates; a scene places the locus with
 
 import numpy as np
 
-from .molecules import (DNA_BOND, GREEN, PROTEIN_RADIUS, RNA_BOND, Polymer, circle_points,
-                        draw_dna, draw_protein, draw_rna, draw_rnap, grow_rna)
+from .molecules import (DNA_BOND, RNA_BOND, TF_RADIUS, Polymer, circle_points, dna_obstacles,
+                        draw_dna, draw_rna, draw_rnap, draw_tf, grow_rna)
 
 # The DNA from its lower-left end to its upper end; transcription runs this way.
 DNA_TRACE = [
@@ -42,8 +42,7 @@ POLYMERASE_START_OFFSET = 2.0     # nodes past the start of the gene, at initiat
 PROMOTER_OFFSET = 4.0             # nodes before the start of the gene, where a TF binds
 PROMOTER_SPAN = (11, 2)           # the promoter runs from 11 to 2 nodes before the gene
 POLYMERASE_RADIUS = 0.4
-BOUND_TF_OFFSET = 0.3             # distance from the DNA of a TF bound beside it...
-BOUND_TF_SCALE = 0.8              # ...drawn a little smaller, so several fit near the gene
+BOUND_TF_OFFSET = 0.22            # distance from the DNA of a TF bound beside it
 
 # Transcripts leave the back of the polymerase and trail behind it: they head
 # backwards along the gene, tilted away from the DNA by TRAIL_TILT (0 = straight
@@ -128,12 +127,12 @@ class Locus:
     def obstacles(self, states=(), tfs=()):
         """What scattered molecules must keep clear of, as (points, radius) pairs:
         the DNA, polymerases and transcripts (from transcribe()), bound TFs."""
-        avoid = [(self.dna.curve()[0], 0.17)]
+        avoid = dna_obstacles(self.dna)
         for u, rna in states:
             avoid.append((self.dna.at(u)[0], POLYMERASE_RADIUS))
             if rna is not None:
                 avoid.append((rna.nodes, 0.06))
-        avoid += [(c, PROTEIN_RADIUS * BOUND_TF_SCALE) for c in tfs]
+        avoid += [(c, TF_RADIUS) for c in tfs]
         return avoid
 
     def draw(self, ax, states=(), tfs=(), tf_angle=20):
@@ -144,4 +143,4 @@ class Locus:
                 draw_rna(ax, rna, z=3)
             draw_rnap(ax, self.dna, u, z=4)
         for i, c in enumerate(tfs):
-            draw_protein(ax, c, GREEN, scale=BOUND_TF_SCALE, angle=tf_angle + 70 * i, z=5)
+            draw_tf(ax, c, angle=tf_angle + 70 * i, z=5)

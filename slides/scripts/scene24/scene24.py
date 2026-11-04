@@ -38,8 +38,8 @@ from matplotlib.patches import Circle
 
 from common.drawing import (FIGURES_DIR, LABEL_PT, SLIDE_MM, SLIDE_UNITS, TEXT_COLOR, UNIT_MM,
                             draw_arrow, new_slide, zoomed_axes)
-from common.molecules import DNA_LINE_PT, draw_dna
-from scene20.scene20 import DIM_DNA, STRETCHED, TUBES, locus
+from common.molecules import DNA_LINE_PT, draw_dna, draw_legend
+from scene20.scene20 import DIM_DNA, SEGMENTS, STRETCHED, locus
 from scene21.scene21 import DROPLET_CENTER, draw_locus
 from scene22.scene22 import MASK, NODE, PT_MM, typeset
 
@@ -82,6 +82,7 @@ CONDENSATE = dict(zoom=0.47, center=(5.4, 9.9))    # scene 21's locus
 ARROW = dict(color="#D93A45", lw=1.5, head=9, gap=0.4)
 # Around the droplet (scene-4 units, as scene 21's DROPLET).
 RING = dict(radius=1.1, lw=1.0, dashes=(3, 2))
+LEGEND_AT = (14.75, 1.8)  # in the corner under the cartoons (slide units)
 
 
 def draw_distance(fig, center):
@@ -90,8 +91,7 @@ def draw_distance(fig, center):
     zoom = DISTANCE["zoom"]
     ax = zoomed_axes(fig, np.asarray(center) - zoom * np.asarray(DISTANCE["center"]), zoom)
     dna = locus(**STRETCHED).dna
-    draw_dna(ax, dna, TUBES, z=1, line_colors=DIM_DNA["colors"],
-             line_pt=tuple(zoom * w for w in DNA_LINE_PT))
+    draw_dna(ax, dna, SEGMENTS, z=1, line_pt=tuple(zoom * w for w in DNA_LINE_PT), **DIM_DNA)
     ends = [dna.at(sum(dna.span(kind)) / 2)[0] for kind in ("promoter", "enhancer")]
     middle = (ends[0] + ends[1]) / 2
     for end in ends:
@@ -123,6 +123,7 @@ if __name__ == "__main__":
     column_x = left + (x1 - x0) * pt + GAP + COLUMN / 2
     draw_distance(fig, (column_x, to_slide(0, sum(SPINES_Y["a"]) / 2)[1]))
     draw_condensate(fig, (column_x, to_slide(0, sum(SPINES_Y["b"]) / 2)[1]))
+    draw_legend(ax, ["DNA", "TF"], LEGEND_AT)
     mean = Line2D([], [], ls="none", marker="o", ms=MEAN_MARKER["size"] * SCALE,
                   mfc="black", mec="white", mew=MEAN_MARKER["edge"] * SCALE)
     ax.legend([mean], [r"\textrm{mean}"], loc="center right", frameon=False,

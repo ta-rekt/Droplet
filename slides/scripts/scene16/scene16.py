@@ -9,12 +9,16 @@ rate over four-state circuits ("full" decoding), the diffusion limit 4aD c
 and the activation limit 0.16 kmax. Left out: the "acc" curve, its diffusion
 limit (8aD c/3) and the vertical line at the crossover.
 
-On top, the Fisher rate (scene 15's expression) of five circuits optimal at
-concentrations c0 from the crossover up, with the paper's parameters and
-optimal rates: kb = min(4aD, 0.503 kmax / c0), kon = ku = koff = kmax. Each
-peaks at its own c0 on the maximum, at 0.808 = 0.1616 kmax (checked when the
-script runs). Below the crossover, the optimal circuit is a single one,
-kb = 4aD: the maximum there is the rising side of the first curve.
+Under the curve, on either side, the circuits optimal at low and high c, as the
+paper's Fig. 3a shows its own (slides/figures/scene16/fig3a.png), in its colour
+code. Each arrow's colour is read off the data: black if binding is at the
+diffusion limit (kb = 4aD), red if the rate is at kmax, light grey if it
+saturates neither constraint. Rates at the floor kmin are not drawn (white on the
+paper's colour bar). States are darker the more they are occupied.
+
+At high c, binding is not at the diffusion limit: the optimum is c kb = 0.5 kmax,
+below both constraints, so that arrow is grey there (the paper's inset, for two
+sites, has it black).
 
 Data: fig2a_full.json, a copy of ConstrainedPromoters/data/fig2/a1/
 ir_full_vs_ep_pareto_pid1.json (commit dea9418); one entry per c0: the eight
@@ -33,10 +37,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # slides/scripts, for `common`
 
 import numpy as np
-from scipy.optimize import minimize_scalar
+from matplotlib.patches import Circle
 
-from common.drawing import LABEL_PT, SLIDE_UNITS, TEXT_COLOR, new_slide, save
-from scene15.scene15 import fisher_off
+from common.drawing import (LABEL_PT, SLIDE_UNITS, TEXT_COLOR, draw_arrow, draw_label, new_slide,
+                            save, zoomed_axes)
 
 # ---------------------------------------------------------------------------
 # The paper's parameters and data
@@ -44,48 +48,58 @@ from scene15.scene15 import fisher_off
 
 FOUR_AD = 0.0888       # 4 a D: a = 3e-3 um, D = 7.4 um^2/s
 K_MAX = 5.0            # maximum activation and unbinding rates (1/s)
-X_STAR = 0.503427      # optimal c kb, in units of kmax (SI)
+K_MIN = 1e-5           # lower bound on every rate (1/s)
 ACTIVATION_LIMIT = 1 / (1.0 + 2.5 ** 2 / 25)  # 0.8 = 0.16 kmax, as plotted in the paper
 DRIFT_TO_FISHER = 2 / 0.1 ** 2  # V = 1/2 (dc/c)^2 Fdot, at dc/c = 0.1
 
 DATA = Path(__file__).with_name("fig2a_full.json")
+# The eight rates of an entry, as edges between the paper's states, the binding
+# ones (rate proportional to c) marked; and where those states go on the square.
+PAPER_EDGES = [(1, 3), (1, 2), (2, 4), (2, 1), (3, 1), (3, 4), (4, 2), (4, 3)]
+PAPER_BINDING = {(1, 3), (2, 4)}
+PAPER_STATES = {1: (-1, 1), 3: (1, 1), 4: (1, -1), 2: (-1, -1)}  # clockwise from the top left
+C0_ENTRY = 9
+
+
+def paper_rows():
+    rows = json.loads(DATA.read_text())
+    return [rows[str(i)] for i in range(1, len(rows) + 1)]
 
 
 def paper_curve():
     """(c0, maximum Fisher rate) as plotted in the paper."""
-    rows = json.loads(DATA.read_text())
-    rows = [rows[str(i)] for i in range(1, len(rows) + 1)]
-    return (np.array([r[9] for r in rows]),
+    rows = paper_rows()
+    return (np.array([r[C0_ENTRY] for r in rows]),
             DRIFT_TO_FISHER * np.array([r[8] for r in rows]))
 
 
-def fisher_rate(c, kb):
-    """Fisher rate at c of the circuit binding at kb, other rates at kmax and
-    counter-clockwise rates zero."""
-    x = c * kb
-    return fisher_off(x, K_MAX) / (1 / x + 3 / K_MAX)
+# ---------------------------------------------------------------------------
+# Optimal circuits
+# ---------------------------------------------------------------------------
+
+def occupancy(rates):
+    """Steady-state probability of each state, given {edge: rate}."""
+    generator = np.zeros((4, 4))
+    for (u, v), rate in rates.items():
+        generator[u - 1, v - 1] = rate
+    generator -= np.diag(generator.sum(axis=1))
+    values, vectors = np.linalg.eig(generator.T)
+    probability = np.real(vectors[:, np.argmin(np.abs(values))])
+    return probability / probability.sum()
 
 
-def optimal_kb(c0):
-    return min(FOUR_AD, X_STAR * K_MAX / c0)
-
-
-# Five circuits, optimal from the crossover c0 = 0.503 kmax / 4aD up.
-CROSSOVER = X_STAR * K_MAX / FOUR_AD
-C0S = CROSSOVER * 2.5 ** np.arange(5)
-
-
-def check_peaks(c, maximum, tolerance=0.002):
-    """Each curve must peak at its c0, on the paper's maximum."""
-    for c0 in C0S:
-        kb = optimal_kb(c0)
-        peak = minimize_scalar(lambda lc: -fisher_rate(np.exp(lc), kb),
-                               bounds=(np.log(c0) - 3, np.log(c0) + 3), method="bounded")
-        c_peak, value = np.exp(peak.x), -peak.fun
-        on_curve = np.exp(np.interp(np.log(c_peak), np.log(c), np.log(maximum)))
-        print(f"c0 = {c0:7.1f}: peak at c = {c_peak:7.1f}, Fdot = {value:.4f}, "
-              f"paper's maximum there {on_curve:.4f} ({value / on_curve - 1:+.2%})")
-        assert abs(c_peak / c0 - 1) < tolerance and abs(value / on_curve - 1) < tolerance
+def constraint(edge, log_rate, c):
+    """What limits an edge of the optimal circuit at c: "diffusion", "activation",
+    "none", or None for a rate at the floor (no arrow)."""
+    k = 10 ** log_rate
+    binding = edge in PAPER_BINDING
+    if k < 1.01 * K_MIN:
+        return None
+    if (c * k if binding else k) > 0.99 * K_MAX:
+        return "activation"
+    if binding and k > 0.99 * FOUR_AD:
+        return "diffusion"
+    return "none"
 
 
 # ---------------------------------------------------------------------------
@@ -96,11 +110,24 @@ AXES = (3.2, 2.9, 15.6, 9.6)  # left, bottom, width, height (slide units)
 X_LIMITS, Y_LIMITS = (8e-2, 1.2e3), (6e-3, 16)  # as in the paper
 TICK_PT = 10
 Y_LABEL = r"$\max_{\rm rates} \dot{\mathcal F}(c)$"  # the best circuit at each c
-CURVE_COLOR = "#2F62C8"
 LIMIT_STYLE = dict(color="black", alpha=0.5, lw=1.2)
 DIFFUSION_LABEL_C = 0.25   # where the diffusion limit is labelled...
 LABEL_LIFT = 2.0           # ...this factor above the line
 ACTIVATION_LABEL_C = 0.1
+
+# The circuits: entries of the data shown (from 1), and the middle of each square
+# under the curve (slide units), as in Fig. 3a.
+LOW_ROW, HIGH_ROW = 35, 70  # c0 = 1.15 and 152
+CIRCUITS = {LOW_ROW: (8.3, 4.35), HIGH_ROW: (15.6, 6.9)}
+CIRCUIT_HALF_SIDE = 0.8
+NODE_RADIUS = 0.13
+NODE_LIGHTEST = 0.72        # grey level of an empty state; a full one is black
+ARROW_CLEARANCE = 0.13      # between arrow ends and states
+ARROW_PT, ARROW_HEAD = 2.2, 11
+ARROW_COLORS = {"diffusion": "black", "activation": "#FF0000", "none": "#B4B4B4"}
+LEGEND_LABELS = {"diffusion": "Diffusion limited", "activation": "Activation-limited",
+                 "none": "No constraint saturated"}
+LEGEND_AT, LEGEND_ROW, LEGEND_ARROW = (11.5, 4.6), 0.62, 0.75
 
 
 def paper_axes(fig, box, x_limits, y_limits, y_label, tick_pt=TICK_PT):
@@ -134,20 +161,48 @@ def label_along(ax, c, y, text, slope, size=LABEL_PT, below=False):
             va="top" if below else "bottom", fontsize=size, color=TEXT_COLOR)
 
 
+def draw_circuit(ax, row, center):
+    """The optimal circuit of an entry of the data, as a square around `center`."""
+    c = row[C0_ENTRY]
+    rates = {e: 10 ** w * (c if e in PAPER_BINDING else 1) for e, w in zip(PAPER_EDGES, row)}
+    where = {state: np.asarray(center) + CIRCUIT_HALF_SIDE * np.array(corner)
+             for state, corner in PAPER_STATES.items()}
+    for state, probability in zip(sorted(where), occupancy(rates)):
+        ax.add_patch(Circle(where[state], NODE_RADIUS, fc=str(NODE_LIGHTEST * (1 - probability)),
+                            ec="none", zorder=5))
+    for (u, v), log_rate in zip(PAPER_EDGES, row):
+        limit = constraint((u, v), log_rate, c)
+        if limit:
+            direction = (where[v] - where[u]) / np.linalg.norm(where[v] - where[u])
+            reach = NODE_RADIUS + ARROW_CLEARANCE
+            draw_arrow(ax, where[u] + reach * direction, where[v] - reach * direction,
+                       ARROW_COLORS[limit], z=4, lw=ARROW_PT, head=ARROW_HEAD)
+
+
+def draw_circuit_legend(ax):
+    x, y = LEGEND_AT
+    for k, (limit, text) in enumerate(LEGEND_LABELS.items()):
+        row_y = y - k * LEGEND_ROW
+        draw_arrow(ax, (x, row_y), (x + LEGEND_ARROW, row_y), ARROW_COLORS[limit], z=4,
+                   lw=ARROW_PT, head=ARROW_HEAD)
+        draw_label(ax, (x + LEGEND_ARROW + 0.25, row_y), text, ha="left")
+
+
 if __name__ == "__main__":
     c, maximum = paper_curve()
-    check_peaks(c, maximum)
 
     fig, _ = new_slide()
     ax = paper_axes(fig, AXES, X_LIMITS, Y_LIMITS, Y_LABEL)
     ax.plot(c, maximum, color="black", lw=1.8, zorder=4)
     ax.plot(c, FOUR_AD * c, **LIMIT_STYLE)
     ax.axhline(ACTIVATION_LIMIT, linestyle="dotted", **LIMIT_STYLE)
-    cs = np.geomspace(*X_LIMITS, 400)
-    for c0 in C0S:
-        ax.plot(cs, [fisher_rate(ci, optimal_kb(c0)) for ci in cs], color=CURVE_COLOR, lw=1.3,
-                zorder=3)
     label_along(ax, DIFFUSION_LABEL_C, LABEL_LIFT * FOUR_AD * DIFFUSION_LABEL_C,
                 "Diffusion limit", slope=1)
     label_along(ax, ACTIVATION_LABEL_C, 1.15 * ACTIVATION_LIMIT, "Activation limit", slope=0)
+
+    overlay = zoomed_axes(fig, (0, 0), 1)  # on top of the plot, in slide units
+    rows = paper_rows()
+    for row, center in CIRCUITS.items():
+        draw_circuit(overlay, rows[row - 1], center)
+    draw_circuit_legend(overlay)
     save(fig, "scene16", "scene16")

@@ -6,22 +6,28 @@ DNA and RNA are `Polymer`s: chains of backbone nodes. Chunk i is the short
 stretch of chain between nodes i and i+1, and every chunk has a kind ("coil"
 for compacted chromatin, "linker" for open DNA, "gene", "rna", ...).
 
-Everything drawn along a chain -- chromatin coils, the gene tube, RNA beads, a
+Everything drawn along a chain -- the double helix, nucleosomes, RNA beads, a
 polymerase riding on the DNA -- is computed from the node positions and placed
 by node index (the chain's material coordinate), never by absolute position.
 To animate thermal motion later, move the nodes (e.g. a small random-walk or
 Rouse update per frame) and redraw: every detail follows its chunk.
+
+DNA is drawn after slides/figures/dna.png, and transcription factors are exact
+copies of slides/figures/tf.svg.
 """
 
+import re
+import xml.etree.ElementTree as ET
+
 import numpy as np
-from matplotlib.collections import LineCollection
-from matplotlib.colors import to_rgb
+from matplotlib.colors import to_rgba
 from matplotlib.patches import Circle, PathPatch, Polygon
 from matplotlib.path import Path
 from scipy.interpolate import splev, splprep
+from scipy.ndimage import gaussian_filter1d
 
-from .drawing import (EDGE_PT, draw_silhouette, placer, ribbon, smooth_closed, smooth_open,
-                      unit_normals)
+from .drawing import (EDGE_PT, FIGURES_DIR, LABEL_PT, UNIT_MM, draw_label, draw_silhouette,
+                      placer, smooth_closed, smooth_open, unit_normals)
 
 # ---------------------------------------------------------------------------
 # Palettes and sizes (drawing units unless stated)
@@ -34,18 +40,31 @@ RNAP_COLORS = dict(fill="#D957DB", edge="#8E1F90")
 MOLECULE_EDGE_PT = 0.7 * EDGE_PT
 
 DNA_BOND = 0.11            # node spacing along DNA
-DNA_LINE = dict(back="#A5A5A5", front="#2B2B2B")
-DNA_LINE_PT = (0.5, 1.1)   # line width (points) at the back / front of a coil loop
-COIL_NODES_PER_LOOP = 2    # compacted chromatin: one loop every 2 nodes...
-COIL_RADIUS = 0.17         # ...of this radius
-TUBE_HALF_WIDTH = 0.075
-TUBE_COLORS = {"gene": BLUE, "promoter": ORANGE}  # chunk kinds drawn as coloured tubes
+# The double helix is a ribbon waving across the chain, an outline around a fill.
+DNA_LINE = dict(edge="#2B2B2B", fill="white")
+DNA_LINE_PT = (1.3, 0.5)   # width (points) of the ribbon, and of the fill inside its outline
+HELIX_TURN = 0.2           # length of chain per turn...
+HELIX_RADIUS = 0.1         # ...and how far the ribbon swings to either side of it
+HELIX_SHARPNESS = 0.93     # 0: a sine wave; towards 1: straight legs, tight turns
+SEGMENT_COLORS = {"gene": BLUE, "promoter": ORANGE}  # chunk kinds drawn in colour
+
+# Nucleosomes: neutral, so that colour along the chain only ever means a gene or
+# a promoter. "fill" is the histone core, "shade" what lies behind the DNA.
+NUCLEOSOME_COLORS = dict(fill="#56657E", shade="#CFD6E2")
+NUCLEOSOME_SPACING = 1.25  # along "coil" stretches, between nucleosomes
+WRAP_RADIUS = 0.3          # seen face-on: the DNA runs round the core at this radius...
+CORE_RADIUS = 0.2          # ...which has this radius
+CYLINDER = dict(half_width=0.31, half_height=0.23, cap=0.11)  # seen from the side (see side_on)
+STRAIGHTEST_WITHIN = 0.4   # a side view looks this far along the chain for a straight stretch
+MIN_STRAIGHTNESS = 0.9     # chord / chain length it needs there; else, a face-on view
+NUCLEOSOME_EXTENT = WRAP_RADIUS + HELIX_RADIUS  # how far a nucleosome reaches from its centre
 
 RNA_BOND = 0.15            # node spacing along RNA = distance between beads
 RNA_BEAD_RADIUS = 0.052
 
 PROTEIN_HALF_WIDTH = 0.08
-PROTEIN_RADIUS = 0.4       # outer radius of a protein drawn at scale 1
+TF_HEIGHT = 0.38           # transcription factor, drawn at scale 1
+TF_RADIUS = 0.2            # outer radius of the same
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +117,11 @@ class Polymer:
             kinds.extend([kind] * (len(pts) - 1))
         return cls(nodes, kinds)
 
+    def smoothed(self, nodes=1.5):
+        """The same chain with kinks of its hand-traced backbone ironed out, over
+        a few `nodes`, so that the helix doesn't knot around them."""
+        return Polymer(gaussian_filter1d(self.nodes, nodes, axis=0, mode="nearest"), self.kinds)
+
     def spline(self):
         u = np.arange(len(self.nodes), dtype=float)
         return splprep(self.nodes.T, u=u, s=0, k=min(3, len(self.nodes) - 1))[0]
@@ -132,45 +156,171 @@ class Polymer:
 # DNA
 # ---------------------------------------------------------------------------
 
-def draw_dna(ax, dna, tube_colors=TUBE_COLORS, z=0, line_colors=DNA_LINE, line_pt=DNA_LINE_PT):
-    """Chromatin: coiled over "coil" chunks, a plain line over open DNA, and a
-    coloured tube over chunks whose kind is in `tube_colors` (e.g. the gene).
+def bridge(p, p_tangent, q, q_tangent, n=24):
+    """Smooth curve from p to q, leaving and arriving along the given unit tangents."""
+    s = np.linspace(0, 1, n)[:, None]
+    reach = np.linalg.norm(q - p)
+    return ((2 * s ** 3 - 3 * s ** 2 + 1) * p + (s ** 3 - 2 * s ** 2 + s) * reach * p_tangent
+            + (3 * s ** 2 - 2 * s ** 3) * q + (s ** 3 - s ** 2) * reach * q_tangent)
 
-    Coils are loops around the backbone whose phase follows the node index, so
-    they stay attached to the same chunks when the nodes move. The front half of
-    each loop is drawn darker, thicker and on top, for a 3D coil look; its
-    colours and widths are `line_colors` and `line_pt` (lighter colours dim the
-    chromatin; thinner lines keep the coils open on a zoomed-out drawing).
+
+def face_on(dna, at):
+    """A nucleosome seen along its axis at node index `at`: the chain runs once
+    round the core, on the side of the chain with more room, and carries on."""
+    p, t = dna.at(at)
+    left = np.array([-t[1], t[0]])
+    chain = dna.curve()[0]
+    others = chain[np.linalg.norm(chain - p, axis=1) > 2 * NUCLEOSOME_EXTENT]
+
+    def room(side):
+        return np.linalg.norm(others - (p + side * WRAP_RADIUS * left), axis=1).min()
+
+    side = max((1, -1), key=room)
+    center = p + side * WRAP_RADIUS * left
+    start = np.arctan2(*(p - center)[::-1])
+    angle = start + side * np.linspace(0, 2 * np.pi, 160)
+    wrap = center + WRAP_RADIUS * np.column_stack([np.cos(angle), np.sin(angle)])
+    return dict(center=center, enter=at, leave=at, wraps=[wrap],
+                shapes=[(circle_points(center, NUCLEOSOME_EXTENT, 48), "shade"),
+                        (circle_points(center, CORE_RADIUS, 48), "fill")])
+
+
+def side_on_span(dna):
+    """Nodes the chain gives up on each side of a nucleosome seen from the side."""
+    return (CYLINDER["half_width"] + 0.2) / DNA_BOND
+
+
+def straightness(dna, at):
+    """Chord / chain length over the stretch a side view would replace."""
+    span = side_on_span(dna)
+    if at - span < 0 or at + span > len(dna.nodes) - 1:
+        return 0.0
+    chord = np.linalg.norm(dna.at(at + span)[0] - dna.at(at - span)[0])
+    return chord / (2 * span * DNA_BOND)
+
+
+def side_on(dna, at, tilt, cap_side):
+    """A nucleosome seen from the side at node index `at`: a cylinder across the
+    chain, turned by `tilt` degrees, showing its end cap on `cap_side` (+1 or -1).
+
+    The chain leaves its course, runs across the front of the cylinder, passes
+    behind it (out of sight) and crosses the front again, a little further up the
+    cylinder, before rejoining its course.
     """
+    w, h, e = CYLINDER["half_width"], CYLINDER["half_height"], CYLINDER["cap"]
+    span = side_on_span(dna)
+    (p, p_tangent), (q, q_tangent) = dna.at(at - span), dna.at(at + span)
+    center = (p + q) / 2
+    place = placer(center, 1.0, np.degrees(np.arctan2(*(q - p)[::-1])) + tilt)
+
+    def local(x, y):
+        return place(np.column_stack([x, cap_side * y]))
+
+    x = np.linspace(-w, w, 60)
+    arc = 1 - (x / w) ** 2                 # the front of a circle round the cylinder
+    lower, upper = local(x, -0.19 - 0.7 * e * arc), local(x, 0.05 - 0.7 * e * arc)
+    along = place([1.0, 0.0]) - center
+    wraps = [np.vstack([bridge(p, p_tangent, lower[0], along), lower]),
+             np.vstack([upper, bridge(upper[-1], along, q, q_tangent)])]
+
+    around = np.linspace(0, 2 * np.pi, 48)
+    cap = local(w * np.cos(around), h + e * np.sin(around))
+    body = np.vstack([cap[:24], local(x, -h - e * arc)])  # the far half of the cap, then round
+    return dict(center=center, enter=at - span, leave=at + span, wraps=wraps,
+                shapes=[(body, "shade"), (cap, "fill")])
+
+
+# The nucleosomes along a chain take these views in turn; side views show their
+# cylinders at various angles, as in dna.png.
+NUCLEOSOME_VIEWS = [None, dict(tilt=0, cap_side=1), None, dict(tilt=-28, cap_side=-1),
+                    None, dict(tilt=24, cap_side=1)]
+
+
+def nucleosomes(dna):
+    """Nucleosomes spread evenly over the "coil" stretches of a chain, in node
+    order, each a dict: its `center`, the node indices where the chain `enter`s
+    and `leave`s it, the `wraps` of DNA around it and its `shapes` (polygons
+    with their tone in NUCLEOSOME_COLORS)."""
+    _, u = dna.curve()
+    sites = []
+    for a, b in runs(dna.kind_of(u) == "coil"):
+        nodes = u[b - 1] - u[a]
+        count = int(nodes * DNA_BOND / NUCLEOSOME_SPACING)
+        for k in range(count):
+            at = u[a] + (k + 0.5) * nodes / count
+            view = NUCLEOSOME_VIEWS[len(sites) % len(NUCLEOSOME_VIEWS)]
+            if view:
+                reach = STRAIGHTEST_WITHIN / DNA_BOND
+                best = max(np.linspace(at - reach, at + reach, 9),
+                           key=lambda v: straightness(dna, v))
+                if straightness(dna, best) >= MIN_STRAIGHTNESS:
+                    sites.append(side_on(dna, best, **view))
+                    continue
+            sites.append(face_on(dna, at))
+    return sites
+
+
+def dna_pieces(dna, sites):
+    """The axis of the helix as drawn: the chain, detouring by the wraps of the
+    nucleosomes `sites`. A list of unbroken pieces (points, kind of each point);
+    the chain breaks where it passes behind a nucleosome."""
     center, u = dna.curve()
-    n = unit_normals(center)
-    t = np.column_stack([n[:, 1], -n[:, 0]])
     kinds = dna.kind_of(u)
+    pieces, points, labels, last = [], [], [], -1.0
+    for site in sites:
+        keep = (u > last) & (u < site["enter"])
+        first, *others = site["wraps"]
+        points += [center[keep], first]
+        labels += [kinds[keep], np.full(len(first), "coil", dtype=object)]
+        for wrap in others:
+            pieces.append((np.vstack(points), np.concatenate(labels)))
+            points, labels = [wrap], [np.full(len(wrap), "coil", dtype=object)]
+        last = site["leave"]
+    keep = u > last
+    pieces.append((np.vstack(points + [center[keep]]), np.concatenate(labels + [kinds[keep]])))
+    return pieces
 
-    # Loop radius tapers to 0 over one loop at each end of a coiled stretch, so
-    # coils grow smoothly out of the open DNA and out of the chain's free ends.
-    radius = np.zeros(len(u))
-    for a, b in runs(kinds == "coil"):
-        from_end = np.minimum(u[a:b] - u[a], u[b - 1] - u[a:b]) / COIL_NODES_PER_LOOP
-        radius[a:b] = COIL_RADIUS * smoothstep(np.clip(from_end, 0, 1))
-    phase = 2 * np.pi * u / COIL_NODES_PER_LOOP
-    path = center + radius[:, None] * (-np.sin(phase)[:, None] * t + np.cos(phase)[:, None] * n)
-    depth = 1 - radius / COIL_RADIUS * 0.5 * (1 + np.sin(phase))  # 0 = back, 1 = front
 
-    segments = np.stack([path[:-1], path[1:]], axis=1)
-    seg_depth = 0.5 * (depth[:-1] + depth[1:])
-    order = np.argsort(seg_depth, kind="stable")  # back first, front on top
-    back, front = np.array(to_rgb(line_colors["back"])), np.array(to_rgb(line_colors["front"]))
-    ax.add_collection(LineCollection(
-        segments[order], colors=back + (front - back) * seg_depth[order, None],
-        linewidths=line_pt[0] + (line_pt[1] - line_pt[0]) * seg_depth[order],
-        capstyle="round", zorder=z))
+def helix(axis):
+    """The ribbon of the double helix around a curve `axis`: it swings from one
+    side of the axis to the other, one full swing per HELIX_TURN."""
+    s = np.r_[0, np.cumsum(np.linalg.norm(np.diff(axis, axis=0), axis=1))]
+    swing = np.arcsin(HELIX_SHARPNESS * np.sin(2 * np.pi * s / HELIX_TURN)) / np.arcsin(HELIX_SHARPNESS)
+    return axis + HELIX_RADIUS * swing[:, None] * unit_normals(axis)
 
-    for kind, colors in tube_colors.items():
-        for a, b in runs(kinds == kind):
-            piece = center[a:b + 1]
-            draw_silhouette(ax, [ribbon(piece, np.full(len(piece), TUBE_HALF_WIDTH))],
-                            colors["fill"], colors["edge"], z + 1, edge_pt=MOLECULE_EDGE_PT)
+
+def draw_ribbon(ax, points, colors, line_pt, z):
+    """A line as wide as line_pt[0], its outline in colors["edge"] and the
+    line_pt[1] wide middle in colors["fill"]."""
+    for color, width in zip((colors["edge"], colors["fill"]), line_pt):
+        ax.plot(*np.transpose(points), color=color, lw=width, solid_capstyle="round",
+                solid_joinstyle="round", zorder=z)
+
+
+def draw_dna(ax, dna, segment_colors=SEGMENT_COLORS, z=0, line_colors=DNA_LINE, line_pt=DNA_LINE_PT,
+             nucleosome_colors=NUCLEOSOME_COLORS):
+    """A double helix along the chain, in `line_colors` except over chunks whose
+    kind is in `segment_colors` (e.g. the gene), with nucleosomes on its "coil"
+    stretches. Lighter `line_colors` and `nucleosome_colors` dim the chromatin;
+    narrower `line_pt` keep the helix open on a zoomed-out drawing.
+    """
+    dna = dna.smoothed()
+    sites = nucleosomes(dna)
+    for site in sites:
+        for shape, tone in site["shapes"]:
+            ax.add_patch(Polygon(shape, closed=True, fc=nucleosome_colors[tone], ec="none",
+                                 zorder=z - 0.1))
+    for axis, kinds in dna_pieces(dna, sites):
+        strand = helix(axis)
+        for kind in set(kinds):
+            for a, b in runs(kinds == kind):
+                draw_ribbon(ax, strand[a:b + 1], segment_colors.get(kind, line_colors), line_pt, z)
+
+
+def dna_obstacles(dna, clearance=0.2):
+    """What scattered molecules must keep clear of, as (points, radius) pairs."""
+    return [(dna.curve()[0], clearance)] + [(site["center"], NUCLEOSOME_EXTENT)
+                                            for site in nucleosomes(dna.smoothed())]
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +406,59 @@ def draw_protein(ax, center, colors=BLUE, scale=1.0, angle=0.0, alpha=1.0, z=0):
 
 
 # ---------------------------------------------------------------------------
+# Transcription factors: exact copies of figures/tf.svg
+# ---------------------------------------------------------------------------
+
+def svg_path(d):
+    """Vertices and codes of an SVG path of moveto, lineto and cubic Bezier
+    commands, kept as curves. Lower-case commands are relative."""
+    tokens = re.findall(r"[a-zA-Z]|-?\d*\.?\d+(?:e-?\d+)?", d)
+    vertices, codes, at, i, command = [], [], np.zeros(2), 0, None
+    while i < len(tokens):
+        if tokens[i].isalpha():
+            command = tokens[i]
+            i += 1
+        n = 6 if command in "cC" else 2
+        points = np.array(tokens[i:i + n], float).reshape(-1, 2)
+        i += n
+        points = points + at if command.islower() else points
+        vertices.extend(points)
+        codes.extend({"m": [Path.MOVETO], "l": [Path.LINETO], "c": [Path.CURVE4] * 3}[
+            command.lower()])
+        at = points[-1]
+        if command in "mM":  # further pairs after a moveto are linetos
+            command = "l" if command == "m" else "L"
+    return np.array(vertices), codes
+
+
+def load_tf():
+    """The outline of tf.svg, y up, centred, 1 tall, and its colours."""
+    shape = ET.parse(FIGURES_DIR / "tf.svg").getroot().find(".//{http://www.w3.org/2000/svg}path")
+    style = dict(item.split(":") for item in shape.get("style").split(";"))
+    vertices, codes = svg_path(shape.get("d"))
+    vertices = vertices * (1, -1)
+    low, high = vertices.min(axis=0), vertices.max(axis=0)
+    height = high[1] - low[1]
+    return dict(vertices=(vertices - (low + high) / 2) / height, codes=codes,
+                fill=to_rgba(style["fill"], float(style["fill-opacity"])),
+                edge=to_rgba(style["stroke"], float(style["stroke-opacity"])),
+                edge_width=float(style["stroke-width"]) / height)
+
+
+TF = load_tf()
+POINTS_PER_UNIT = UNIT_MM / 25.4 * 72
+
+
+def draw_tf(ax, center, scale=1.0, angle=0.0, alpha=1.0, z=0):
+    """A transcription factor at `center`, turned by `angle` degrees."""
+    height = scale * TF_HEIGHT
+    fill, edge = (TF[key][:3] + (TF[key][3] * alpha,) for key in ("fill", "edge"))
+    ax.add_patch(PathPatch(Path(placer(center, height, angle)(TF["vertices"]), TF["codes"]),
+                           fc=fill, ec=edge, lw=TF["edge_width"] * height * POINTS_PER_UNIT,
+                           joinstyle="round", zorder=z))
+
+
+# ---------------------------------------------------------------------------
 # Proteins scattered in 3D
 # ---------------------------------------------------------------------------
 # Each protein gets a depth d in [0, 1] (0 = far back, 1 = front): far proteins
@@ -269,8 +472,13 @@ def depth_alpha(d):
     return 0.3 + 0.7 * d
 
 
+def tf_alpha(d):
+    """As depth_alpha, for TFs: they are pale and small, so far ones fade less."""
+    return 0.65 + 0.35 * d
+
+
 def scatter_proteins(n, region, rng, avoid=(), existing=(), gap=0.1, tries=20000,
-                     radius=PROTEIN_RADIUS):
+                     radius=TF_RADIUS):
     """`n` proteins at random positions, depths and orientations.
 
     `region` is (x0, x1, y0, y1); `avoid` is a list of (points, radius) pairs
@@ -295,8 +503,52 @@ def scatter_proteins(n, region, rng, avoid=(), existing=(), gap=0.1, tries=20000
     return sorted(placed, key=lambda q: q["depth"])
 
 
-def draw_scattered_proteins(ax, proteins, colors=GREEN, z_back=0, z_front=10):
-    """Draw scatter_proteins() output: the far half behind z_back, the near half at z_front."""
-    for q in proteins:
-        draw_protein(ax, q["center"], colors, scale=depth_scale(q["depth"]), angle=q["angle"],
-                     alpha=depth_alpha(q["depth"]), z=z_back if q["depth"] < 0.5 else z_front)
+def draw_scattered_tfs(ax, tfs, z_back=0, z_front=10):
+    """Draw scatter_proteins() output as TFs: the far half behind z_back, the near
+    half at z_front."""
+    for q in tfs:
+        draw_tf(ax, q["center"], scale=depth_scale(q["depth"]), angle=q["angle"],
+                alpha=tf_alpha(q["depth"]), z=z_back if q["depth"] < 0.5 else z_front)
+
+
+# ---------------------------------------------------------------------------
+# Legend
+# ---------------------------------------------------------------------------
+
+LEGEND_NAMES = {"DNA": "DNA", "TF": "Transcription factor", "RNAP": "RNA polymerase",
+                "mRNA": "mRNA"}
+LEGEND_HOME = (1.0, 3.9)  # the middle of the first row's icon, in most scenes
+LEGEND_ROW = 0.62         # distance between rows
+LEGEND_TEXT_X = 0.62      # from the middle of the icons to the labels
+LEGEND_ICON = 0.36        # half-width of the icons of DNA and mRNA
+LEGEND_PT = LABEL_PT - 1
+LEGEND_WIDTH = 5.5        # room taken, from the left of the icons to the labels' end
+
+
+def draw_legend(ax, items, at=LEGEND_HOME, mrna=BLUE["fill"], z=20):
+    """A small legend of `items` (keys of LEGEND_NAMES, in the order wanted), going
+    down from the row at `at`. Rows don't move when later ones come and go.
+    `mrna` is the colour of its transcript."""
+    for row, item in enumerate(items):
+        x, y = at[0], at[1] - row * LEGEND_ROW
+        ends = np.array([(x - LEGEND_ICON, y), (x + LEGEND_ICON, y)])
+        if item == "DNA":
+            axis = np.linspace(*ends, 60)
+            draw_ribbon(ax, helix(axis), DNA_LINE, DNA_LINE_PT, z)
+        elif item == "TF":
+            draw_tf(ax, (x, y), z=z)
+        elif item == "RNAP":
+            draw_rnap_at(ax, (x, y), scale=0.72, z=z)
+        elif item == "mRNA":
+            beads = np.linspace(*ends, 6) + (0, 0.07) * np.sin(np.arange(6) * 1.7)[:, None]
+            draw_rna(ax, Polymer(beads, ["rna"] * 5), color=mrna, z=z)
+        draw_label(ax, (x + LEGEND_TEXT_X, y), LEGEND_NAMES[item], ha="left", size=LEGEND_PT, z=z)
+
+
+def legend_area(items, at=LEGEND_HOME):
+    """What scattered molecules must keep clear of around a legend, as a
+    (points, radius) pair."""
+    x, y = at
+    xs = x - LEGEND_ICON + np.linspace(0, LEGEND_WIDTH, 14)
+    ys = y - LEGEND_ROW * np.arange(len(items))
+    return np.array([(a, b) for a in xs for b in ys]), 0.32
