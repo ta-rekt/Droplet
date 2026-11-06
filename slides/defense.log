@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  5 NOV 2026 20:07
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  6 NOV 2026 18:08
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1565,27 +1565,34 @@ Package pdftex.def Info: figures/scene31/scene31.pdf  used on input line 545.
 [56
 
  <./figures/scene31/scene31.pdf>]
-LaTeX Font Info:    Trying to load font information for U+msa on input line 555
-.
+<figures/scene32/scene32_1.pdf, id=13284, 364.36125pt x 274.02374pt>
+File: figures/scene32/scene32_1.pdf Graphic file (type pdf)
+<use figures/scene32/scene32_1.pdf>
+Package pdftex.def Info: figures/scene32/scene32_1.pdf  used on input line 552.
 
-(/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/umsa.fd
-File: umsa.fd 2013/01/14 v3.01 AMS symbols A
-)
-LaTeX Font Info:    Trying to load font information for U+msb on input line 555
-.
+(pdftex.def)             Requested size: 307.28987pt x 231.1108pt.
+ [57
 
-(/usr/local/texlive/2023/texmf-dist/tex/latex/amsfonts/umsb.fd
-File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-)
-LaTeX Font Info:    Trying to load font information for OT1+mathkerncmss on inp
-ut line 555.
+ <./figures/scene32/scene32_1.pdf>]
+<figures/scene32/scene32_2.pdf, id=13314, 364.36125pt x 274.02374pt>
+File: figures/scene32/scene32_2.pdf Graphic file (type pdf)
+<use figures/scene32/scene32_2.pdf>
+Package pdftex.def Info: figures/scene32/scene32_2.pdf  used on input line 559.
 
-(/usr/local/texlive/2023/texmf-dist/tex/latex/sansmathaccent/ot1mathkerncmss.fd
-File: ot1mathkerncmss.fd 2020/01/31 Fontinst v1.933 font definitions for OT1/ma
-thkerncmss.
-) [57
+(pdftex.def)             Requested size: 307.28987pt x 231.1108pt.
 
-]
+[58
+
+ <./figures/scene32/scene32_2.pdf>]
+<figures/scene32/scene32_3.pdf, id=13349, 364.36125pt x 274.02374pt>
+File: figures/scene32/scene32_3.pdf Graphic file (type pdf)
+<use figures/scene32/scene32_3.pdf>
+Package pdftex.def Info: figures/scene32/scene32_3.pdf  used on input line 566.
+
+(pdftex.def)             Requested size: 307.28987pt x 231.1108pt.
+ [59
+
+ <./figures/scene32/scene32_3.pdf>]
 \tf@nav=\write6
 \openout6 = `defense.nav'.
 
@@ -1595,7 +1602,12 @@ thkerncmss.
 \tf@snm=\write8
 \openout8 = `defense.snm'.
 
- (./defense.aux)
+
+
+LaTeX Warning: Hook 'shipout/lastpage' executed on wrong page (57 not 59).
+               Rerun to correct this.
+
+(./defense.aux)
  ***********
 LaTeX2e <2023-06-01> patch level 1
 L3 programming layer <2023-10-10>
@@ -1604,23 +1616,21 @@ Package rerunfilecheck Info: File `defense.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 26525 strings out of 474504
- 531023 string characters out of 5752696
+ 26451 strings out of 474504
+ 529466 string characters out of 5752696
  1930040 words of memory out of 5000000
- 47867 multiletter control sequences out of 15000+600000
- 565419 words of font info for 62 fonts, out of 8000000 for 9000
+ 47811 multiletter control sequences out of 15000+600000
+ 560175 words of font info for 43 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  128i,14n,123p,400b,564s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb
 ></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb>
-</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss17.pfb><
-/usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb>
-</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.
-pfb>
-Output written on defense.pdf (57 pages, 14929118 bytes).
+</usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb
+>
+Output written on defense.pdf (59 pages, 20709458 bytes).
 PDF statistics:
- 13363 PDF objects out of 15390 (max. 8388607)
- 9333 compressed objects within 94 object streams
- 115 named destinations out of 1000 (max. 500000)
- 313 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 13428 PDF objects out of 15390 (max. 8388607)
+ 9391 compressed objects within 94 object streams
+ 119 named destinations out of 1000 (max. 500000)
+ 328 words of extra memory for PDF output out of 10000 (max. 10000000)
 
