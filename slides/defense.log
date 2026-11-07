@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  7 NOV 2026 04:45
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.10.20)  7 NOV 2026 04:49
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -2254,7 +2254,7 @@ Package pdftex.def Info: figures/scene33/scene33_2c.pdf  used on input line 986
  [134
 
  <./figures/scene33/scene33_2c.pdf>]
-<figures/scene34/scene34.pdf, id=35267, 364.36125pt x 274.02374pt>
+<figures/scene34/scene34.pdf, id=35268, 364.36125pt x 274.02374pt>
 File: figures/scene34/scene34.pdf Graphic file (type pdf)
 <use figures/scene34/scene34.pdf>
 Package pdftex.def Info: figures/scene34/scene34.pdf  used on input line 993.
@@ -2262,6 +2262,14 @@ Package pdftex.def Info: figures/scene34/scene34.pdf  used on input line 993.
  [135
 
  <./figures/scene34/scene34.pdf>]
+<figures/scene35/scene35.pdf, id=35308, 364.36125pt x 274.02374pt>
+File: figures/scene35/scene35.pdf Graphic file (type pdf)
+<use figures/scene35/scene35.pdf>
+Package pdftex.def Info: figures/scene35/scene35.pdf  used on input line 1000.
+(pdftex.def)             Requested size: 307.28987pt x 231.1108pt.
+ [136
+
+ <./figures/scene35/scene35.pdf>]
 \tf@nav=\write6
 \openout6 = `defense.nav'.
 
@@ -2280,10 +2288,10 @@ Package rerunfilecheck Info: File `defense.out' has not changed.
 (rerunfilecheck)             Checksum: D41D8CD98F00B204E9800998ECF8427E;0.
  ) 
 Here is how much of TeX's memory you used:
- 27457 strings out of 474504
- 558602 string characters out of 5752696
+ 27470 strings out of 474504
+ 558960 string characters out of 5752696
  1930040 words of memory out of 5000000
- 48665 multiletter control sequences out of 15000+600000
+ 48676 multiletter control sequences out of 15000+600000
  560175 words of font info for 43 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  128i,14n,123p,400b,564s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -2291,10 +2299,10 @@ Here is how much of TeX's memory you used:
 ></usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb>
 </usr/local/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb
 >
-Output written on defense.pdf (135 pages, 34622355 bytes).
+Output written on defense.pdf (136 pages, 34694429 bytes).
 PDF statistics:
- 35385 PDF objects out of 38293 (max. 8388607)
- 24567 compressed objects within 246 object streams
- 271 named destinations out of 1000 (max. 500000)
- 718 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 35498 PDF objects out of 38293 (max. 8388607)
+ 24665 compressed objects within 247 object streams
+ 273 named destinations out of 1000 (max. 500000)
+ 723 words of extra memory for PDF output out of 10000 (max. 10000000)
 
