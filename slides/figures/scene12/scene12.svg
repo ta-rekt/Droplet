@@ -7,7 +7,7 @@
    id="svg121"
    sodipodi:docname="scene12.svg"
    inkscape:version="1.4.3 (1:1.4.3+202512261034+0d15f75042)"
-   inkscape:export-filename="scene12.pdf"
+   inkscape:export-filename="scene12e.pdf"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -28,8 +28,8 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="pt"
      inkscape:zoom="1.672105"
-     inkscape:cx="232.93992"
-     inkscape:cy="193.76774"
+     inkscape:cx="220.67992"
+     inkscape:cy="188.3853"
      inkscape:window-width="1920"
      inkscape:window-height="1016"
      inkscape:window-x="0"
@@ -547,23 +547,24 @@
      id="freesans-use78"
      x="167.59575"
      y="83.268745"
-     style="font-weight:normal;font-size:10.0409px;line-height:1.1;font-family:FreeSans;text-anchor:start;fill:#222222;fill-opacity:1;stroke:none"><tspan
+     style="font-weight:normal;font-size:10.0409px;line-height:1.1;font-family:FreeSans;text-anchor:start;display:inline;fill:#222222;fill-opacity:1;stroke:none"><tspan
        style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'"
        id="tspan13">&gt;</tspan></text>
   <text
      xml:space="preserve"
-     style="font-size:8.25463px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke-width:0.198211;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:0.370797;paint-order:stroke markers fill"
+     style="font-size:8.25463px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-rule:evenodd;stroke-width:0.198211;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:0.370797;paint-order:stroke markers fill"
      x="210.55762"
      y="82.315681"
      id="text122"><tspan
        sodipodi:role="line"
        id="tspan122"
        style="stroke-width:0.198211"
-       x="210.55762"
-       y="82.315681">confidence value K</tspan></text>
+       x="0"
+       y="0">confidence value K</tspan></text>
   <g
      id="g126"
-     transform="translate(19.322809,0.70194704)">
+     transform="translate(19.322809,0.70194704)"
+     style="display:inline">
     <text
        xml:space="preserve"
        id="freesans-use61"
@@ -798,7 +799,8 @@
   </g>
   <g
      id="g125"
-     transform="translate(18.18553,-10.601624)">
+     transform="translate(18.18553,-10.601624)"
+     style="display:inline">
     <text
        xml:space="preserve"
        id="freesans-use5-3"
@@ -823,7 +825,7 @@
   </g>
   <g
      id="patch_12-6"
-     style="stroke-linecap:butt;stroke-linejoin:round"
+     style="display:inline;stroke-linecap:butt;stroke-linejoin:round"
      transform="matrix(0.61720949,0,0,0.61720949,151.86102,-18.351584)">
     <path
        d="m 179.68893,158.74016 h 19.05382"
@@ -840,7 +842,7 @@
        transform="translate(-16.443721)" />
   </g>
   <rect
-     style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.225;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:1;paint-order:stroke markers fill"
+     style="display:inline;fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.225;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:1;paint-order:stroke markers fill"
      id="rect125"
      width="74.397949"
      height="15.40882"
@@ -851,24 +853,24 @@
      id="freesans-use78-5"
      x="176.29175"
      y="104.43824"
-     style="font-weight:normal;font-size:10.0409px;line-height:1.1;font-family:FreeSans;text-anchor:end;fill:#222222;fill-opacity:1;stroke:none"><tspan
+     style="font-weight:normal;font-size:10.0409px;line-height:1.1;font-family:FreeSans;text-anchor:end;display:inline;fill:#222222;fill-opacity:1;stroke:none"><tspan
        style="font-style:normal;-inkscape-font-specification:'FreeSans, Normal'"
        id="tspan28">&lt;</tspan></text>
   <text
      xml:space="preserve"
-     style="font-size:8.25463px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke-width:0.198211;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:0.370797;paint-order:stroke markers fill"
+     style="font-size:8.25463px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-rule:evenodd;stroke-width:0.198211;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:0.370797;paint-order:stroke markers fill"
      x="184.62798"
      y="103.48519"
      id="text122-9"><tspan
        sodipodi:role="line"
        id="tspan122-6"
        style="stroke-width:0.198211"
-       x="184.62798"
-       y="103.48519">- K</tspan></text>
+       x="0"
+       y="0">- K</tspan></text>
   <g
      id="g125-1"
      transform="translate(14.615885,10.567871)"
-     style="stroke-linecap:butt;stroke-linejoin:round">
+     style="display:inline;stroke-linecap:butt;stroke-linejoin:round">
     <text
        xml:space="preserve"
        style="font-size:8.85353px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-rule:evenodd;stroke-width:0.212592;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:0.370797;paint-order:stroke markers fill"
@@ -883,7 +885,7 @@
   </g>
   <g
      id="patch_12-6-8"
-     style="stroke-linecap:butt;stroke-linejoin:round"
+     style="display:inline;stroke-linecap:butt;stroke-linejoin:round"
      transform="matrix(0.61720949,0,0,0.61720949,141.31379,2.8179111)">
     <path
        d="m 181.23053,158.74016 h 17.51222"
@@ -898,7 +900,7 @@
        id="path21-3-9" />
   </g>
   <rect
-     style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.225;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:1;paint-order:stroke markers fill"
+     style="display:inline;fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.225;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;stroke-opacity:1;paint-order:stroke markers fill"
      id="rect125-7"
      width="74.397949"
      height="15.857357"
@@ -909,7 +911,7 @@
      id="freesans-use15-8"
      x="313.89706"
      y="103.83934"
-     style="font-weight:normal;font-size:12.4497px;line-height:1.1;font-family:FreeSans;text-anchor:start;fill:#222222;fill-opacity:1;stroke:none"><tspan
+     style="font-weight:normal;font-size:12.4497px;line-height:1.1;font-family:FreeSans;text-anchor:start;display:inline;fill:#222222;fill-opacity:1;stroke:none"><tspan
        style="font-style:italic;-inkscape-font-specification:'FreeSans, Italic'"
        id="tspan29">c</tspan><tspan
        style="font-style:normal;font-size:65%;-inkscape-font-specification:'FreeSans, Normal';baseline-shift:sub"
@@ -917,7 +919,8 @@
   <g
      inkscape:label=""
      transform="translate(160.57608,84.766756)"
-     id="g127">
+     id="g127"
+     style="display:inline">
     <g
        id="surface1"
        transform="matrix(1.2,0,0,1.2,-363.67082,-103.72)">
@@ -934,59 +937,59 @@
   </g>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:9.1299px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
+     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:9.1299px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
      x="179.22606"
      y="170.69618"
      id="text127"><tspan
        sodipodi:role="line"
        id="tspan127"
        style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:9.1299px;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;stroke-width:0.818039"
-       x="179.22606"
-       y="170.69618">Sequential Probability Ratio Test (SPRT)</tspan></text>
+       x="0"
+       y="0">Sequential Probability Ratio Test (SPRT)</tspan></text>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
+     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
      x="180.75403"
      y="215.74223"
      id="text128"><tspan
        sodipodi:role="line"
        style="font-weight:normal;stroke-width:0.818039"
-       x="180.75403"
-       y="215.74223"
+       x="0"
+       y="0"
        id="tspan129">Siggia, Vergassola 2012 (application to biological receptors)</tspan></text>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
+     style="font-style:normal;font-variant:normal;font-weight:600;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Semi-Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
      x="109.59115"
      y="203.45692"
      id="text130"><tspan
        sodipodi:role="line"
        id="tspan130"
        style="font-weight:normal;stroke-width:0.818039"
-       x="109.59115"
-       y="203.45692">Wald 1949 (conception)</tspan></text>
+       x="0"
+       y="0">Wald 1949 (conception)</tspan></text>
   <text
      xml:space="preserve"
-     style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
+     style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
      x="165.21481"
      y="229.25603"
      id="text132"><tspan
        sodipodi:role="line"
        id="tspan132"
        style="font-style:normal;stroke-width:0.818039"
-       x="165.21481"
-       y="229.25603">Desponds, Vergassola, Walczak 2022 (optimization)</tspan></text>
+       x="0"
+       y="0">Desponds, Vergassola, Walczak 2022 (optimization)</tspan></text>
   <text
      xml:space="preserve"
-     style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
+     style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.12989px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:0.818041;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
      x="181.94072"
      y="241.95081"
      id="text133"><tspan
        sodipodi:role="line"
        id="tspan133"
        style="font-style:normal;stroke-width:0.818039"
-       x="181.94072"
-       y="241.95081">Lammers, Flamholz, Garcia, 2024 (nonequilibrium receptors)</tspan></text>
+       x="0"
+       y="0">Lammers, Flamholz, Garcia, 2024 (nonequilibrium receptors)</tspan></text>
   <g
      inkscape:label=""
      transform="translate(246.24613,302.7623)"
@@ -1628,13 +1631,13 @@
   </g>
   <text
      xml:space="preserve"
-     style="font-size:9.99998px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#00ff00;fill-opacity:0.932405;fill-rule:evenodd;stroke-width:0.611;stroke-linejoin:round;stroke-miterlimit:0;paint-order:stroke markers fill"
+     style="font-size:9.99998px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#00ff00;fill-opacity:0.932405;fill-rule:evenodd;stroke-width:0.611;stroke-linejoin:round;stroke-miterlimit:0;paint-order:stroke markers fill"
      x="31.318258"
      y="92.874252"
      id="text31"><tspan
        sodipodi:role="line"
        id="tspan31"
        style="fill:#000000;fill-opacity:0.932405;stroke-width:0.611"
-       x="31.318258"
-       y="92.874252">R(t)=</tspan></text>
+       x="0"
+       y="0">R(t)=</tspan></text>
 </svg>

@@ -12,6 +12,7 @@
    inkscape:export-ydpi="96"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -28,7 +29,7 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="pt"
      inkscape:zoom="1.1823568"
-     inkscape:cx="150.54677"
+     inkscape:cx="148.85524"
      inkscape:cy="244.42706"
      inkscape:window-width="1920"
      inkscape:window-height="1016"
@@ -561,6 +562,29 @@
          height="272.12598"
          id="rect7-4" />
     </clipPath>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient67"
+       id="radialGradient68"
+       cx="183.09052"
+       cy="114.85483"
+       fx="183.09052"
+       fy="114.85483"
+       r="129.23074"
+       gradientTransform="matrix(1.3957038,0,0,0.86259235,-73.851435,22.665365)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient67"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#07b502;stop-opacity:0.23956978;"
+         offset="0.46394777"
+         id="stop67" />
+      <stop
+         style="stop-color:#ffffff;stop-opacity:0;"
+         offset="1"
+         id="stop68" />
+    </linearGradient>
   </defs>
   <path
      d="M 0,272.12598 H 362.83465 V 0 H 0 Z"
@@ -1844,4 +1868,20 @@
          id="rect87" />
     </clipPath>
   </defs>
+  <path
+     style="fill:url(#radialGradient68);fill-rule:evenodd;stroke-width:1.15146;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;paint-order:stroke markers fill"
+     id="path67-7"
+     sodipodi:type="arc"
+     sodipodi:cx="181.68871"
+     sodipodi:cy="121.73827"
+     sodipodi:rx="180.36784"
+     sodipodi:ry="111.47345"
+     sodipodi:start="2.7886496"
+     sodipodi:end="2.785586"
+     sodipodi:open="true"
+     sodipodi:arc-type="arc"
+     d="M 12.43883,160.27029 A 180.36784,111.47345 0 0 1 119.21298,17.165648 180.36784,111.47345 0 0 1 350.84288,83.046072 180.36784,111.47345 0 0 1 244.42354,226.25163 180.36784,111.47345 0 0 1 12.630627,160.59057"
+     inkscape:export-filename="scene6_2.pdf"
+     inkscape:export-xdpi="96"
+     inkscape:export-ydpi="96" />
 </svg>

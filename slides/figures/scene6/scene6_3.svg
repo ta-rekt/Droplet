@@ -7,8 +7,12 @@
    id="svg120"
    sodipodi:docname="scene6_3.svg"
    inkscape:version="1.4.3 (1:1.4.3+202512261034+0d15f75042)"
+   inkscape:export-filename="scene6_3.pdf"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -25,14 +29,14 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="pt"
      inkscape:zoom="1.1823568"
-     inkscape:cx="235.12361"
+     inkscape:cx="233.43207"
      inkscape:cy="246.96437"
      inkscape:window-width="1920"
      inkscape:window-height="1016"
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg120" />
+     inkscape:current-layer="svg66" />
   <metadata
      id="metadata1">
     <rdf:RDF>
@@ -1782,6 +1786,29 @@
          height="272.12598"
          id="rect56-0" />
     </clipPath>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient67"
+       id="radialGradient68"
+       cx="183.09052"
+       cy="114.85483"
+       fx="183.09052"
+       fy="114.85483"
+       r="129.23074"
+       gradientTransform="matrix(1.3981257,0,0,0.86408919,-37.162369,29.702258)"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient67"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#07b502;stop-opacity:0.35720116;"
+         offset="0.46394777"
+         id="stop67" />
+      <stop
+         style="stop-color:#ffffff;stop-opacity:0;"
+         offset="1"
+         id="stop68" />
+    </linearGradient>
   </defs>
   <path
      d="M 0,272.12598 H 362.83465 V 0 H 0 Z"
@@ -4617,5 +4644,25 @@
          style="fill:#2f62c8;stroke-linecap:butt;stroke-linejoin:round"
          id="path53-3-0" />
     </g>
+  </g>
+  <g
+     id="svg66"
+     transform="translate(-37.02777,-1.9966429)">
+    <path
+       style="opacity:1;fill:url(#radialGradient68);fill-rule:evenodd;stroke-width:1.15345;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;paint-order:stroke markers fill"
+       id="path67-6"
+       sodipodi:type="arc"
+       sodipodi:cx="218.82121"
+       sodipodi:cy="128.94708"
+       sodipodi:rx="180.68083"
+       sodipodi:ry="111.66689"
+       sodipodi:start="2.7886496"
+       sodipodi:end="2.785586"
+       sodipodi:open="true"
+       sodipodi:arc-type="arc"
+       d="M 49.277641,167.54597 A 180.68083,111.66689 0 0 1 156.23707,24.192989 180.68083,111.66689 0 0 1 388.26892,90.187737 180.68083,111.66689 0 0 1 281.66491,233.6418 180.68083,111.66689 0 0 1 49.469772,167.8668"
+       inkscape:export-filename="scene6_3.pdf"
+       inkscape:export-xdpi="96"
+       inkscape:export-ydpi="96" />
   </g>
 </svg>
