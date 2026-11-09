@@ -30,9 +30,9 @@
      inkscape:document-units="pt"
      inkscape:zoom="1.1823568"
      inkscape:cx="241.04399"
-     inkscape:cy="80.347996"
-     inkscape:window-width="1920"
-     inkscape:window-height="1016"
+     inkscape:cy="210.59633"
+     inkscape:window-width="1280"
+     inkscape:window-height="736"
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="1"
@@ -1511,25 +1511,40 @@
       <text
          xml:space="preserve"
          style="font-size:8.86714px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-rule:evenodd;stroke-width:0.709374;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;paint-order:stroke markers fill"
-         x="158.911"
-         y="249.27095"
+         x="163.69685"
+         y="237.90454"
          id="text8-2"><tspan
            sodipodi:role="line"
-           id="tspan8-7"
-           x="0"
-           y="0"
-           style="stroke-width:0.709374">Max sharpness</tspan></text>
+           x="163.69685"
+           y="237.90454"
+           style="stroke-width:0.709374"
+           id="tspan1">Optimal</tspan><tspan
+           sodipodi:role="line"
+           x="163.69685"
+           y="247.6584"
+           style="stroke-width:0.709374"
+           id="tspan20">without dynamics</tspan></text>
       <text
          xml:space="preserve"
          style="font-size:8.86714px;line-height:1.1;font-family:FreeSans;-inkscape-font-specification:'FreeSans, Normal';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;display:inline;fill:#000000;fill-rule:evenodd;stroke-width:0.709374;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:0;paint-order:stroke markers fill"
-         x="161.75969"
-         y="292.63028"
+         x="168.93848"
+         y="290.23737"
          id="text8-3"><tspan
            sodipodi:role="line"
            id="tspan8-5"
-           x="0"
-           y="0"
-           style="stroke-width:0.709374">Optimal</tspan></text>
+           x="168.93848"
+           y="290.23737"
+           style="stroke-width:0.709374">Optimal</tspan><tspan
+           sodipodi:role="line"
+           x="168.93848"
+           y="299.99121"
+           style="stroke-width:0.709374"
+           id="tspan18">accounting for</tspan><tspan
+           sodipodi:role="line"
+           x="168.93848"
+           y="309.74509"
+           style="stroke-width:0.709374"
+           id="tspan19">dynamics</tspan></text>
     </g>
   </g>
   <g
